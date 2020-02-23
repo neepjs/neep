@@ -17,7 +17,11 @@ export interface Slots {
 	[name: string]: SlotFn | undefined;
 }
 export interface Exposed {
-	readonly $component: NeepComponent<any, any>;
+	readonly $component: NeepComponent<any, any> | null;
+	readonly $isContainer: boolean;
+	readonly $inited: boolean;
+	readonly $mounted: boolean;
+	readonly $destroyed: boolean;
 	[name: string]: any;
 }
 export interface Render<R extends object = any> {
