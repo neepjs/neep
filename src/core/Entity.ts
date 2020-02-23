@@ -69,12 +69,13 @@ function initRender<R extends object = object>(
 		props,
 		context,
 		container: { iRender },
+		exposed,
 	} = nObject;
 	const native = Boolean(nObject.native);
 	// 初始化执行
 	const result = setCurrent(
 		() => component(props, context, auxiliary),
-		nObject,
+		exposed,
 	);
 	if (typeof result === 'function') {
 		// 响应式
@@ -99,7 +100,7 @@ function initRender<R extends object = object>(
 		nodes: normalize(result, context, component, iRender, native),
 		render:() => normalize(setCurrent(
 			() => component(props, context, auxiliary) as R,
-			nObject,
+			exposed,
 		), context, component, iRender, native),
 	};
 }

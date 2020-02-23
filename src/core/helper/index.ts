@@ -1,1 +1,1 @@
-export { current, checkCurrentObject } from './current';
+export { current, checkCurrent } from './current';

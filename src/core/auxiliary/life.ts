@@ -1,10 +1,11 @@
 /**********************************
  * 上下文环境专用 API
  **********************************/
-import { checkCurrentObject } from '../helper';
+import { checkCurrent } from '../helper';
 import { Value, WatchCallback } from 'monitorable';
 import { isValue } from './state';
 import { monitorable } from '../install';
+import { setHook } from '../hook';
 
 
 /**********************************
@@ -34,13 +35,13 @@ export function watch<T>(
 	value: Value<T> | (() => T),
 	cb: (v: Value<T> | T, stoped: boolean) => void
 ): () => void {
-	const nObject = checkCurrentObject('watch');
+	const exposed = checkCurrent('watch');
 	if (typeof value !== 'function') { return () => {}; }
 	const stop = isValue(value)
 		? value.watch(monitorable.merge(cb))
 		: monitorable.computed(value)
 			.watch(monitorable.merge((v, s) => cb(v(), s)));
-	nObject.setHook('beforeDestroy', () => stop());
+	setHook('beforeDestroy', () => stop(), exposed);
 	return stop;
 }
 
@@ -55,36 +56,36 @@ export function watch<T>(
  * @param hook 钩子
  */
 export function hook(name: string, hook: () => void): () => void {
-	return checkCurrentObject('setHook')
-		.setHook(name, hook);
+	const exposed = checkCurrent('setHook');
+	return setHook(name, hook, exposed);
 }
 export function inited(hook: () => void): () => void {
-	return checkCurrentObject('inited', true)
-		.setHook('inited', hook);
+	const exposed = checkCurrent('inited', true);
+	return setHook('inited', hook, exposed);
 }
 export function beforeMount(hook: () => void): () => void {
-	return checkCurrentObject('beforeMount', true)
-		.setHook('beforeMount', hook);
+	const exposed = checkCurrent('beforeMount', true);
+	return setHook('beforeMount', hook, exposed);
 }
 export function mounted(hook: () => void): () => void {
-	return checkCurrentObject('mounted', true)
-		.setHook('mounted', hook);
+	const exposed = checkCurrent('mounted', true);
+	return setHook('mounted', hook, exposed);
 }
 export function beforeRefresh(hook: () => void): () => void {
-	return checkCurrentObject('beforeRefresh', true)
-		.setHook('beforeRefresh', hook);
+	const exposed = checkCurrent('beforeRefresh', true);
+	return setHook('beforeRefresh', hook, exposed);
 }
 export function refreshed(hook: () => void): () => void {
-	return checkCurrentObject('refreshed', true)
-		.setHook('refreshed', hook);
+	const exposed = checkCurrent('refreshed', true);
+	return setHook('refreshed', hook, exposed);
 }
 export function beforeDestroy(hook: () => void): () => void {
-	return checkCurrentObject('beforeDestroy', true)
-		.setHook('beforeDestroy', hook);
+	const exposed = checkCurrent('beforeDestroy', true);
+	return setHook('beforeDestroy', hook, exposed);
 }
 export function destroyed(hook: () => void): () => void {
-	return checkCurrentObject('destroyed', true)
-		.setHook('destroyed', hook);
+	const exposed = checkCurrent('destroyed', true);
+	return setHook('destroyed', hook, exposed);
 }
 
 
@@ -96,7 +97,7 @@ export function destroyed(hook: () => void): () => void {
  * 将 Value 导出
  * @param name 导出用的名称
  */
-export function exposed<T>(
+export function expose<T>(
 	name: string | number | symbol,
 	value: Value<T>,
 	mix?: boolean,
@@ -106,7 +107,7 @@ export function exposed<T>(
  * @param name 
  * @param value 
  */
-export function exposed<T>(
+export function expose<T>(
 	name: string | number | symbol,
 	value: T,
 ): void;
@@ -116,7 +117,7 @@ export function exposed<T>(
  * @param getter 
  * @param nonmodifiable 
  */
-export function exposed<T>(
+export function expose<T>(
 	name: string | number | symbol,
 	getter: () => T,
 	nonmodifiable: true,
@@ -127,17 +128,17 @@ export function exposed<T>(
  * @param getter 
  * @param setter 
  */
-export function exposed<T>(
+export function expose<T>(
 	name: string | number | symbol,
 	getter: () => T,
 	setter: (value: T) => void,
 ): void;
-export function exposed<T>(
+export function expose<T>(
 	name: string | number | symbol,
 	value: T | Value<T> | (() => T),
 	opt?: boolean | ((value: T) => void),
 ): void {
-	const { exposed } = checkCurrentObject('destroyed');
+	const exposed = checkCurrent('expose', true);
 	if (
 		typeof name === 'string'
 		&& ['$', '_'].includes(name[0])

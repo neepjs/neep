@@ -1,9 +1,9 @@
-import Entity from '../Entity';
 import NeepError from '../Error';
+import { Exposed } from '../type';
 
 /** 当前正在执行的对象 */
-export let current: Entity<any, any> | undefined;
-export function setCurrent<T>(fn: () => T, obj: Entity<any, any>): T {
+export let current: Exposed | undefined;
+export function setCurrent<T>(fn: () => T, obj: Exposed): T {
 	const old = current;
 	current = obj;
 	try {
@@ -13,10 +13,10 @@ export function setCurrent<T>(fn: () => T, obj: Entity<any, any>): T {
 	}
 }
 
-export function checkCurrentObject(
+export function checkCurrent(
 	name: string,
 	initonly = false,
-): Entity<any, any> {
+): Exposed {
 	if (!current) {
 		throw new NeepError(
 			`Function \`${name}\` can only be called within a cycle.`,

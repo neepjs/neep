@@ -1,6 +1,6 @@
-import { monitorable } from './install';
-import { callHook } from './hook';
-import { Exposed, MountedNode } from './type';
+import { callHook, Hooks } from './hook';
+import { Exposed } from './type';
+import { MountedNode } from './draw';
 
 export default class NeepObject {
 
@@ -19,26 +19,10 @@ export default class NeepObject {
 	protected _tree: (MountedNode | MountedNode[])[] = [];
 	/** The subtree mounted on the parent node */
 	get tree() { return this._tree; }
-	private readonly _hooks: Map<any, Set<() => void>> = new Map();
-	/**
-	 * 设置钩子
-	 * @param id 钩子名称
-	 * @param hook 钩子函数
-	 * @returns 用于取消钩子的函数
-	 */
-	setHook(id: any, hook: () => void): () => void {
-		hook = monitorable.safeify(hook);
-		const set = monitorable
-			.getMepValue(this._hooks, id, () => new Set);
-		set.add(hook);
-		return () => set.delete(hook);
-	}
-	callHook(id: any): void {
-		callHook(id, this);
-		const list = this._hooks.get(id);
-		if (!list) { return; }
-		for (const hook of list) {
-			hook();
-		}
+
+	callHook<H extends Hooks>(id: H): void;
+	callHook(id: string): void;
+	callHook(id: string): void {
+		callHook(id, this.exposed);
 	}
 }
