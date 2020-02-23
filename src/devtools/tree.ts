@@ -1,7 +1,6 @@
-import {
-	MountedNode, Container, Template, ScopeSlot, SlotRender, Value,
-} from '@neep/core';
+import { Template, ScopeSlot, SlotRender, Value } from '@neep/core';
 import { nameSymbol, typeSymbol } from '../core/create/mark/symbols';
+import { MountedNode } from '../core/draw';
 export enum Type {
 	tag = 'tag',
 	placeholder = 'placeholder',
@@ -23,6 +22,9 @@ export interface VTreeNode {
 	/** 标注 */
 	label?: string;
 	parent: number;
+	value?: string;
+	valueType?: 'string' | 'value' | 'function'
+	| 'native' | 'object' | 'date' | 'regex';
 }
 
 export function *getTree(
@@ -73,7 +75,7 @@ export function *getTree(
 			type: isNative ? Type.native : Type.standard,
 			tag: name,
 			children: [...getTree(
-				component instanceof Container ? component.content
+				'content' in component ? component.content
 					: isNative ? component._children : component.tree
 			)],
 			props,
@@ -95,11 +97,43 @@ export function *getTree(
 		return;
 	}
 	if (tag === Value) {
+		const treeValue = tree.value;
+		const type = typeof treeValue;
+		let valueType: VTreeNode['valueType'] = 'string';
+		let value = '';
+		if (type === 'string') {
+			value = treeValue;
+		} else if (treeValue === tree.node) {
+			valueType = 'native';
+		} else if (type === 'function') {
+			valueType ='function';
+		} else if (
+			type === 'bigint'
+			|| type === 'boolean'
+			|| type === 'number'
+			|| type === 'symbol'
+			|| type === 'undefined'
+			|| treeValue === null
+		) {
+			valueType ='value';
+			value = String(treeValue);
+		} else if (treeValue instanceof RegExp) {
+			valueType ='regex';
+			value = String(treeValue);
+		} else if (treeValue instanceof Date) {
+			valueType ='date';
+			value = treeValue.toISOString();
+		} else if (type === 'object') {
+			valueType = 'object';
+			value = String(treeValue);
+		}
 		yield {
 			id, parent,
 			type: Type.special,
 			tag,
 			children: [],
+			valueType,
+			value,
 			props,
 			key,
 			label,

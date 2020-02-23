@@ -1,5 +1,7 @@
 import * as monitorableApi from 'monitorable';
 import { IRender } from './type';
+import { Devtools } from '../devtools/type';
+import { isProduction } from './constant';
 
 export let monitorable: typeof monitorableApi;
 
@@ -38,10 +40,25 @@ function installRender({ render, renders: list}: InstallOptions) {
 	}
 }
 
+export const devtools: Devtools = {
+	renderHook(){},
+};
+
+function installDevtools(tools?: Partial<Devtools>) {
+	if (!tools) { return; }
+	if (typeof tools !== 'object') { return; }
+	const { renderHook } = tools;
+	if (typeof renderHook === 'function') {
+		devtools.renderHook = renderHook;
+	}
+}
 
 export default function install(apis: InstallOptions) {
 	if (apis.monitorable) {
 		monitorable = apis.monitorable;
 	}
 	installRender(apis);
+	if (!isProduction) {
+		installDevtools(apis.devtools);
+	}
 }

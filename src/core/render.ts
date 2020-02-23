@@ -1,6 +1,8 @@
 import { MountProps, NeepElement, NeepComponent, RootExposed } from './type';
 import Container from './Container';
 import { isElement, createElement } from './auxiliary';
+import { isProduction } from './constant';
+import { devtools } from './install';
 
 export default function render(
 	e?: NeepElement | NeepComponent,
@@ -11,6 +13,9 @@ export default function render(
 			: isElement(e) ? [e] : [createElement(e)];
 	let params = {...p};
 	const container =  new Container(params, children);
+	if (!isProduction) {
+		devtools.renderHook(container);
+	}
 	const { exposed } = container;
 	Reflect.defineProperty(exposed, '$update', {
 		value(c: any) {

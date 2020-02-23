@@ -33,6 +33,27 @@ function getOptions({
 		slotRender,
 	};
 }
+function createText(
+	valueType: VTreeNode['valueType'] = 'string',
+	value: string = '',
+): NeepNode {
+	switch(valueType) {
+		case 'string':
+			return <span>{value}</span>;
+		case 'native':
+			return <span style="font-weight: bold;">[Native]</span>;
+		case 'function':
+			return <span style="font-weight: bold;">[Function]</span>;
+		case 'date':
+			return <span style="font-weight: bold;">{value}</span>;
+		case 'regex':
+			return <span style="font-weight: bold;">{value}</span>;
+		case 'value':
+			return <span style="font-style: italic;">{value}</span>;
+		case 'object':
+			return <span style="font-style: italic;">{value}</span>;
+	}
+}
 function createTag(
 	name: any,
 	keys: {[key: number]: boolean},
@@ -83,9 +104,9 @@ function createTag(
 			</span> || undefined}
 		</div>
 		{children.length && opened && children ||  undefined}
-		{opened && children.length && <span>
+		{opened && children.length && <div>
 			{'</'}{name}{'>'}
-		</span> || undefined}
+		</div> || undefined}
 	</div>;
 }
 function *getList(
@@ -100,7 +121,17 @@ function *getList(
 		}
 		return;
 	}
-	const { id, type, tag, children, props, key, label } = list;
+	const {
+		id,
+		type,
+		tag,
+		children,
+		props,
+		key,
+		label,
+		value,
+		valueType,
+	} = list;
 	if (type === Type.standard || type === Type.native) {
 		yield createTag(
 			<span style="font-weight: bold;">{tag}</span>,
@@ -111,13 +142,12 @@ function *getList(
 		return;
 	}
 	if (type === Type.tag) {
-		if (options.tag) {
-			yield createTag(
-				tag,
-				keys, id, key, [...labels, label],
-				...getList(children, keys, options)
-			);
-		}
+		if (!options.tag) { return; }
+		yield createTag(
+			tag,
+			keys, id, key, [...labels, label],
+			...getList(children, keys, options)
+		);
 		return;
 	}
 	if (type === Type.simple) {
@@ -136,13 +166,12 @@ function *getList(
 		return;
 	}
 	if (type === Type.placeholder) {
-		if (options.placeholder) {
-			yield createTag(
-				<span style="font-style: italic;">placeholder</span>,
-				keys, id, key, [...labels, label],
-				...getList(children, keys, options)
-			);
-		}
+		if (!options.placeholder) { return; }
+		yield createTag(
+			<span style="font-style: italic;">placeholder</span>,
+			keys, id, key, [...labels, label],
+			...getList(children, keys, options)
+		);
 		return;
 	}
 	if (type === Type.container) {
@@ -191,10 +220,8 @@ function *getList(
 		return;
 	}
 	if (tag === Value) {
-		if (options.value) {
-			
-		}
-		return;
+		if (!options.value) { return; }
+		return yield createText(valueType, value);
 	}
 }
 export default create((props: any) => {
