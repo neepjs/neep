@@ -1,18 +1,41 @@
-import { MountProps, NeepElement, NeepComponent } from './type';
+import { MountProps, NeepElement, NeepComponent, RootExposed } from './type';
 import Container from './Container';
 import { isElement, createElement } from './auxiliary';
-import { isProduction } from './constant';
-import { callHook } from './hook';
 
 export default function render(
-	e: NeepElement | NeepComponent,
+	e?: NeepElement | NeepComponent,
 	p: MountProps = {},
-): void {
-	const container = isElement(e)
-		? new Container(p, [e])
-		: new Container(p, [createElement(e)]);
-	if (!isProduction) {
-		callHook('render', container);
+): RootExposed {
+	let children =
+		e === undefined ? []
+			: isElement(e) ? [e] : [createElement(e)];
+	let params = {...p};
+	const container =  new Container(params, children);
+	const { exposed } = container;
+	Reflect.defineProperty(exposed, '$update', {
+		value(c: any) {
+			children =
+				c === undefined ? []
+					: isElement(c) ? [c] : [createElement(c)];
+			container.update(params, children);
+			return exposed;
+		},
+		configurable: true,
+	});
+	Reflect.defineProperty(exposed, '$mount', {
+		value(target?: any) {
+			if (exposed.$mounted) { return exposed; }
+			if (target) {
+				params.target = target;
+				container.update(params, children);
+			}
+			container.mount();
+			return exposed;
+		},
+		configurable: true,
+	});
+	if (params.target) {
+		container.mount();
 	}
-	container.mount();
+	return exposed as any as RootExposed;
 }

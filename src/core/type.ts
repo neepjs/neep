@@ -24,6 +24,10 @@ export interface Exposed {
 	readonly $destroyed: boolean;
 	[name: string]: any;
 }
+export interface RootExposed {
+	$mount(target?: any): RootExposed;
+	$update(node?: NeepElement | NeepComponent): RootExposed;
+}
 export interface Render<R extends object = any> {
 	(data: R, context: Context, auxiliary: Auxiliary): NeepNode;
 }
