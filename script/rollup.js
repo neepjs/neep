@@ -70,16 +70,6 @@ export default [
 	createDts('core'),
 
 	{
-		input: 'src/create/index.ts',
-		output: [
-			createOutput('create', 'cjs'),
-			createOutput('create', 'esm'),
-		],
-		plugins: [ alias(), resolve(), babel(), replace() ],
-	},
-	createDts('create'),
-
-	{
 		input: 'src/web/render/index.ts',
 		output: [
 			createOutput('web', 'esm', 'render'),
