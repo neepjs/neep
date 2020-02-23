@@ -2,7 +2,6 @@ import { Auxiliary, Tags } from './auxiliary';
 import { Marks } from './create/mark';
 import Entity from './Entity';
 import { isElementSymbol } from './symbols';
-import { Value } from 'monitorable';
 import Container from './Container';
 
 /** source 对象 */
@@ -82,7 +81,7 @@ export interface NeepElement {
 	/** 子节点 */
 	children: any[];
 	/** 引用绑定 */
-	ref?: Value<Node | Exposed | null> | Value<(Node | Exposed)[]>;
+	ref?(node: Native.Node | Exposed, isRemove?: boolean): void;
 	/** 插槽 */
 	slot?: string;
 	/** 列表对比 key */

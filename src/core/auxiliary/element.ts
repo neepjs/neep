@@ -24,6 +24,7 @@ export function createElement(
 	};
 	if ('key' in attrs) { node.key = attrs.key; }
 	if ('slot' in attrs) { node.slot = attrs.slot; }
+	if (typeof attrs.ref === 'function') { node.ref = attrs.ref; }
 	if (tag === Tags.Value) {
 		node.value = attrs.value;
 		return node;

@@ -47,13 +47,15 @@ export function unmount(iRender: IRender, tree: MountedNodes): void {
 		tree.forEach(e => unmount(iRender, e));
 		return;
 	}
-	const { component, children, node } = tree;
+	const { component, children, node, ref } = tree;
 	recoveryMountedNode(tree);
 	if (node) {
+		if (ref) { ref(node, true); }
 		iRender.remove(node);
 		return;
 	}
 	if (component) {
+		if (ref) { ref(component.exposed, true); }
 		component.unmount();
 		return;
 	}
@@ -203,6 +205,7 @@ function updateItem(
 		unmount(iRender, all);
 	}
 	const { tag } = source;
+	const ref = source.ref !== tree.ref && source.ref;
 	if (tag !== tree.tag) {
 		return replace(iRender, createItem(iRender, source), tree);
 	}
@@ -210,6 +213,7 @@ function updateItem(
 	if (typeof tag !== 'string') {
 		const { component } = source;
 		if (!component) {
+			// TODO: ref
 			return createMountedNode({
 				...source,
 				node: undefined,
@@ -217,6 +221,7 @@ function updateItem(
 				children: draw(iRender, source.children, tree.children),
 			}, tree.id);
 		}
+		if (ref) { ref(component.exposed); }
 		return createMountedNode({
 			...source,
 			node: undefined,
@@ -226,6 +231,7 @@ function updateItem(
 	}
 	if (tag === Tags.Value) {
 		if(tree.value === source.value) {
+			if (ref && tree.node) { ref(tree.node); }
 			return createMountedNode({
 				...tree,
 				...source,
@@ -235,6 +241,7 @@ function updateItem(
 		return replace( iRender, createValue(iRender, source), tree);
 	}
 	if ([Tags.Template, Tags.ScopeSlot].includes(tag)) {
+		// TODO: ref
 		return createMountedNode({
 			...source,
 			node: undefined,
@@ -252,6 +259,7 @@ function updateItem(
 		node as Native.Element,
 		source.props || {},
 	);
+	if (ref) { ref(node!); }
 	if (!source.children.length && !tree.children.length) {
 		return createMountedNode(
 			{
@@ -289,8 +297,9 @@ function createValue(
 	iRender: IRender,
 	source: TreeNode,
 ): MountedNode {
-	const { value } = source;
+	const { value, ref } = source;
 	if (iRender.isNode(source.value)) {
+		if (ref) { ref(value); }
 		return createMountedNode({
 			...source,
 			node: value,
@@ -299,24 +308,24 @@ function createValue(
 		});
 	}
 	const type = typeof value;
+	let node: Native.Node | undefined;
 	if (
 		type === 'bigint'
 		|| type === 'boolean'
 		|| type === 'number'
 		|| type === 'string'
 		|| type === 'symbol'
+		|| value instanceof RegExp
 	) {
-		return createMountedNode({
-			...source,
-			node: iRender.text(String(value)),
-			component: undefined,
-			children: [],
-		});
-	}
-	if (type === 'object' && value) {
+		node = iRender.text(String(value));
+	} else if (value instanceof Date) {
+		node = iRender.text(value.toISOString());
+	} else if (type === 'object' && value) {
+		node = iRender.text(String(value));
 		// TODO: 对象处理
 	}
-	const node = iRender.placeholder();
+	if (!node) { node = iRender.placeholder(); }
+	if (ref) { ref(node); }
 	return createMountedNode({
 		...source,
 		node,
@@ -356,11 +365,13 @@ function createItem(
 	iRender: IRender,
 	source: TreeNode,
 ): MountedNode {
-	const { tag } = source;
+	const { tag, ref } = source;
 	if (!tag) {
+		const node = iRender.placeholder();
+		if (ref) { ref(node); }
 		return createMountedNode({
 			tag: null,
-			node: iRender.placeholder(),
+			node,
 			component: undefined,
 			children: [],
 		});
@@ -368,6 +379,7 @@ function createItem(
 	if (typeof tag !== 'string') {
 		const { component } = source;
 		if (!component) {
+			// TODO: ref
 			return createMountedNode({
 				...source,
 				node: undefined,
@@ -376,6 +388,8 @@ function createItem(
 			});
 		}
 		component.mount();
+		if (ref) { ref(component.exposed); }
+		// TODO: ref
 		return createMountedNode({
 			...source,
 			node: undefined,
@@ -386,6 +400,7 @@ function createItem(
 		return createValue(iRender, source);
 	}
 	if ([Tags.Template, Tags.ScopeSlot].includes(tag)) {
+		// TODO: ref
 		return createMountedNode({
 			...source,
 			node: undefined,
@@ -394,14 +409,17 @@ function createItem(
 		});
 	}
 	if (tag.substr(0, 5) === 'Neep:') {
+		const node = iRender.placeholder();
+		if (ref) { ref(node); }
 		return createMountedNode({
 			tag: null,
-			node: iRender.placeholder(),
+			node,
 			component: undefined,
 			children: [],
 		});
 	}
 	const node = iRender.create(tag, source.props || {});
+	if (ref) { ref(node); }
 	let children: (MountedNode | MountedNode[])[] = [];
 	if (source.children) {
 		children = createAll(iRender, source.children);
