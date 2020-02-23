@@ -1,6 +1,6 @@
 import auxiliary, { Tags, isElement, Value } from './auxiliary';
 import { recursive2iterable } from './recursive';
-import { NeepNode, TreeNode, NeepElement, NeepComponent } from './type';
+import { NeepNode, NeepElement, NeepComponent, Tag } from './type';
 import Entity from './Entity';
 import Container from './Container';
 import { typeSymbol } from './create/mark/symbols';
@@ -8,6 +8,19 @@ import { isElementSymbol } from './symbols';
 import { getSlots, setSlots } from './utils/slot';
 import normalize from './utils/normalize';
 
+
+export interface TreeNode
+	extends Omit<
+		NeepElement,
+		'children' | 'tag' | typeof isElementSymbol
+	>
+{
+	/** 标签名 */
+	tag: Tag;
+	children: (this | this[])[];
+	mounted?: boolean;
+	component?: Entity | Container;
+}
 /** 强制转换为 NeepElement */
 function toElement(t: any): null | NeepElement {
 	if (t === false || t === null || t === undefined) {

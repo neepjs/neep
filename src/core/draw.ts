@@ -1,6 +1,21 @@
 import { Tags } from './auxiliary';
-import { MountedNode, TreeNode, Native, IRender } from './type';
+import { Native, IRender } from './type';
 import { createMountedNode, recoveryMountedNode } from './dev/id';
+import { TreeNode } from './convert';
+import Container from './Container';
+import Entity from './Entity';
+
+
+/**
+ * @description node / component / children 至少一个有效
+ */
+export interface MountedNode extends TreeNode {
+	id: number;
+	parent?: this;
+	component: undefined | Entity | Container;
+	node: undefined | Native.Node;
+}
+
 
 type MountedNodes = MountedNode | MountedNode[]
 	| (MountedNode | MountedNode[])[];

@@ -99,29 +99,6 @@ export interface NeepElement {
 }
 
 
-export interface TreeNode
-	extends Omit<
-		NeepElement,
-		'children' | 'tag' | typeof isElementSymbol
-	>
-{
-	/** 标签名 */
-	tag: Tag;
-	children: (this | this[])[];
-	mounted?: boolean;
-	component?: Entity | Container;
-}
-/**
- * @description node / component / children 至少一个有效
- */
-export interface MountedNode extends TreeNode {
-	id: number;
-	parent?: this;
-	component: undefined | Entity | Container;
-	node: undefined | Native.Node;
-}
-
-
 export namespace Native {
 	const ElementSymbol = Symbol();
 	const TextSymbol = Symbol();

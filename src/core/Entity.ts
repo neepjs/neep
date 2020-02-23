@@ -1,14 +1,10 @@
-import {
-	NeepComponent,
-	NeepNode, TreeNode, MountedNode,
-	Slots, Context, Native,
-} from './type';
+import { NeepComponent, NeepNode, Slots, Context, Native } from './type';
 import auxiliary from './auxiliary';
 import { monitorable } from './install';
 import { setCurrent } from './helper/current';
-import convert, { destroy } from './convert';
+import convert, { destroy, TreeNode } from './convert';
 import Container from './Container';
-import draw, { unmount } from './draw';
+import draw, { unmount, MountedNode } from './draw';
 import normalize from './utils/normalize';
 import { getSlots, setSlots } from './utils/slot';
 import NeepObject from './Object';
