@@ -1,9 +1,9 @@
+import { mode, isProduction } from '../constant';
 import * as Tags from './tags';
 import * as State from './state';
 import * as Life from './life';
 import * as Element from './element';
 import * as Dev from './dev';
-import { mode, isProduction } from '../constant';
 
 export * from './tags';
 export * from './state';

@@ -2,8 +2,7 @@ import {
 	NeepComponent, Render, NeepNode, Slots, Context, IRender,
 } from '../type';
 import auxiliary, { isElement, Tags } from '../auxiliary';
-import { renderSymbol } from '../create/mark/symbols';
-import { isElementSymbol } from '../symbols';
+import { renderSymbol, isElementSymbol } from '../symbols';
 import { isProduction } from '../constant';
 
 

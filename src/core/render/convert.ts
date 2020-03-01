@@ -1,14 +1,13 @@
-import { NeepNode, NeepElement, NeepComponent, Tag, Exposed } from './type';
-import auxiliary, { Tags, isElement, Value } from './auxiliary';
-import { recursive2iterable } from './recursive';
+import { NeepNode, NeepElement, NeepComponent, Tag, Exposed } from '../type';
+import { isProduction } from '../constant';
+import auxiliary, { Tags, isElement, Value } from '../auxiliary';
+import { isElementSymbol, typeSymbol } from '../symbols';
+import { recursive2iterable } from '../utils/recursive';
+import { getLabel } from '../helper/label';
 import Entity from './Entity';
 import Container from './Container';
-import { typeSymbol } from './create/mark/symbols';
-import { isElementSymbol } from './symbols';
-import { getSlots, setSlots } from './utils/slot';
-import normalize from './utils/normalize';
-import { getLabel } from './helper/label';
-import { isProduction } from './constant';
+import { getSlots, setSlots } from './slot';
+import normalize from './normalize';
 
 
 export interface TreeNode

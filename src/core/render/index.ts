@@ -1,8 +1,8 @@
-import { MountProps, NeepElement, NeepComponent, RootExposed } from './type';
+import { MountProps, NeepElement, NeepComponent, RootExposed } from '../type';
+import { isElement, createElement } from '../auxiliary';
+import { isProduction } from '../constant';
+import { devtools } from '../install';
 import Container from './Container';
-import { isElement, createElement } from './auxiliary';
-import { isProduction } from './constant';
-import { devtools } from './install';
 
 export default function render(
 	e?: NeepElement | NeepComponent,

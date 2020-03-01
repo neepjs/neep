@@ -1,5 +1,5 @@
-import { current } from '../helper';
 import { isProduction } from '../constant';
+import { current } from '../helper';
 import { setLabel } from '../helper/label';
 
 export function label(text: string, color = '') {

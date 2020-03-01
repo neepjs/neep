@@ -1,1 +1,1 @@
-export { getNode } from './id';
+export { getNode } from '../render/id';

@@ -1,6 +1,5 @@
 import { Auxiliary, Tags } from './auxiliary';
-import { Marks } from './create/mark';
-import { isElementSymbol } from './symbols';
+import { isElementSymbol, nameSymbol, typeSymbol, renderSymbol } from './symbols';
 
 /** source 对象 */
 export type NeepNode = NeepElement | null;
@@ -29,6 +28,7 @@ export interface RootExposed {
 	$mount(target?: any): RootExposed;
 	$update(node?: NeepElement | NeepComponent): RootExposed;
 }
+
 export interface Render<R extends object = any> {
 	(data: R, context: Context, auxiliary: Auxiliary): NeepNode;
 }
@@ -46,8 +46,16 @@ export interface Context {
 	childNodes: any[];
 }
 
-/** 构造函数 */
 
+/** 组件标记 */
+export interface Marks {
+	/** 组件名称 */
+	[nameSymbol]?: string;
+	/** 是否为原生组件 */
+	[typeSymbol]?: 'native' | 'simple' | 'standard';
+	[renderSymbol]?: Render;
+}
+/** 构造函数 */
 export interface NeepResponseComponent<
 	P extends object = object,
 	R extends object = object,
@@ -160,9 +168,4 @@ export interface IRender {
 		next?: NativeNode | null,
 	): void;
 	remove(n: NativeNode): void;
-}
-
-/** 组件标记函数 */
-export interface Mark {
-	<N extends NeepComponent<any, any>>(component: N): N;
 }

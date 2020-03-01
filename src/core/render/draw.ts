@@ -1,6 +1,6 @@
-import { Tags } from './auxiliary';
-import { IRender, NativeNode, NativeElement } from './type';
-import { createMountedNode, recoveryMountedNode } from './dev/id';
+import { Tags } from '../auxiliary';
+import { IRender, NativeNode, NativeElement } from '../type';
+import { createMountedNode, recoveryMountedNode } from './id';
 import { TreeNode } from './convert';
 import Container from './Container';
 import Entity from './Entity';

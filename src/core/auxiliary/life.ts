@@ -1,11 +1,11 @@
 /**********************************
  * 上下文环境专用 API
  **********************************/
-import { checkCurrent } from '../helper';
 import { Value, WatchCallback } from 'monitorable';
-import { isValue } from './state';
+import { checkCurrent } from '../helper';
 import { monitorable } from '../install';
 import { setHook } from '../hook';
+import { isValue } from './state';
 
 
 /**********************************

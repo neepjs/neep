@@ -3,13 +3,13 @@ import {
 	MountProps,
 	NativeNode,
 	NativeContainer,
-} from './type';
+} from '../type';
+import { Tags } from '../auxiliary';
+import { getRender } from '../install';
+import { createMountedNode } from './id';
 import Entity from './Entity';
 import convert, { destroy, TreeNode } from './convert';
 import draw, { unmount, getNodes, MountedNode } from './draw';
-import { Tags } from './auxiliary';
-import { getRender } from './install';
-import { createMountedNode } from './dev/id';
 import NeepObject from './Object';
 
 

@@ -4,15 +4,15 @@ import {
 	Slots,
 	Context,
 	NativeComponent,
-} from './type';
-import auxiliary from './auxiliary';
-import { monitorable } from './install';
-import { setCurrent } from './helper/current';
+} from '../type';
+import auxiliary from '../auxiliary';
+import { monitorable } from '../install';
+import { setCurrent } from '../helper/current';
 import convert, { destroy, TreeNode } from './convert';
 import Container from './Container';
 import draw, { unmount, MountedNode } from './draw';
-import normalize from './utils/normalize';
-import { getSlots, setSlots } from './utils/slot';
+import normalize from './normalize';
+import { getSlots, setSlots } from './slot';
 import NeepObject from './Object';
 
 function updateProps(

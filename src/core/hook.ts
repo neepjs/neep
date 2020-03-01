@@ -1,5 +1,5 @@
-import { monitorable } from '../install';
-import { Exposed } from '../type';
+import { monitorable } from './install';
+import { Exposed } from './type';
 /** 全局钩子 */
 interface Hook {
 	(nObjcet: Exposed): void
@@ -13,6 +13,17 @@ export type Hooks = 'beforeInit' | 'inited'
 ;
 const Hooks: Record<string, Set<Hook>> = Object.create(null);
 const ExposedHooks: WeakMap<Exposed, typeof Hooks> = new WeakMap();
+
+function getHooks(key?: Exposed): typeof Hooks {
+	if (!(key && typeof key === 'object')) { return Hooks; }
+	let value = ExposedHooks.get(key);
+	if (!value) {
+		value = Object.create(null) as typeof Hooks;
+		ExposedHooks.set(key, value);
+	}
+	return value;
+}
+
 
 export function setHook<H extends Hooks>(
 	id: H,
@@ -31,14 +42,7 @@ export function setHook(
 	exposed?: Exposed,
 ):() => void {
 	hook = monitorable.safeify(hook);
-	let hooks = Hooks;
-	if (exposed && typeof exposed === 'object') {
-		hooks = monitorable.getMapValue<Exposed, typeof Hooks>(
-			ExposedHooks,
-			exposed,
-			() => Object.create(null)
-		);
-	}
+	const hooks = getHooks(exposed);
 	let set = hooks[id];
 	if (!set) {
 		set = new Set();

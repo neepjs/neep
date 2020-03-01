@@ -1,5 +1,5 @@
-import { callHook, Hooks } from './hook';
-import { Exposed } from './type';
+import { callHook, Hooks } from '../hook';
+import { Exposed } from '../type';
 import { MountedNode } from './draw';
 function createExposed(obj: NeepObject): Exposed {
 

@@ -1,6 +1,6 @@
 import { Tag, NeepElement } from '../type';
-import * as Tags from './tags';
 import { isElementSymbol } from '../symbols';
+import * as Tags from './tags';
 
 /**
  * 判读是否为元素
