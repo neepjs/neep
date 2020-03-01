@@ -4,6 +4,7 @@ import {
 import auxiliary, { isElement, Tags } from '../auxiliary';
 import { renderSymbol } from '../create/mark/symbols';
 import { isElementSymbol } from '../symbols';
+import { isProduction } from '../constant';
 
 
 function slotless(
@@ -35,9 +36,11 @@ function slotless(
 		};
 	}
 	const { render } = node;
+	const label = isProduction ? undefined : [`[${ slotName }]`, '#00F'];
 	return {
 		...node,
-		tag: Tags.Template,
+		tag: Tags.ScopeSlot,
+		label,
 		children:
 			typeof render !== 'function' ? children : render(...args),
 	};

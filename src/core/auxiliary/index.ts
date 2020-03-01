@@ -2,12 +2,14 @@ import * as Tags from './tags';
 import * as State from './state';
 import * as Life from './life';
 import * as Element from './element';
+import * as Dev from './dev';
 import { mode, isProduction } from '../constant';
 
 export * from './tags';
 export * from './state';
 export * from './life';
 export * from './element';
+export * from './dev';
 
 export { Tags };
 
@@ -17,7 +19,8 @@ export interface Auxiliary extends
 	Readonly<typeof Tags>,
 	Readonly<typeof State>,
 	Readonly<typeof Life>,
-	Readonly<typeof Element>
+	Readonly<typeof Element>,
+	Readonly<typeof Dev>
 {
 	mode: string,
 	isProduction: boolean,
@@ -28,6 +31,7 @@ const auxiliary: Auxiliary = {
 	...State,
 	...Life,
 	...Element,
+	...Dev,
 	mode,
 	isProduction,
 };

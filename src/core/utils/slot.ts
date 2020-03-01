@@ -1,6 +1,7 @@
 import { NeepElement, SlotFn, Slots, IRender } from '../type';
 import { isElement, Tags } from '../auxiliary';
 import { isElementSymbol } from '../symbols';
+import { isProduction } from '../constant';
 
 
 export function getSlots(
@@ -80,7 +81,7 @@ function createSlots(
 		tag: Tags.ScopeSlot,
 		children: renderSlots(iRender, list, ...props),
 		inserted: true,
-		label: `[${name}]`,
+		label: isProduction ? undefined : [`[${name}]`, '#00F'],
 	} as NeepElement);
 	slot.children = list;
 	return slot;

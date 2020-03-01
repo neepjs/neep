@@ -22,6 +22,8 @@ export interface Exposed {
 	readonly $inited: boolean;
 	readonly $mounted: boolean;
 	readonly $destroyed: boolean;
+	/** Only the development mode is valid */
+	readonly $label?: [string, string];
 	[name: string]: any;
 }
 export interface RootExposed {
@@ -103,7 +105,7 @@ export interface NeepElement {
 	/** 是否是已插入的 */
 	inserted?: boolean;
 	/** 标注 */
-	label?: string;
+	label?: [string, string];
 }
 
 
