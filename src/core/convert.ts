@@ -1,12 +1,14 @@
+import { NeepNode, NeepElement, NeepComponent, Tag, Exposed } from './type';
 import auxiliary, { Tags, isElement, Value } from './auxiliary';
 import { recursive2iterable } from './recursive';
-import { NeepNode, NeepElement, NeepComponent, Tag } from './type';
 import Entity from './Entity';
 import Container from './Container';
 import { typeSymbol } from './create/mark/symbols';
 import { isElementSymbol } from './symbols';
 import { getSlots, setSlots } from './utils/slot';
 import normalize from './utils/normalize';
+import { getLabel } from './helper/label';
+import { isProduction } from './constant';
 
 
 export interface TreeNode
@@ -58,6 +60,7 @@ function execSimple(
 	const { iRender } = nObject.container;
 	const slots = Object.create(null);
 	getSlots(iRender, children, slots);
+	const childrenSet = new Set<Exposed>();
 	const context = {
 		slots: setSlots(iRender, slots),
 		get inited() {
@@ -67,7 +70,10 @@ function execSimple(
 			return nObject.exposed;
 		},
 		get children() {
-			return nObject.children;
+			return childrenSet;
+		},
+		get childNodes() {
+			return children;
 		},
 	};
 	const result = tag({...props}, context, auxiliary);
@@ -83,10 +89,15 @@ function createItem(
 	const { tag } = source;
 	if (!tag) { return { tag: null, children: [] }; }
 	if (typeof tag === 'function' && tag[typeSymbol] === 'simple') {
+		if (!isProduction) { getLabel(); }
+		const children = execSimple(nObject, tag, source);
+		let label: [string, string] | undefined;
+		if (!isProduction) { label = getLabel(); }
 		return {
 			...source,
-			children: execSimple(nObject, tag, source),
+			children: convert(nObject, children),
 			component: undefined,
+			label,
 		};
 	}
 	if (typeof tag !== 'string') {
@@ -181,12 +192,14 @@ function updateItem(
 	}
 	if (!tag) { return { tag: null, children: [] }; }
 	if (typeof tag === 'function' && tag[typeSymbol] === 'simple') {
+		if (!isProduction) { getLabel(); }
+		const children = execSimple(nObject, tag, source);
+		let label: [string, string] | undefined;
+		if (!isProduction) { label = getLabel(); }
 		return {
 			...source,
-			children: convert(nObject,
-				execSimple(nObject, tag, source),
-				tree.children,
-			),
+			children: convert(nObject, children, tree.children),
+			label,
 			component: undefined,
 		};
 	}

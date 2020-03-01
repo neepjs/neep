@@ -10,8 +10,9 @@ function createExposed(obj: NeepObject): Exposed {
 		$component: { configurable: true, value: null },
 		$isContainer: { configurable: true, value: false },
 		$inited: { configurable: true, get: () => obj.inited },
-		$mounted: { configurable: true, get: () => obj.mounted },
 		$destroyed: { configurable: true, get: () => obj.destroyed },
+		$mounted: { configurable: true, get: () => obj.mounted },
+		$unmounted: { configurable: true, get: () => obj.mounted },
 	};
 	const exposed: Exposed = Object.create(null, cfg);
 	return exposed;
@@ -20,19 +21,15 @@ function createExposed(obj: NeepObject): Exposed {
 export default class NeepObject {
 	/** 组件暴露值 */
 	readonly exposed: Exposed = createExposed(this);
-	protected _inited: boolean = false;
-	get inited(): boolean { return this._inited; };
-	/** 是否已经挂载完毕 */
-	protected _mounted: boolean = false;
-	get mounted(): boolean { return this._mounted; };
+	inited: boolean = false;
 	/** 是否销毁的 */
-	protected _destroyed: boolean = false;
-	get destroyed(): boolean { return this._destroyed; };
+	destroyed: boolean = false;
+	/** 是否已经挂载完毕 */
+	mounted: boolean = false;
+	unmounted: boolean = false;
 	readonly children: Set<Exposed> = new Set();
-	/** 组件树结构 */
-	protected _tree: (MountedNode | MountedNode[])[] = [];
 	/** The subtree mounted on the parent node */
-	get tree() { return this._tree; }
+	tree: (MountedNode | MountedNode[])[] = [];
 
 	callHook<H extends Hooks>(id: H): void;
 	callHook(id: string): void;

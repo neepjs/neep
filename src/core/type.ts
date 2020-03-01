@@ -1,8 +1,6 @@
 import { Auxiliary, Tags } from './auxiliary';
 import { Marks } from './create/mark';
-import Entity from './Entity';
 import { isElementSymbol } from './symbols';
-import Container from './Container';
 
 /** source 对象 */
 export type NeepNode = NeepElement | null;
@@ -20,8 +18,9 @@ export interface Exposed {
 	readonly $component: NeepComponent<any, any> | null;
 	readonly $isContainer: boolean;
 	readonly $inited: boolean;
-	readonly $mounted: boolean;
 	readonly $destroyed: boolean;
+	readonly $mounted: boolean;
+	readonly $unmounted: boolean;
 	/** Only the development mode is valid */
 	readonly $label?: [string, string];
 	[name: string]: any;
@@ -44,6 +43,7 @@ export interface Context {
 	parent?: Exposed;
 	/** 子组件集合 */
 	children: Set<Exposed>;
+	childNodes: any[];
 }
 
 /** 构造函数 */
@@ -91,7 +91,7 @@ export interface NeepElement {
 	/** 子节点 */
 	children: any[];
 	/** 引用绑定 */
-	ref?(node: Native.Node | Exposed, isRemove?: boolean): void;
+	ref?(node: NativeNode | Exposed, isRemove?: boolean): void;
 	/** 插槽 */
 	slot?: string;
 	/** 列表对比 key */
@@ -108,28 +108,24 @@ export interface NeepElement {
 	label?: [string, string];
 }
 
+declare const NativeElementSymbol: unique symbol;
+declare const NativeTextSymbol: unique symbol;
+declare const NativeComponentSymbol: unique symbol;
+declare const NativePlaceholderSymbol: unique symbol;
+declare const NativeShadowSymbol: unique symbol;
+/** 原生元素节点 */
+export interface NativeElement { [NativeElementSymbol]: true }
+/** 原生文本节点 */
+export interface NativeText { [NativeTextSymbol]: true }
+/** 原生占位组件 */
+export interface NativePlaceholder { [NativePlaceholderSymbol]: true }
+/** 原生组件 */
+export interface NativeComponent { [NativeComponentSymbol]: true }
+/** 原生组件内部 */
+export interface NativeShadow { [NativeShadowSymbol]: true }
 
-export namespace Native {
-	const ElementSymbol = Symbol();
-	const TextSymbol = Symbol();
-	const ComponentSymbol = Symbol();
-	const PlaceholderSymbol = Symbol();
-	const ShadowSymbol = Symbol();
-	
-	/** 原生元素节点 */
-	export interface Element { [ElementSymbol]: true };
-	/** 原生文本节点 */
-	export interface Text { [TextSymbol]: true };
-	/** 原生占位组件 */
-	export interface Placeholder { [PlaceholderSymbol]: true };
-	/** 原生组件 */
-	export interface Component { [ComponentSymbol]: true };
-	/** 原生组件内部 */
-	export interface Shadow { [ShadowSymbol]: true };
-
-	export type Container = Element | Component | Shadow;
-	export type Node = Container | Text | Placeholder;
-}
+export type NativeContainer = NativeElement | NativeComponent | NativeShadow;
+export type NativeNode = NativeContainer | NativeText | NativePlaceholder;
 
 export interface MountProps {
 	type?: string | IRender;
@@ -139,31 +135,31 @@ export interface MountProps {
 export interface IRender {
 	type: string;
 	mount(props: MountProps, parent?: IRender):
-		[Native.Container, Native.Node];
+		[NativeContainer, NativeNode];
 	unmount(
-		container: Native.Container,
-		node: Native.Node,
+		container: NativeContainer,
+		node: NativeNode,
 		removed: boolean,
 	): any;
-	darw(container: Native.Container, node: Native.Node): void;
+	darw(container: NativeContainer, node: NativeNode): void;
 
-	isNode(v: any): v is Native.Node;
-	create(tag: string, props: {[k: string]: any}): Native.Element;
-	text(text: string): Native.Text;
-	placeholder(): Native.Placeholder;
+	isNode(v: any): v is NativeNode;
+	create(tag: string, props: {[k: string]: any}): NativeElement;
+	text(text: string): NativeText;
+	placeholder(): NativePlaceholder;
 
-	component?(): [Native.Component, Native.Shadow];
+	component?(): [NativeComponent, NativeShadow];
 
-	parent(node: Native.Node): Native.Container | null;
-	next(node: Native.Node): Native.Node | null;
+	parent(node: NativeNode): NativeContainer | null;
+	next(node: NativeNode): NativeNode | null;
 
-	update(node: Native.Element, props: {[key: string]: string}): void;
+	update(node: NativeElement, props: {[key: string]: string}): void;
 	insert(
-		parent: Native.Container,
-		node: Native.Node,
-		next?: Native.Node | null,
+		parent: NativeContainer,
+		node: NativeNode,
+		next?: NativeNode | null,
 	): void;
-	remove(n: Native.Node): void;
+	remove(n: NativeNode): void;
 }
 
 /** 组件标记函数 */

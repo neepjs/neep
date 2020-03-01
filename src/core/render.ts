@@ -8,21 +8,17 @@ export default function render(
 	e?: NeepElement | NeepComponent,
 	p: MountProps = {},
 ): RootExposed {
-	let children =
-		e === undefined ? []
-			: isElement(e) ? [e] : [createElement(e)];
 	let params = {...p};
-	const container =  new Container(params, children);
+	const container =  new Container(params, e === undefined ? []
+		: isElement(e) ? [e] : [createElement(e)]);
 	if (!isProduction) {
 		devtools.renderHook(container);
 	}
 	const { exposed } = container;
 	Reflect.defineProperty(exposed, '$update', {
-		value(c: any) {
-			children =
-				c === undefined ? []
-					: isElement(c) ? [c] : [createElement(c)];
-			container.update(params, children);
+		value(c?: NeepElement | NeepComponent) {
+			container.setChildren(c === undefined ? []
+				: isElement(c) ? [c] : [createElement(c)]);
 			return exposed;
 		},
 		configurable: true,
@@ -32,7 +28,7 @@ export default function render(
 			if (exposed.$mounted) { return exposed; }
 			if (target) {
 				params.target = target;
-				container.update(params, children);
+				container.setProps(params);
 			}
 			container.mount();
 			return exposed;

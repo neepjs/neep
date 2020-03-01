@@ -1,6 +1,8 @@
 import {
-	IRender, Native,
+	IRender,
 	MountProps,
+	NativeNode,
+	NativeContainer,
 } from './type';
 import Entity from './Entity';
 import convert, { destroy, TreeNode } from './convert';
@@ -32,21 +34,12 @@ export default class Container extends NeepObject {
 	/** 渲染结果 */
 	private _nodes: (TreeNode | TreeNode[])[];
 	/** 组件树结构 */
-	private _content: (MountedNode | MountedNode[])[] = [];
-	get content() {
-		return this._content;
-	}
+	content: (MountedNode | MountedNode[])[] = [];
 	parent?: Entity<any, any> | Container;
-	_node: Native.Node | null = null;
-	_container: Native.Container | null = null;
+	_node: NativeNode | null = null;
+	_container: NativeContainer | null = null;
 	readonly container = this;
 	readonly rootContainer: Container = this;
-	get isDifferent(): boolean {
-		const { parent } = this;
-		if (!parent) { return true; }
-		return this.iRender !== parent.container.iRender;
-	}
-
 	constructor(
 		props: MountProps,
 		children: any[],
@@ -69,14 +62,16 @@ export default class Container extends NeepObject {
 		this._nodes = convert(this, children);
 		// 初始化钩子
 		this.callHook('inited');
-		this._inited = true;
+		this.inited = true;
 	}
-	/** 更新属性及子代 */
-	update(
-		props: MountProps,
-		children: any[],
-	) {
-		if (this.destroyed) { return this; }
+	setChildren(children: any[]): void {
+		if (this.destroyed) { return; }
+		this._nodes = convert(this, children, this._nodes);
+		if (!this.mounted) { return; }
+		this.markDraw(this);
+	}
+	setProps(props: MountProps): void {
+		if (this.destroyed) { return; }
 		this.props = props;
 		const { parent, iRender } = this;
 		const { type } = props;
@@ -85,12 +80,15 @@ export default class Container extends NeepObject {
 		} else {
 			this.iRender = getRender(type);
 		}
-		this._nodes = convert(this, children, this._nodes);
 		if (!this.mounted) { return; }
 		if (parent && iRender !== this.iRender) {
 			parent.container.markDraw(this);
 		}
-		this.markDraw(this);
+	}
+	/** 更新属性及子代 */
+	update(props: MountProps, children: any[]): void {
+		this.setProps(props);
+		this.setChildren(children);
 	}
 	private _unmount = true;
 	mount() {
@@ -101,13 +99,13 @@ export default class Container extends NeepObject {
 		this.callHook('beforeMount');
 		const { props, parent, iRender } = this;
 		const content = draw(this.container.iRender, this._nodes);
-		this._content = content;
+		this.content = content;
 		const [container, node]
 			= iRender.mount(props, parent?.container?.iRender);
 		for (const it of getNodes(content)) {
 			iRender.insert(container, it);
 		}
-		this._tree = [createMountedNode({
+		this.tree = [createMountedNode({
 			tag: Tags.Value,
 			component: undefined,
 			node,
@@ -117,26 +115,29 @@ export default class Container extends NeepObject {
 		this._node = node;
 		this._container = container;
 		this.callHook('mounted');
-		this._mounted = true;
+		this.mounted = true;
 	}
 	destroy() {
 		if (this.destroyed) { return; }
-		this._destroyed = true;
+		this.destroyed = true;
 		this.callHook('beforeDestroy');
-		destroy(this._content);
+		destroy(this.content);
 		this.callHook('destroyed');
 	}
 	unmount() {
+		if (!this.mounted) { return; }
+		if (this.unmounted) { return; }
+		this.unmounted = true;
 		const { parent, iRender } = this;
 		if (parent) {
-			unmount(parent.container.iRender, this._tree);
+			unmount(parent.container.iRender, this.tree);
 		}
 		iRender.unmount(
 			this._container!,
 			this._node!,
 			Boolean(parent),
 		);
-		unmount(this.iRender, this._content);
+		unmount(this.iRender, this.content);
 	}
 	draw() {
 		// this.callHook('beforeUpdate');
@@ -148,10 +149,10 @@ export default class Container extends NeepObject {
 		if (!this.mounted) { return; }
 		if (this.destroyed) { return; }
 		this.callHook('beforeUpdate');
-		this._content = draw(
+		this.content = draw(
 			this.container.iRender,
 			this._nodes,
-			this._content,
+			this.content,
 		);
 		this.callHook('updated');
 		if (!this._needDraw) { return; }
@@ -175,7 +176,7 @@ export default class Container extends NeepObject {
 		}
 		this.rootContainer.markDrawContainer(
 			this,
-			!this._needDraw && !this._awaitDraw.size || this._destroyed,
+			!this._needDraw && !this._awaitDraw.size || this.destroyed,
 		);
 	}
 	drawContainer() {

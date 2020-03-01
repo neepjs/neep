@@ -1,1 +1,1 @@
-export const isElementSymbol = Symbol.for('isElement');
+export const isElementSymbol = Symbol.for('isNeepElement');

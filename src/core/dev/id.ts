@@ -1,10 +1,10 @@
-import { Native } from '../type';
+import { NativeNode } from '../type';
 import { isProduction } from '../constant';
 import { MountedNode } from 'core/draw';
 
 let ids = 0;
 const Nodes: {[key: number]: MountedNode} = {};
-let IdMap: undefined | Map<Native.Node, number>;
+let IdMap: undefined | Map<NativeNode, number>;
 if (!isProduction) {
 	IdMap = new Map();
 }
@@ -28,7 +28,7 @@ export function recoveryMountedNode(node: MountedNode): void {
 }
 
 export function getNode(
-	id: number | Native.Node,
+	id: number | NativeNode,
 ): MountedNode | undefined {
 	if (!isProduction) {
 		if (typeof id !== 'number') {

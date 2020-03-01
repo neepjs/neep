@@ -1,5 +1,5 @@
 import { Tags } from './auxiliary';
-import { Native, IRender } from './type';
+import { IRender, NativeNode, NativeElement } from './type';
 import { createMountedNode, recoveryMountedNode } from './dev/id';
 import { TreeNode } from './convert';
 import Container from './Container';
@@ -13,14 +13,14 @@ export interface MountedNode extends TreeNode {
 	id: number;
 	parent?: this;
 	component: undefined | Entity | Container;
-	node: undefined | Native.Node;
+	node: undefined | NativeNode;
 }
 
 
 type MountedNodes = MountedNode | MountedNode[]
 	| (MountedNode | MountedNode[])[];
 
-function getLastNode(tree: MountedNodes): Native.Node {
+function getLastNode(tree: MountedNodes): NativeNode {
 	if (Array.isArray(tree)) {
 		return getLastNode(tree[tree.length - 1]);
 	}
@@ -30,7 +30,7 @@ function getLastNode(tree: MountedNodes): Native.Node {
 	return getLastNode(children);
 }
 
-function getFirstNode(tree: MountedNodes): Native.Node {
+function getFirstNode(tree: MountedNodes): NativeNode {
 	if (Array.isArray(tree)) { return getFirstNode(tree[0]); }
 	const { component, children, node } = tree;
 	if (node) { return node; }
@@ -38,7 +38,7 @@ function getFirstNode(tree: MountedNodes): Native.Node {
 	return getFirstNode(children[0]);
 }
 
-export function *getNodes(tree: MountedNodes): Iterable<Native.Node> {
+export function *getNodes(tree: MountedNodes): Iterable<NativeNode> {
 	if (Array.isArray(tree)) {
 		for (const it of tree) {
 			yield* getNodes(it);
@@ -271,7 +271,7 @@ function updateItem(
 	if (tag.substr(0, 5) === 'Neep:') { return tree; }
 	const { node } = tree;
 	iRender.update(
-		node as Native.Element,
+		node as NativeElement,
 		source.props || {},
 	);
 	if (ref) { ref(node!); }
@@ -290,7 +290,7 @@ function updateItem(
 	if (source.children.length && !tree.children.length) {
 		const children = createAll(iRender, source.children);
 		for (const it of getNodes(children)) {
-			iRender.insert(node as Native.Element, it);
+			iRender.insert(node as NativeElement, it);
 		}
 		return createMountedNode({
 			...tree,
@@ -323,7 +323,7 @@ function createValue(
 		});
 	}
 	const type = typeof value;
-	let node: Native.Node | undefined;
+	let node: NativeNode | undefined;
 	if (
 		type === 'bigint'
 		|| type === 'boolean'
@@ -373,7 +373,15 @@ function createList(
 	iRender: IRender,
 	source: TreeNode[],
 ): MountedNode[] {
-	return source.map(it => createItem(iRender, it));
+	if (source.length) {
+		return source.map(it => createItem(iRender, it));
+	}
+	return [createMountedNode({
+		tag: null,
+		node: iRender.placeholder(),
+		component: undefined,
+		children: [],
+	})];
 }
 
 function createItem(

@@ -1,4 +1,10 @@
-import { NeepComponent, NeepNode, Slots, Context, Native } from './type';
+import {
+	NeepComponent,
+	NeepNode,
+	Slots,
+	Context,
+	NativeComponent,
+} from './type';
 import auxiliary from './auxiliary';
 import { monitorable } from './install';
 import { setCurrent } from './helper/current';
@@ -56,6 +62,9 @@ function createContext<
 		},
 		get children() {
 			return nObject.children;
+		},
+		get childNodes() {
+			return nObject.childNodes;
 		},
 	};
 }
@@ -127,9 +136,10 @@ export default class Entity<
 	/** 组件上下文 */
 	readonly context: Context;
 	/** 原生组件 */
-	readonly native: Native.Component | null = null;
+	readonly native: NativeComponent | null = null;
 	readonly parent: Entity<any, any> | Container;
 	readonly container: Container;
+	childNodes: any[];
 	constructor(
 		component: NeepComponent<P, R>,
 		props: object,
@@ -163,6 +173,7 @@ export default class Entity<
 		// 初始化钩子
 		this.callHook('beforeInit');
 		// 更新属性
+		this.childNodes = children;
 		updateProps(this, props, children);
 		// 获取渲染函数及初始渲染
 		const { render, nodes, stopRender } = initRender(this);
@@ -171,7 +182,7 @@ export default class Entity<
 		this._nodes = convert(this, nodes);
 		// 初始化钩子
 		this.callHook('inited');
-		this._inited = true;
+		this.inited = true;
 		if (this._needRefresh) { this.refresh(); }
 	}
 	/** 更新属性及子代 */
@@ -180,6 +191,7 @@ export default class Entity<
 		children: any[],
 	): this {
 		if (this.destroyed) { return this; }
+		this.childNodes = children;
 		updateProps(this, props, children);
 		if (!this._stopRender || this.native) {
 			this.refresh();
@@ -188,7 +200,7 @@ export default class Entity<
 	}
 	destroy() {
 		if (this.destroyed) { return; }
-		this._destroyed = true;
+		this.destroyed = true;
 		this.callHook('beforeDestroy');
 		if (this._stopRender) {
 			this._stopRender();
@@ -225,10 +237,10 @@ export default class Entity<
 	draw() {
 		if (this.destroyed) { return; }
 		this.callHook('beforeUpdate');
-		this._tree = draw(
+		this.tree = draw(
 			this.container.iRender,
 			this._nodes,
-			this._tree,
+			this.tree,
 		);
 		const {native} = this;
 		if (native) {
@@ -244,11 +256,14 @@ export default class Entity<
 		if (this._mounting) { return; }
 		this._mounting = true;
 		this.callHook('beforeMount');
-		this._tree = draw(this.container.iRender, this._nodes);
+		this.tree = draw(this.container.iRender, this._nodes);
 		this.callHook('mounted');
-		this._mounted = true;
+		this.mounted = true;
 	}
 	unmount() {
-		unmount(this.container.iRender, this._tree);
+		if (!this.mounted) { return; }
+		if (this.unmounted) { return; }
+		this.unmounted = true;
+		unmount(this.container.iRender, this.tree);
 	}
 }
