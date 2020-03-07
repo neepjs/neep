@@ -1,4 +1,3 @@
-import { getProxy } from 'monitorable';
 import { create, createElement, NeepNode, Template, ScopeSlot, SlotRender, Value } from '@neep/core';
 import { VTreeNode, Type } from '../tree';
 
@@ -65,7 +64,6 @@ function createTag(
 	const opened = keys[id];
 	const hasChildren = Boolean(children.length);
 	return <div key={id} style="
-		padding: 0 0 0 20px;
 		position: relative;
 		min-height: 20px;
 		font-size: 14px;
@@ -74,7 +72,7 @@ function createTag(
 		{children.length && <div
 			style="
 				position: absolute;
-				left: 0;
+				left: -20px;
 				top: 0;
 				width: 20px;
 				heigth: 20px;
@@ -109,7 +107,9 @@ function createTag(
 					{v}
 				</span>)}
 		</div>
-		{hasChildren && opened && children}
+		{hasChildren && opened && <div style="padding-left: 20px">
+			{children}
+		</div>}
 		{opened && hasChildren && <div>{'</'}{name}{'>'}</div>}
 	</div>;
 }
@@ -139,7 +139,7 @@ function *getList(
 	if (type === Type.standard || type === Type.native) {
 		yield createTag(
 			<span style="font-weight: bold;">{tag}</span>,
-			keys, id, key, [...labels, label],
+			keys, id, key, [label, ...labels],
 			...getList(children, keys, options)
 		);
 		
@@ -149,7 +149,7 @@ function *getList(
 		if (!options.tag) { return; }
 		yield createTag(
 			tag,
-			keys, id, key, [...labels, label],
+			keys, id, key, [label, ...labels],
 			...getList(children, keys, options)
 		);
 		return;
@@ -161,11 +161,11 @@ function *getList(
 					font-style: italic;
 					font-weight: bold;
 				">{tag}</span>,
-				keys, id, key, [...labels, label],
+				keys, id, key, [label, ...labels],
 				...getList(children, keys, options)
 			);
 		} else {
-			yield* getList(children, keys, options, [...labels, label]);
+			yield* getList(children, keys, options, [label, ...labels]);
 		}
 		return;
 	}
@@ -173,7 +173,7 @@ function *getList(
 		if (!options.placeholder) { return; }
 		yield createTag(
 			<span style="font-style: italic;">placeholder</span>,
-			keys, id, key, [...labels, label],
+			keys, id, key, [label, ...labels],
 			...getList(children, keys, options)
 		);
 		return;
@@ -182,12 +182,12 @@ function *getList(
 		if (options.container) {
 			yield createTag(
 				<span style="font-style: italic;">container</span>,
-				keys, id, key, [...labels, label],
+				keys, id, key, [label, ...labels],
 				...getList(children, keys, options)
 			);
 			
 		} else {
-			yield* getList(children, keys, options, [...labels, label]);
+			yield* getList(children, keys, options, [label, ...labels]);
 		}
 		return;
 	}
@@ -195,12 +195,12 @@ function *getList(
 		if (options.template) {
 			yield createTag(
 				<span style="font-style: italic;">Template</span>,
-				keys, id, key, [...labels, label],
+				keys, id, key, [label, ...labels],
 				...getList(children, keys, options)
 			);
 			
 		} else {
-			yield* getList(children, keys, options, [...labels, label]);
+			yield* getList(children, keys, options, [label, ...labels]);
 		}
 		return;
 	}
@@ -208,12 +208,12 @@ function *getList(
 		if (options.scopeSlot) {
 			yield createTag(
 				<span style="font-style: italic;">ScopeSlot</span>,
-				keys, id, key, [...labels, label],
+				keys, id, key, [label, ...labels],
 				...getList(children, keys, options)
 			);
 			
 		} else {
-			yield* getList(children, keys, options, [...labels, label]);
+			yield* getList(children, keys, options, [label, ...labels]);
 		}
 		return;
 	}
@@ -224,11 +224,14 @@ function *getList(
 		return;
 	}
 	if (tag === Value) {
+		if (!options.tag) { return; }
 		if (!options.value) { return; }
 		return yield createText(valueType, value);
 	}
 }
-export default create((props: any) => {
-	const keys = getProxy<{[key: number]: boolean}>({});
-	return () => [...getList(props.tree, keys, getOptions(props))];
+export default create((props: any, {}, { encase }) => {
+	const keys = encase<{[key: number]: boolean}>({});
+	return () => <div style="padding-left: 20px;">
+		{[...getList(props.tree, keys, getOptions(props))]}
+	</div>;
 });
