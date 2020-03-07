@@ -1,4 +1,4 @@
-import { recursive2iterable, RecursiveItem } from '../../core/recursive';
+import { recursive2iterable, RecursiveItem } from '../../core/utils/recursive';
 
 
 function getId(v: any): string | undefined {
