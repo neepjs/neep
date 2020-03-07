@@ -122,9 +122,9 @@ export default class Entity<
 	/** 组件函数 */
 	readonly component: NeepComponent<P, R>;
 	/** 组件属性 */
-	readonly props: P = monitorable.getProxy(Object.create(null));
+	readonly props: P = monitorable.encase(Object.create(null));
 	/** 组件槽 */
-	readonly slots: Slots = monitorable.getProxy(Object.create(null));
+	readonly slots: Slots = monitorable.encase(Object.create(null));
 	/** 结果渲染函数 */
 	private readonly _render:() => NeepNode[];
 	/** 结果渲染函数 */

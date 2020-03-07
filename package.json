@@ -64,6 +64,6 @@
     "typescript": "^3.5.3"
   },
   "dependencies": {
-    "monitorable": "0.1.0-alpha.1"
+    "monitorable": "0.1.0-alpha.2"
   }
 }
