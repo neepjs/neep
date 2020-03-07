@@ -1,6 +1,8 @@
-import { Template, ScopeSlot, SlotRender, Value } from '@neep/core';
-import { nameSymbol, typeSymbol } from '../core/create/mark/symbols';
-import { MountedNode } from '../core/draw';
+import {
+	Template, ScopeSlot, SlotRender, Value,
+	nameSymbol, typeSymbol,
+} from '@neep/core';
+import { MountedNode } from '../core/render/draw';
 export enum Type {
 	tag = 'tag',
 	placeholder = 'placeholder',
@@ -20,7 +22,7 @@ export interface VTreeNode {
 	/** 列表对比 key */
 	key?: any;
 	/** 标注 */
-	label?: string;
+	label?: [string, string];
 	parent: number;
 	value?: string;
 	valueType?: 'string' | 'value' | 'function'
@@ -43,8 +45,8 @@ export function *getTree(
 		props,
 		children,
 		key,
-		label,
 		component,
+		label = component?.exposed?.$label,
 	} = tree;
 	if (!tag) {
 		yield {

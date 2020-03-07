@@ -59,10 +59,11 @@ function createTag(
 	keys: {[key: number]: boolean},
 	id: number,
 	key: any,
-	labels: (string | undefined)[],
+	labels: ([string, string] | undefined)[],
 	...children: any[]
 ): NeepNode {
 	const opened = keys[id];
+	const hasChildren = Boolean(children.length);
 	return <div key={id} style="
 		padding: 0 0 0 20px;
 		position: relative;
@@ -93,27 +94,30 @@ function createTag(
 			: key === null ? ` key=${key}`
 			: key !== undefined && ` key={${String(key)}}`
 		}
-			{children.length ? '>' : ' />'}
-
-			{children.length && !opened && <span>
+			{hasChildren ? '>' : ' />'}
+			{hasChildren && !opened && <span>
 				<span
 					onClick={() => keys[id] = true}
 					style="cursor: pointer;"
 				>...</span>
 				{'</'}{name}{'>'}
-			</span> || undefined}
+			</span>}
+			{hasChildren && (labels as [string, string][])
+				.filter(Boolean).map(([v, color]) => <span
+					style={`color: ${color || '#000'}`}
+				>
+					{v}
+				</span>)}
 		</div>
-		{children.length && opened && children ||  undefined}
-		{opened && children.length && <div>
-			{'</'}{name}{'>'}
-		</div> || undefined}
+		{hasChildren && opened && children}
+		{opened && hasChildren && <div>{'</'}{name}{'>'}</div>}
 	</div>;
 }
 function *getList(
 	list: VTreeNode | VTreeNode[],
 	keys: {[key: number]: boolean},
 	options: Options,
-	labels: (string | undefined)[] = [],
+	labels: ([string, string] | undefined)[] = [],
 ): Iterable<NeepNode> {
 	if (Array.isArray(list)) {
 		for (const it of list) {
