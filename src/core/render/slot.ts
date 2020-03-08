@@ -1,5 +1,5 @@
 import { NeepElement, SlotFn, Slots, IRender } from '../type';
-import { isElement, Tags } from '../auxiliary';
+import { isElement, SlotRender, ScopeSlot } from '../auxiliary';
 import { isElementSymbol } from '../symbols';
 import { isProduction } from '../constant';
 
@@ -35,16 +35,20 @@ export function getSlots(
 				nativeList.push(it);
 				continue;
 			}
-			if (it.tag !== Tags.SlotRender) {
+			if (it.tag !== SlotRender) {
 				nativeList.push(it);
 				continue;
 			}
 		}
-		let slot = isElement(it) && it.slot || 'default';
+		const slot = isElement(it) && it.slot || 'default';
+		const el = isElement(it) ? {
+			...it, slot: undefined,
+			props: {...it.props, slot: undefined },
+		} : it;
 		if (slot in slots) {
-			slots[slot].push(it);
+			slots[slot].push(el);
 		} else {
-			slots[slot] = [it];
+			slots[slot] = [el];
 		}
 	}
 	return nativeList;
@@ -59,7 +63,7 @@ function renderSlots(
 			return renderSlots(iRender, it, ...props);
 		}
 		if (!isElement(it)) { return it; }
-		if (it.tag !== Tags.SlotRender) {
+		if (it.tag !== SlotRender) {
 			return {
 				...it,
 				slot: undefined,
@@ -78,7 +82,7 @@ function createSlots(
 ): SlotFn {
 	const slot = (...props: any) => ({
 		[isElementSymbol]: true,
-		tag: Tags.ScopeSlot,
+		tag: ScopeSlot,
 		children: renderSlots(iRender, list, ...props),
 		inserted: true,
 		label: isProduction ? undefined : [`[${name}]`, '#00F'],

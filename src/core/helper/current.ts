@@ -3,13 +3,16 @@ import { Exposed } from '../type';
 
 /** 当前正在执行的对象 */
 export let current: Exposed | undefined;
-export function setCurrent<T>(fn: () => T, obj: Exposed): T {
-	const old = current;
-	current = obj;
+export function setCurrent<T>(
+	fn: () => T,
+	exposed: Exposed,
+): T {
+	const oldExposed = current;
+	current = exposed;
 	try {
 		return fn();
 	} finally {
-		current = old;
+		current = oldExposed;
 	}
 }
 

@@ -1,5 +1,5 @@
-import { Tag, NeepElement } from '../type';
-import { isElementSymbol } from '../symbols';
+import { Tag, NeepElement, Component } from '../type';
+import { isElementSymbol, typeSymbol } from '../symbols';
 import * as Tags from './tags';
 
 /**
@@ -65,4 +65,38 @@ export function createElement(
 		}
 	}
 	return node;
+}
+
+export interface elementIteratorOptions {
+	simple?: boolean | Component[] | ((c: Component) => boolean);
+}
+
+export function *elementIterator(
+	node: any,
+	opt: elementIteratorOptions = {},
+): Iterable<any> {
+	if (Array.isArray(node)) {
+		for (let n of node) {
+			yield * elementIterator(n, opt);
+		}
+		return;
+	}
+	if (!isElement(node)) { return yield node; }
+	let { tag } = node;
+	if (!tag) { return; }
+
+	if (([Tags.Template, Tags.ScopeSlot] as Tag[]).includes(tag)) {
+		yield* elementIterator(node.children, opt);
+		return;
+	}
+	if (typeof tag !== 'function') { return yield node; }
+	if (tag[typeSymbol] !== 'simple') { return yield node; }
+	const { simple } = opt;
+	if (!simple) { return yield node; }
+	if (Array.isArray(simple)) {
+		if (simple.includes(tag)) { return yield node; }
+	} else if (typeof simple === 'function') {
+		if (!simple(tag)) { return yield node; }
+	}
+	yield* elementIterator(node.children, opt);
 }

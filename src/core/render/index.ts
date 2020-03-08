@@ -1,11 +1,16 @@
-import { MountProps, NeepElement, NeepComponent, RootExposed } from '../type';
+import {
+	MountProps,
+	NeepElement,
+	Component,
+	RootExposed,
+} from '../type';
 import { isElement, createElement } from '../auxiliary';
 import { isProduction } from '../constant';
 import { devtools } from '../install';
 import Container from './Container';
 
 export default function render(
-	e?: NeepElement | NeepComponent,
+	e?: NeepElement | Component,
 	p: MountProps = {},
 ): RootExposed {
 	let params = {...p};
@@ -16,7 +21,7 @@ export default function render(
 	}
 	const { exposed } = container;
 	Reflect.defineProperty(exposed, '$update', {
-		value(c?: NeepElement | NeepComponent) {
+		value(c?: NeepElement | Component) {
 			container.setChildren(c === undefined ? []
 				: isElement(c) ? [c] : [createElement(c)]);
 			return exposed;

@@ -1,14 +1,11 @@
-import { NeepNode, NeepElement, NeepComponent, Tag, Exposed } from '../type';
+import { NeepNode, NeepElement, Tag } from '../type';
 import { isProduction } from '../constant';
-import auxiliary, { Tags, isElement, Value } from '../auxiliary';
+import { Tags, isElement, Value } from '../auxiliary';
 import { isElementSymbol, typeSymbol } from '../symbols';
-import { recursive2iterable } from '../utils/recursive';
 import { getLabel } from '../helper/label';
+import { recursive2iterable } from './recursive';
 import Entity from './Entity';
 import Container from './Container';
-import { getSlots, setSlots } from './slot';
-import normalize from './normalize';
-
 
 export interface TreeNode
 	extends Omit<
@@ -50,36 +47,6 @@ export function destroy(
 	if (component) { component.destroy(); }
 }
 
-
-function execSimple(
-	nObject: Container | Entity,
-	tag: NeepComponent<any, any>,
-	{ props, on, children }: NeepElement,
-): any[] {
-	const { iRender } = nObject.container;
-	const slots = Object.create(null);
-	getSlots(iRender, children, slots);
-	const childrenSet = new Set<Exposed>();
-	const context = {
-		slots: setSlots(iRender, slots),
-		get inited() {
-			return false;
-		},
-		get parent() {
-			return nObject.exposed;
-		},
-		get children() {
-			return childrenSet;
-		},
-		get childNodes() {
-			return children;
-		},
-	};
-	const result = tag({...props}, context, auxiliary);
-	const nodes = normalize(result, context, tag, iRender);
-	return Array.isArray(nodes) ? nodes : [nodes];
-}
-
 function createItem(
 	nObject: Entity<any, any> | Container,
 	source: NeepNode,
@@ -87,19 +54,14 @@ function createItem(
 	if (!source) { return { tag: null, children: [] }; }
 	const { tag } = source;
 	if (!tag) { return { tag: null, children: [] }; }
-	if (typeof tag === 'function' && tag[typeSymbol] === 'simple') {
-		if (!isProduction) { getLabel(); }
-		const children = execSimple(nObject, tag, source);
-		let label: [string, string] | undefined;
-		if (!isProduction) { label = getLabel(); }
-		return {
-			...source,
-			children: convert(nObject, children),
-			component: undefined,
-			label,
-		};
-	}
 	if (typeof tag !== 'string') {
+		if (tag[typeSymbol] === 'simple') {
+			return {
+				...source,
+				children: convert(nObject, source.children),
+				component: undefined,
+			};
+		}
 		return {
 			...source, children: [],
 			component: new Entity(
@@ -190,20 +152,19 @@ function updateItem(
 		return createItem(nObject, source);
 	}
 	if (!tag) { return { tag: null, children: [] }; }
-	if (typeof tag === 'function' && tag[typeSymbol] === 'simple') {
-		if (!isProduction) { getLabel(); }
-		const children = execSimple(nObject, tag, source);
-		let label: [string, string] | undefined;
-		if (!isProduction) { label = getLabel(); }
-		return {
-			...source,
-			children: convert(nObject, children, tree.children),
-			label,
-			component: undefined,
-		};
-	}
 	if (typeof tag !== 'string') {
-		let { component } = tree;
+		if (tag[typeSymbol] === 'simple') {
+			return {
+				...source,
+				children: convert(
+					nObject,
+					source.children,
+					tree.children,
+				),
+				component: undefined,
+			};
+		}
+			let { component } = tree;
 		component!.update(source.props || {}, source.children);
 		return { ...source, children: [], component };
 	}

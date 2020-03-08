@@ -233,7 +233,11 @@ function updateItem(
 				...source,
 				node: undefined,
 				component: undefined,
-				children: draw(iRender, source.children, tree.children),
+				children: draw(
+					iRender,
+					source.children,
+					tree.children,
+				),
 			}, tree.id);
 		}
 		if (ref) { ref(component.exposed); }

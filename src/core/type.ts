@@ -1,5 +1,5 @@
 import { Auxiliary, Tags } from './auxiliary';
-import { isElementSymbol, nameSymbol, typeSymbol, renderSymbol } from './symbols';
+import * as symbols from './symbols';
 
 /** source 对象 */
 export type NeepNode = NeepElement | null;
@@ -14,7 +14,7 @@ export interface Slots {
 	[name: string]: SlotFn | undefined;
 }
 export interface Exposed {
-	readonly $component: NeepComponent<any, any> | null;
+	readonly $component: Component<any, any> | null;
 	readonly $isContainer: boolean;
 	readonly $inited: boolean;
 	readonly $destroyed: boolean;
@@ -24,9 +24,9 @@ export interface Exposed {
 	readonly $label?: [string, string];
 	[name: string]: any;
 }
-export interface RootExposed {
+export interface RootExposed extends Exposed {
 	$mount(target?: any): RootExposed;
-	$update(node?: NeepElement | NeepComponent): RootExposed;
+	$update(node?: NeepElement | Component): RootExposed;
 }
 
 export interface Render<R extends object = any> {
@@ -50,10 +50,10 @@ export interface Context {
 /** 组件标记 */
 export interface Marks {
 	/** 组件名称 */
-	[nameSymbol]?: string;
+	[symbols.nameSymbol]?: string;
 	/** 是否为原生组件 */
-	[typeSymbol]?: 'native' | 'simple' | 'standard';
-	[renderSymbol]?: Render;
+	[symbols.typeSymbol]?: 'native' | 'simple' | 'standard';
+	[symbols.renderSymbol]?: Render;
 }
 /** 构造函数 */
 export interface NeepResponseComponent<
@@ -78,18 +78,18 @@ export interface NeepRepeatedlyComponent<
 	): undefined | NeepNode | NeepNode[] | R;
 }
 
-export type NeepComponent<
+export type Component<
 	P extends object = object,
 	R extends object = object,
 > = NeepResponseComponent<P, R> | NeepRepeatedlyComponent<P, R>;
 
 export type Tag = null | string
 	| typeof Tags[keyof typeof Tags]
-	| NeepComponent;
+	| Component;
 
 
 export interface NeepElement {
-	[isElementSymbol]: true,
+	[symbols.isElementSymbol]: true,
 	/** 标签名 */
 	tag: Tag;
 	/** 属性 */
@@ -132,8 +132,14 @@ export interface NativeComponent { [NativeComponentSymbol]: true }
 /** 原生组件内部 */
 export interface NativeShadow { [NativeShadowSymbol]: true }
 
-export type NativeContainer = NativeElement | NativeComponent | NativeShadow;
-export type NativeNode = NativeContainer | NativeText | NativePlaceholder;
+export type NativeContainer =
+	NativeElement
+	| NativeComponent
+	| NativeShadow;
+export type NativeNode =
+	NativeContainer
+	| NativeText
+	| NativePlaceholder;
 
 export interface MountProps {
 	type?: string | IRender;

@@ -1,10 +1,11 @@
 /**********************************
- * 上下文环境专用 API
+ * 组件上下文环境专用 API
+ * @description 简单组件不支持
  **********************************/
 import { Value, WatchCallback } from 'monitorable';
 import { checkCurrent } from '../helper';
 import { monitorable } from '../install';
-import { setHook } from '../hook';
+import { setHook, Hooks, Hook } from '../hook';
 import { isValue } from './state';
 
 
@@ -13,15 +14,20 @@ import { isValue } from './state';
  **********************************/
 /**
  * 监听指定值的变化
- * @description 本质是调用 Value 对象的 watch 方法，但是通过此方法进行的观察，会在组价生命周期结束时自动停止观察
+ * @description 本质是调用 Value 对象的 watch 方法
+ * @description 但是通过此方法进行的观察，会在组件生命周期结束时自动停止观察
  * @description 此函数只有在初始化调用时有效
  * @param value 被监听的值
  * @param cb    当监听的值发送变化时调用的函数
  */
-export function watch<T>(value: Value<T>, cb: WatchCallback<T>): () => void;
+export function watch<T>(
+	value: Value<T>,
+	cb: WatchCallback<T>,
+): () => void;
 /**
  * 监听指定值的变化
- * @description 本质是创建调用 Value 对象的 watch 方法，但是通过此方法进行的观察，会在组价生命周期结束时自动停止观察
+ * @description 本质是创建调用 Value 对象的 watch 方法
+ * @description 但是通过此方法进行的观察，会在组件生命周期结束时自动停止观察
  * @description 此函数只有在初始化调用时有效
  * @param value 用于计算观测值的函数
  * @param cb    当监听的值发送变化时调用的函数
@@ -49,43 +55,30 @@ export function watch<T>(
 /**********************************
  * 钩子类 API
  **********************************/
-
 /**
  * 为当前组件注册钩子
  * @param name 钩子名称
  * @param hook 钩子
+ * @param initonly 是否仅在初始化时有效
  */
-export function hook(name: string, hook: () => void): () => void {
+export function hook<H extends Hooks>(
+	name: H,
+	hook: Hook,
+	initonly?: boolean,
+): undefined | (() => void);
+export function hook(
+	name: string,
+	hook: Hook,
+	initonly?: boolean,
+): undefined | (() => void);
+export function hook(
+	name: string,
+	hook: Hook,
+	initonly?: boolean,
+): undefined | (() => void) {
 	const exposed = checkCurrent('setHook');
+	if (initonly && exposed.$inited) { return undefined; }
 	return setHook(name, hook, exposed);
-}
-export function inited(hook: () => void): () => void {
-	const exposed = checkCurrent('inited', true);
-	return setHook('inited', hook, exposed);
-}
-export function beforeMount(hook: () => void): () => void {
-	const exposed = checkCurrent('beforeMount', true);
-	return setHook('beforeMount', hook, exposed);
-}
-export function mounted(hook: () => void): () => void {
-	const exposed = checkCurrent('mounted', true);
-	return setHook('mounted', hook, exposed);
-}
-export function beforeRefresh(hook: () => void): () => void {
-	const exposed = checkCurrent('beforeRefresh', true);
-	return setHook('beforeRefresh', hook, exposed);
-}
-export function refreshed(hook: () => void): () => void {
-	const exposed = checkCurrent('refreshed', true);
-	return setHook('refreshed', hook, exposed);
-}
-export function beforeDestroy(hook: () => void): () => void {
-	const exposed = checkCurrent('beforeDestroy', true);
-	return setHook('beforeDestroy', hook, exposed);
-}
-export function destroyed(hook: () => void): () => void {
-	const exposed = checkCurrent('destroyed', true);
-	return setHook('destroyed', hook, exposed);
 }
 
 

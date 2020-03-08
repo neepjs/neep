@@ -1,7 +1,7 @@
 import { monitorable } from './install';
 import { Exposed } from './type';
 /** 全局钩子 */
-interface Hook {
+export interface Hook {
 	(nObjcet: Exposed): void
 }
 export type Hooks = 'beforeInit' | 'inited'
@@ -52,7 +52,10 @@ export function setHook(
 	return () => set.delete(hook);
 }
 
-export function callHook<H extends Hooks>(id: H, exposed: Exposed): void;
+export function callHook<H extends Hooks>(
+	id: H,
+	exposed: Exposed,
+): void;
 export function callHook(id: string, exposed: Exposed): void;
 export function callHook(id: string, exposed: Exposed): void {
 	const exposedhooks = ExposedHooks.get(exposed);

@@ -1,5 +1,5 @@
 import {
-	NeepComponent, Render, NeepNode, Slots, Context, IRender,
+	Component, Render, NeepNode, Slots, Context, IRender,
 } from '../type';
 import auxiliary, { isElement, Tags } from '../auxiliary';
 import { renderSymbol, isElementSymbol } from '../symbols';
@@ -35,7 +35,9 @@ function slotless(
 		};
 	}
 	const { render } = node;
-	const label = isProduction ? undefined : [`[${ slotName }]`, '#00F'];
+	const label = isProduction
+		? undefined
+		: [`[${ slotName }]`, '#00F'];
 	return {
 		...node,
 		tag: Tags.ScopeSlot,
@@ -75,7 +77,7 @@ function renderNode<R extends object = object>(
 export default function normalize<R extends object = object>(
 	result: any,
 	context: Context,
-	component: NeepComponent<any, R>,
+	component: Component<any, R>,
 	iRender: IRender,
 	native = false,
 ) {

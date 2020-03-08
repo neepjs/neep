@@ -1,5 +1,5 @@
 import {
-	NeepComponent,
+	Component,
 	NeepNode,
 	Slots,
 	Context,
@@ -14,6 +14,7 @@ import draw, { unmount, MountedNode } from './draw';
 import normalize from './normalize';
 import { getSlots, setSlots } from './slot';
 import NeepObject from './Object';
+import { execSimple } from './execSimple';
 
 function updateProps(
 	nObject: Entity<any, any>,
@@ -88,7 +89,7 @@ function initRender<R extends object = object>(
 	);
 	if (typeof result === 'function') {
 		// 响应式
-		const render = monitorable.createExecutable(
+		const exec = monitorable.createExecutable(
 			() => normalize(
 				(result as () => NeepNode)(),
 				context,
@@ -98,19 +99,23 @@ function initRender<R extends object = object>(
 			),
 			changed => changed && nObject.refresh(),
 		);
+		const render = () => execSimple(nObject, exec());
 		return {
 			nodes: render(),
 			render,
-			stopRender: () => render.stop(),
+			stopRender: () => exec.stop(),
 		};
 	}
 
 	return {
-		nodes: normalize(result, context, component, iRender, native),
-		render:() => normalize(setCurrent(
+		nodes: execSimple(
+			nObject,
+			normalize(result, context, component, iRender, native)
+		),
+		render:() => execSimple(nObject, normalize(setCurrent(
 			() => component(props, context, auxiliary) as R,
 			exposed,
-		), context, component, iRender, native),
+		), context, component, iRender, native)),
 	};
 }
 
@@ -120,7 +125,7 @@ export default class Entity<
 	R extends object = object
 > extends NeepObject {
 	/** 组件函数 */
-	readonly component: NeepComponent<P, R>;
+	readonly component: Component<P, R>;
 	/** 组件属性 */
 	readonly props: P = monitorable.encase(Object.create(null));
 	/** 组件槽 */
@@ -141,7 +146,7 @@ export default class Entity<
 	readonly container: Container;
 	childNodes: any[];
 	constructor(
-		component: NeepComponent<P, R>,
+		component: Component<P, R>,
 		props: object,
 		children: any[],
 		parent: Entity<any, any> | Container,

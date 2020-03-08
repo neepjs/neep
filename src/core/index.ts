@@ -6,7 +6,5 @@ export * from './auxiliary';
 export * from './helper';
 export * from './create';
 export * from './type';
-
 export * from './symbols';
 export * from './hook';
-export * from './dev';
