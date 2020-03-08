@@ -1,10 +1,18 @@
 
 import update from './update';
-import { IRender, Native } from '@neep/core';
+import {
+	IRender,
+	NativeNode,
+	NativeText,
+	NativePlaceholder,
+	NativeComponent,
+	NativeShadow,
+	NativeContainer,
+} from '@neep/core';
 
 const render: IRender = {
 	type: 'html',
-	isNode(v: any): v is Native.Node {
+	isNode(v): v is NativeNode {
 		return v instanceof Node;
 	},
 	mount({target}, type) {
@@ -34,31 +42,35 @@ const render: IRender = {
 		// TODO: NS
 		return update(document.createElement(tag), props) as any;
 	},
-	text(text: string): Native.Text {
+	text(text: string): NativeText {
 		return document.createTextNode(text) as any;
 	},
-	placeholder(): Native.Placeholder {
+	placeholder(): NativePlaceholder {
 		return document.createComment('') as any;
 	},
-	component(): [Native.Component, Native.Shadow] {
+	component(): [NativeComponent, NativeShadow] {
 		const node = document.createElement('neep-component');
 		node.attachShadow({ mode: 'open' });
 		return [node, node.attachShadow({ mode: 'open' })] as any;
 	},
 
-	parent(node: Native.Node): Native.Container | null {
-		return (node as any).parentNode as Native.Container | null;
+	parent(node: NativeNode): NativeContainer | null {
+		return (node as any).parentNode as NativeContainer | null;
 	},
-	next(node: Native.Node): Native.Node | null {
-		return (node as any).nextSibling as Native.Container | null;
+	next(node: NativeNode): NativeNode | null {
+		return (node as any).nextSibling as NativeContainer | null;
 	},
 	update(node, props): void {
 		update(node as any, props);
 	},
-	insert(parent: Native.Container, node: Native.Node, next: Native.Node | null = null): void {
+	insert(
+		parent: NativeContainer,
+		node: NativeNode,
+		next: NativeNode | null = null,
+	): void {
 		(parent as any).insertBefore(node, next);
 	},
-	remove(node: Native.Node): void {
+	remove(node: NativeNode): void {
 		const p = render.parent(node);
 		if (!p) { return; }
 		(p as any).removeChild(node);

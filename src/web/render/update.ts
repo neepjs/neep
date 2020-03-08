@@ -1,5 +1,6 @@
-import { recursive2iterable, RecursiveItem } from '../../core/utils/recursive';
-
+import {
+	recursive2iterable, RecursiveItem,
+} from '../../core/render/recursive';
 
 function getId(v: any): string | undefined {
 	if (typeof v === 'string') { return v; }
@@ -35,7 +36,8 @@ function getStyle(
 	if (typeof style === 'string') { return style; }
 	if (!style) { return undefined; }
 	if (typeof style !== 'object') { return undefined; }
-	const css: Record<string, [string, 'important' | null]> = Object.create(null);
+	const css: Record<string, [string, 'important' | null]> =
+		Object.create(null);
 	for (let k in style) {
 		let value = style[k];
 		const key = k.substr(0, 2) === '--' ? k
@@ -230,7 +232,10 @@ function updateEvent(
 }
 
 const PropsMap = new WeakMap<Element, Props>();
-export default function update(el: HTMLElement | SVGElement, props: {[k: string]: any}) {
+export default function update(
+	el: HTMLElement | SVGElement,
+	props: {[k: string]: any},
+) {
 	const old = PropsMap.get(el) || { attrs: {}, event: {} };
 	const { id,  classes, style, attrs, event } = getProps(props);
 	PropsMap.set(el, { id, classes, style, attrs, event });
