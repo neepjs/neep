@@ -1,11 +1,10 @@
 import { NeepNode, NeepElement, Tag } from '../type';
-import { isProduction } from '../constant';
 import { Tags, isElement, Value } from '../auxiliary';
 import { isElementSymbol, typeSymbol } from '../symbols';
-import { getLabel } from '../helper/label';
 import { recursive2iterable } from './recursive';
 import Entity from './Entity';
 import Container from './Container';
+import NeepObject from './Object';
 
 export interface TreeNode
 	extends Omit<
@@ -48,7 +47,7 @@ export function destroy(
 }
 
 function createItem(
-	nObject: Entity<any, any> | Container,
+	nObject: NeepObject,
 	source: NeepNode,
 ): TreeNode {
 	if (!source) { return { tag: null, children: [] }; }
@@ -94,7 +93,7 @@ function createItem(
  * @param tree 已有树
  */
 function updateList(
-	nObject: Entity<any, any> | Container,
+	nObject: NeepObject,
 	source: any[],
 	tree: TreeNode | TreeNode[],
 ): TreeNode[] {
@@ -124,7 +123,7 @@ function updateList(
  * @param nObject Neep 对象
  */
 function updateItem(
-	nObject: Entity<any, any> | Container,
+	nObject: NeepObject,
 	source: NeepNode,
 	tree?: TreeNode | TreeNode[],
 ): TreeNode {
@@ -192,7 +191,7 @@ function updateItem(
 
 
 function createAll(
-	nObject: Entity<any, any> | Container,
+	nObject: NeepObject,
 	source: any[],
 ): (TreeNode | TreeNode[])[] {
 	if (!source.length) { return []; }
@@ -205,7 +204,7 @@ function createAll(
 	});
 }
 function *updateAll(
-	nObject: Entity<any, any> | Container,
+	nObject: NeepObject,
 	source: any[],
 	tree: (TreeNode | TreeNode[])[],
 ): Iterable<TreeNode | TreeNode[]> {
@@ -248,7 +247,7 @@ function *updateAll(
  * @param tree 已有树
  */
 function convert(
-	nObject: Entity<any, any> | Container,
+	nObject: NeepObject,
 	source: any,
 	tree?: (TreeNode | TreeNode[])[],
 ): (TreeNode | TreeNode[])[] {

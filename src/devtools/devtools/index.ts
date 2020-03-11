@@ -2,18 +2,19 @@ import { Neep } from '../install';
 import { getTree } from '../tree';
 import App from '../app';
 import { Devtools } from '../type';
+import { RootExposed } from '@neep/core';
 
 let creating = false;
 
 const devtools: Devtools = {
 	renderHook(container) {
 		if (creating) { return; }
+		let app: RootExposed | undefined;
 		try {
 			creating = true;
-			const app = Neep.render();
 			const getData = () => {
+				if (!app) { app = Neep.render(); }
 				const tree = [...getTree(container.content)];
-				console.log(tree);
 				app.$update(Neep.createElement(App, {
 					tree,
 					value: true,
@@ -27,6 +28,7 @@ const devtools: Devtools = {
 			};
 			Neep.setHook('drawedAll', getData, container.exposed);
 			Neep.setHook('mounted', () => {
+				if (!app) { app = Neep.render(); }
 				getData();
 				app.$mount();
 			}, container.exposed);

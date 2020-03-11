@@ -3,9 +3,10 @@
  * @description 简单组件不支持
  **********************************/
 import { Value, WatchCallback } from 'monitorable';
+import { Hooks, Hook } from '../type';
 import { checkCurrent } from '../helper';
 import { monitorable } from '../install';
-import { setHook, Hooks, Hook } from '../hook';
+import { setHook } from '../hook';
 import { isValue } from './state';
 
 
@@ -44,9 +45,8 @@ export function watch<T>(
 	const exposed = checkCurrent('watch');
 	if (typeof value !== 'function') { return () => {}; }
 	const stop = isValue(value)
-		? value.watch(monitorable.merge(cb))
-		: monitorable.computed(value)
-			.watch(monitorable.merge((v, s) => cb(v(), s)));
+		? value.watch(cb)
+		: monitorable.computed(value).watch((v, s) => cb(v(), s));
 	setHook('beforeDestroy', () => stop(), exposed);
 	return stop;
 }
@@ -97,8 +97,8 @@ export function expose<T>(
 ): void;
 /**
  * 将普通值导出
- * @param name 
- * @param value 
+ * @param name
+ * @param value
  */
 export function expose<T>(
 	name: string | number | symbol,
@@ -106,9 +106,9 @@ export function expose<T>(
 ): void;
 /**
  * 设置基于 getter 的导出
- * @param name 
- * @param getter 
- * @param nonmodifiable 
+ * @param name
+ * @param getter
+ * @param nonmodifiable
  */
 export function expose<T>(
 	name: string | number | symbol,
@@ -117,9 +117,9 @@ export function expose<T>(
 ): void;
 /**
  * 设置基于 getter/setter 的导出
- * @param name 
- * @param getter 
- * @param setter 
+ * @param name
+ * @param getter
+ * @param setter
  */
 export function expose<T>(
 	name: string | number | symbol,

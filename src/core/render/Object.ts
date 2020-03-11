@@ -1,18 +1,35 @@
-import { callHook, Hooks } from '../hook';
-import { Exposed } from '../type';
+import { Exposed, NativeComponent, Hook, Hooks, NeepNode } from '../type';
+import { callHook, setHook } from '../hook';
 import { MountedNode } from './draw';
-function createExposed(obj: NeepObject): Exposed {
+import Container from './Container';
+import convert, { TreeNode } from './convert';
 
-	const cfg: { [K in keyof Exposed]:
+function createExposed(obj: NeepObject): Exposed {
+	const cfg: { [K in Exclude<keyof Exposed, '$label' | '$__hooks'>]-?:
 		{ configurable: true, value: Exposed[K] }
 		| { configurable: true, get(): Exposed[K] }
 	} = {
+		$parent: { configurable: true, get: () => obj.parent?.exposed },
 		$component: { configurable: true, value: null },
 		$isContainer: { configurable: true, value: false },
 		$inited: { configurable: true, get: () => obj.inited },
 		$destroyed: { configurable: true, get: () => obj.destroyed },
 		$mounted: { configurable: true, get: () => obj.mounted },
-		$unmounted: { configurable: true, get: () => obj.mounted },
+		$unmounted: { configurable: true, get: () => obj.unmounted },
+		$callHook: {
+			configurable: true,
+			value(h: string) { callHook(h, exposed); },
+		},
+		$setHook: {
+			configurable: true,
+			value(id: string, hook: Hook) {
+				setHook(id, hook, exposed);
+			},
+		},
+		$refresh: {
+			configurable: true,
+			value(f?:() => void) { obj.refresh(f); },
+		},
 	};
 	const exposed: Exposed = Object.create(null, cfg);
 	return exposed;
@@ -21,6 +38,9 @@ function createExposed(obj: NeepObject): Exposed {
 export default class NeepObject {
 	/** 组件暴露值 */
 	readonly exposed: Exposed = createExposed(this);
+	parent?: NeepObject;
+	/** 原生组件 */
+	native: NativeComponent | null = null;
 	inited: boolean = false;
 	/** 是否销毁的 */
 	destroyed: boolean = false;
@@ -30,10 +50,108 @@ export default class NeepObject {
 	readonly children: Set<Exposed> = new Set();
 	/** The subtree mounted on the parent node */
 	tree: (MountedNode | MountedNode[])[] = [];
+	readonly container: Container;
+	constructor(container?: Container) {
+		this.container = container || this as any as Container;
+	}
+	/** 结果渲染函数 */
+	protected _render: () => NeepNode[] = () => [];
 
+	get canRefresh(): boolean {
+		return !this._delayedRefresh;
+	}
+	protected get needRefresh(): boolean {
+		if (this._delayedRefresh) { return false; }
+		const needRefresh = this._needRefresh;
+		this._needRefresh = false;
+		return needRefresh;
+	}
+	/** 是否需要继续刷新 */
+	protected _needRefresh = false;
+	private _delayedRefresh = 0;
+	/** 是否为刷新中 */
+	private _refreshing = false;
+	/** 渲染结果 */
+	protected _nodes: (TreeNode | TreeNode[])[] = [];
+	protected _refresh() { }
+	refresh(f?: () => void) {
+		if (typeof f === 'function') {
+			try {
+				this._delayedRefresh++;
+				f();
+				return;
+			} finally {
+				this._delayedRefresh--;
+				if (this._delayedRefresh <= 0) {
+					this.refresh();
+				}
+			}
+		}
+		if (this.destroyed) { return; }
+		if (!this.inited) { return; }
+		this._needRefresh = true;
+
+		if (this._refreshing) { return; }
+		this._refreshing = true;
+
+		let nodes: NeepNode[];
+		while(this.needRefresh) {
+			nodes = this._render();
+			if (this.destroyed) { return; }
+		}
+		this._refreshing = false;
+		if (!this.canRefresh) { return; }
+
+		this._nodes = convert(this, nodes!, this._nodes);
+		if (!this.mounted) { return; }
+		if (this.destroyed) { return; }
+		if (this.unmounted) { return; }
+		this._refresh();
+	}
 	callHook<H extends Hooks>(id: H): void;
 	callHook(id: string): void;
 	callHook(id: string): void {
 		callHook(id, this.exposed);
+	}
+
+	/** 更新属性及子代 */
+	protected _update(props: object, children: any[]): void {
+	}
+	/** 更新属性及子代 */
+	update(props: object, children: any[]): void {
+		this._update(props, children);
+	}
+	private __execed_destroy = false;
+	private __execed_mount = false;
+	private __execed_mounted = false;
+
+	protected _destroy() { }
+	destroy() {
+		if (this.__execed_destroy) { return; }
+		this.__execed_destroy = true;
+		this.callHook('beforeDestroy');
+		this._destroy();
+		this.callHook('destroyed');
+		this.destroyed = true;
+	}
+	protected _mount() { }
+	mount() {
+		if (this.__execed_destroy) { return; }
+		if (this.__execed_mount) { return; }
+		this.__execed_mount = true;
+		this.callHook('beforeMount');
+		this._mount();
+		this.callHook('mounted');
+		this.mounted = true;
+	}
+	protected _unmount() { }
+	unmount() {
+		if (!this.mounted) { return; }
+		if (this.__execed_mounted) { return; }
+		this.__execed_mounted = true;
+		this.callHook('beforeUnount');
+		this._unmount();
+		this.callHook('unmounted');
+		this.unmounted = true;
 	}
 }

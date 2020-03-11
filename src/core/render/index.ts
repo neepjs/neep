@@ -40,6 +40,16 @@ export default function render(
 		},
 		configurable: true,
 	});
+	Reflect.defineProperty(exposed, '$unmount', {
+		value() {
+			if (!exposed.$mounted) { return; }
+			if (exposed.$unmounted) { return; }
+			if (exposed.$destroyed) { return container.destroy(); }
+			container.unmount();
+			return;
+		},
+		configurable: true,
+	});
 	if (params.target) {
 		container.mount();
 	}

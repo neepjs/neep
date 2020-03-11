@@ -1,6 +1,10 @@
 import { Auxiliary, Tags } from './auxiliary';
 import * as symbols from './symbols';
 
+/** 全局钩子 */
+export interface Hook {
+	(nObjcet: Exposed): void
+}
 /** source 对象 */
 export type NeepNode = NeepElement | null;
 
@@ -13,8 +17,19 @@ export interface SlotFn {
 export interface Slots {
 	[name: string]: SlotFn | undefined;
 }
+export interface ContextConstructor {
+	(context: Context, exposed?: Exposed): void;
+}
+export type Hooks = 'beforeInit' | 'inited'
+	| 'beforeDestroy' | 'destroyed'
+	| 'beforeUpdate' | 'updated'
+	| 'beforeMount' | 'mounted'
+	| 'beforeDraw' | 'drawed'
+	| 'beforeDrawAll' | 'drawedAll'
+;
 export interface Exposed {
 	readonly $component: Component<any, any> | null;
+	readonly $parent?: Exposed;
 	readonly $isContainer: boolean;
 	readonly $inited: boolean;
 	readonly $destroyed: boolean;
@@ -22,11 +37,19 @@ export interface Exposed {
 	readonly $unmounted: boolean;
 	/** Only the development mode is valid */
 	readonly $label?: [string, string];
+
+	$callHook<H extends Hooks>(hook: H): void;
+	$callHook(hook: string): void;
+	$setHook<H extends Hooks>(id: H, hook: Hook):() => void;
+	$setHook(id: string,hook: Hook): () => void;
+	readonly $__hooks?: { [name: string]: Set<Hook>; }
+	$refresh(fn?: () => void): void;
 	[name: string]: any;
 }
 export interface RootExposed extends Exposed {
-	$mount(target?: any): RootExposed;
 	$update(node?: NeepElement | Component): RootExposed;
+	$mount(target?: any): RootExposed;
+	$unmount(): void;
 }
 
 export interface Render<R extends object = any> {
@@ -44,6 +67,7 @@ export interface Context {
 	/** 子组件集合 */
 	children: Set<Exposed>;
 	childNodes: any[];
+	refresh(fn?: () => void): void;
 }
 
 

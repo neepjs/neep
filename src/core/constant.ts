@@ -1,13 +1,13 @@
-/** 
+/**
  * Global constant
- * 
+ *
  * Will be replaced by the 'rollup-plugin-replace' plug-in
  */
 
  /**
  * Neep code version
  */
-export const version = '__VERSION__';
+export const version = '__VERSION__' as string;
 /**
  * Current mode
  * @enum production

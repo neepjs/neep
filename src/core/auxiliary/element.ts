@@ -71,32 +71,32 @@ export interface elementIteratorOptions {
 	simple?: boolean | Component[] | ((c: Component) => boolean);
 }
 
-export function *elementIterator(
+export function elements(
 	node: any,
 	opt: elementIteratorOptions = {},
-): Iterable<any> {
+): any[] {
 	if (Array.isArray(node)) {
+		const list: any[][] = [];
 		for (let n of node) {
-			yield * elementIterator(n, opt);
+			list.push(elements(n, opt));
 		}
-		return;
+		return ([] as any[]).concat(...list);
 	}
-	if (!isElement(node)) { return yield node; }
+	if (!isElement(node)) { return [node]; }
 	let { tag } = node;
-	if (!tag) { return; }
+	if (!tag) { return []; }
 
 	if (([Tags.Template, Tags.ScopeSlot] as Tag[]).includes(tag)) {
-		yield* elementIterator(node.children, opt);
-		return;
+		return elements(node.children, opt);
 	}
-	if (typeof tag !== 'function') { return yield node; }
-	if (tag[typeSymbol] !== 'simple') { return yield node; }
+	if (typeof tag !== 'function') { return [node]; }
+	if (tag[typeSymbol] !== 'simple') { return [node]; }
 	const { simple } = opt;
-	if (!simple) { return yield node; }
+	if (!simple) { return [node]; }
 	if (Array.isArray(simple)) {
-		if (simple.includes(tag)) { return yield node; }
+		if (simple.includes(tag)) { return [node]; }
 	} else if (typeof simple === 'function') {
-		if (!simple(tag)) { return yield node; }
+		if (!simple(tag)) { return [node]; }
 	}
-	yield* elementIterator(node.children, opt);
+	return elements(node.children, opt);
 }

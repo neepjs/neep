@@ -1,4 +1,4 @@
-import { mode, isProduction } from '../constant';
+import * as Constant from '../constant';
 import * as Tags from './tags';
 import * as State from './state';
 import * as Life from './life';
@@ -20,11 +20,9 @@ export interface Auxiliary extends
 	Readonly<typeof State>,
 	Readonly<typeof Life>,
 	Readonly<typeof Element>,
-	Readonly<typeof Dev>
-{
-	mode: string,
-	isProduction: boolean,
-}
+	Readonly<typeof Dev>,
+	Readonly<typeof Constant>
+{}
 
 const auxiliary: Auxiliary = {
 	...Tags,
@@ -32,12 +30,11 @@ const auxiliary: Auxiliary = {
 	...Life,
 	...Element,
 	...Dev,
-	mode,
-	isProduction,
+	...Constant,
 };
 
 export function setAuxiliary<T>(
-	name: string | number | symbol,
+	name: string,
 	value: T,
 ): void {
 	Reflect.defineProperty(auxiliary, name, {
@@ -47,7 +44,7 @@ export function setAuxiliary<T>(
 	});
 }
 export function defineAuxiliary<T>(
-	name: string | number | symbol,
+	name: string,
 	get: (this: Auxiliary) => T,
 ): void {
 	Reflect.defineProperty(auxiliary, name, {

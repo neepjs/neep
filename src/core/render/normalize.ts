@@ -1,10 +1,64 @@
 import {
-	Component, Render, NeepNode, Slots, Context, IRender,
+	NeepElement, Exposed,
+	Render, NeepNode, Slots, Context, IRender,
 } from '../type';
+import { typeSymbol } from '../symbols';
+import { isProduction } from '../constant';
 import auxiliary, { isElement, Tags } from '../auxiliary';
 import { renderSymbol, isElementSymbol } from '../symbols';
-import { isProduction } from '../constant';
+import { getLabel } from '../helper/label';
+import Container from './Container';
+import Entity from './Entity';
+import { getSlots, setSlots } from './slot';
+import { initContext } from '../helper/context';
 
+function execSimple(
+	nObject: Container | Entity,
+	node: any,
+): any {
+	if (Array.isArray(node)) {
+		return node.map(n => execSimple(nObject, n));
+	}
+	if (!isElement(node)) { return node; }
+	let { tag } = node;
+	if (typeof tag !== 'function' || tag[typeSymbol] !== 'simple') {
+		return {
+			...node,
+			children: execSimple(nObject, node.children),
+		};
+	}
+	const { children } = node;
+	const { iRender } = nObject.container;
+	const slots = Object.create(null);
+	getSlots(iRender, children, slots);
+	const context: Context = initContext({
+		slots: setSlots(iRender, slots),
+		inited: false,
+		parent: nObject.exposed,
+		children: new Set<Exposed>(),
+		childNodes: children,
+		refresh(f) { nObject.refresh(f); }
+	});
+	if (!isProduction) { getLabel(); }
+	const result = tag({...node.props}, context, auxiliary);
+	const nodes = slotless(renderNode(
+		iRender,
+		result,
+		context,
+		tag[renderSymbol],
+	), context.slots);
+
+	let label: [string, string] | undefined;
+	if (!isProduction) { label = getLabel(); }
+	return {
+		...node,
+		children: execSimple(
+			nObject,
+			Array.isArray(nodes) ? nodes : [nodes],
+		),
+		label,
+	} as NeepElement;
+}
 
 function slotless(
 	node: any,
@@ -74,17 +128,21 @@ function renderNode<R extends object = object>(
 }
 
 
-export default function normalize<R extends object = object>(
+export default function normalize(
+	nObject: Entity,
 	result: any,
-	context: Context,
-	component: Component<any, R>,
-	iRender: IRender,
-	native = false,
 ) {
-	return slotless(renderNode(
-		iRender,
-		result,
-		context,
-		component[renderSymbol],
-	), context.slots, native);
+	return execSimple(
+		nObject,
+		slotless(
+			renderNode(
+				nObject.container.iRender,
+				result,
+				nObject.context,
+				nObject.component[renderSymbol],
+			),
+			nObject.context.slots,
+			Boolean(nObject.native),
+		),
+	);
 }

@@ -3,18 +3,16 @@ import {
 	NeepNode,
 	Slots,
 	Context,
-	NativeComponent,
 } from '../type';
 import auxiliary from '../auxiliary';
 import { monitorable } from '../install';
 import { setCurrent } from '../helper/current';
 import convert, { destroy, TreeNode } from './convert';
-import Container from './Container';
 import draw, { unmount, MountedNode } from './draw';
 import normalize from './normalize';
 import { getSlots, setSlots } from './slot';
 import NeepObject from './Object';
-import { execSimple } from './execSimple';
+import { initContext } from '../helper/context';
 
 function updateProps(
 	nObject: Entity<any, any>,
@@ -53,7 +51,7 @@ function createContext<
 	P extends object = object,
 	R extends object = object
 >(nObject: Entity<P, R>): Context {
-	return {
+	return initContext({
 		slots: nObject.slots,
 		get inited() {
 			return nObject.inited;
@@ -67,7 +65,10 @@ function createContext<
 		get childNodes() {
 			return nObject.childNodes;
 		},
-	};
+		refresh(f) {
+			nObject.refresh(f);
+		}
+	}, nObject.exposed);
 }
 
 /** 初始化渲染 */
@@ -78,10 +79,8 @@ function initRender<R extends object = object>(
 		component,
 		props,
 		context,
-		container: { iRender },
 		exposed,
 	} = nObject;
-	const native = Boolean(nObject.native);
 	// 初始化执行
 	const result = setCurrent(
 		() => component(props, context, auxiliary),
@@ -89,33 +88,23 @@ function initRender<R extends object = object>(
 	);
 	if (typeof result === 'function') {
 		// 响应式
-		const exec = monitorable.createExecutable(
-			() => normalize(
-				(result as () => NeepNode)(),
-				context,
-				component,
-				iRender,
-				native,
-			),
+		const render = monitorable.createExecutable(
+			() => normalize(nObject, (result as () => NeepNode)()),
 			changed => changed && nObject.refresh(),
 		);
-		const render = () => execSimple(nObject, exec());
 		return {
 			nodes: render(),
 			render,
-			stopRender: () => exec.stop(),
+			stopRender: () => render.stop(),
 		};
 	}
 
 	return {
-		nodes: execSimple(
-			nObject,
-			normalize(result, context, component, iRender, native)
-		),
-		render:() => execSimple(nObject, normalize(setCurrent(
-			() => component(props, context, auxiliary) as R,
+		nodes: normalize(nObject, result),
+		render:() => normalize(nObject, setCurrent(
+			() => component(props, context, auxiliary),
 			exposed,
-		), context, component, iRender, native)),
+		)),
 	};
 }
 
@@ -131,27 +120,21 @@ export default class Entity<
 	/** 组件槽 */
 	readonly slots: Slots = monitorable.encase(Object.create(null));
 	/** 结果渲染函数 */
-	private readonly _render:() => NeepNode[];
-	/** 结果渲染函数 */
 	private readonly _stopRender?:() => void;
-	/** 渲染结果 */
-	private _nodes: (TreeNode | TreeNode[])[];
 	_childNodes: (TreeNode | TreeNode[])[] | undefined;
 	_children: (MountedNode | MountedNode[])[] = [];
 	/** 组件上下文 */
 	readonly context: Context;
-	/** 原生组件 */
-	readonly native: NativeComponent | null = null;
-	readonly parent: Entity<any, any> | Container;
-	readonly container: Container;
+	readonly parent: NeepObject;
 	childNodes: any[];
+	/** 结果渲染函数 */
 	constructor(
 		component: Component<P, R>,
 		props: object,
 		children: any[],
-		parent: Entity<any, any> | Container,
+		parent: NeepObject,
 	) {
-		super();
+		super(parent.container);
 		this.component = component;
 		Reflect.defineProperty(
 			this.exposed,
@@ -169,9 +152,6 @@ export default class Entity<
 		// 父子关系
 		this.parent = parent;
 		parent.children.add(this.exposed);
-		this.container = parent instanceof Container
-			? parent
-			: parent.container;
 		// 上下文属性
 		const context = createContext(this);
 		this.context = context;
@@ -191,52 +171,24 @@ export default class Entity<
 		if (this._needRefresh) { this.refresh(); }
 	}
 	/** 更新属性及子代 */
-	update(
-		props: object,
-		children: any[],
-	): this {
-		if (this.destroyed) { return this; }
+	_update(props: object, children: any[]): void {
+		if (this.destroyed) { return; }
 		this.childNodes = children;
 		updateProps(this, props, children);
 		if (!this._stopRender || this.native) {
 			this.refresh();
 		}
-		return this;
 	}
-	destroy() {
-		if (this.destroyed) { return; }
-		this.destroyed = true;
-		this.callHook('beforeDestroy');
+	_destroy() {
 		if (this._stopRender) {
 			this._stopRender();
 		}
-		if (this.parent) {
-			this.parent.children.delete(this.exposed);
-		}
+		this.parent.children.delete(this.exposed);
 		destroy(this._nodes);
-		this.callHook('destroyed');
 	}
 
-	/** 是否需要继续刷新 */
-	private _needRefresh = false;
-	/** 是否为刷新中 */
-	private _refreshing = false;
 	/** 刷新 */
-	refresh() {
-		if (this.destroyed) { return; }
-		if (!this.inited) { return; }
-		this._needRefresh = true;
-		if (this._refreshing) { return; }
-		this._refreshing = true;
-		let nodes: NeepNode[];
-		while(this._needRefresh) {
-			this._needRefresh = false;
-			nodes = this._render();
-			if (this.destroyed) { return; }
-		}
-		this._refreshing = false;
-		this._nodes = convert(this, nodes!, this._nodes);
-		if (!this.mounted) { return; }
+	_refresh() {
 		this.container.markDraw(this);
 	}
 	draw() {
@@ -255,20 +207,10 @@ export default class Entity<
 
 		this.callHook('updated');
 	}
-	_mounting = false;
-	mount() {
-		if (this.mounted) { return; }
-		if (this._mounting) { return; }
-		this._mounting = true;
-		this.callHook('beforeMount');
+	_mount() {
 		this.tree = draw(this.container.iRender, this._nodes);
-		this.callHook('mounted');
-		this.mounted = true;
 	}
-	unmount() {
-		if (!this.mounted) { return; }
-		if (this.unmounted) { return; }
-		this.unmounted = true;
+	_unmount() {
 		unmount(this.container.iRender, this.tree);
 	}
 }
