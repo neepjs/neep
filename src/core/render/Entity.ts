@@ -1,9 +1,4 @@
-import {
-	Component,
-	NeepNode,
-	Slots,
-	Context,
-} from '../type';
+import { Component, NeepNode, Slots, Context } from '../type';
 import auxiliary from '../auxiliary';
 import { monitorable } from '../install';
 import { setCurrent } from '../helper/current';
@@ -43,8 +38,8 @@ function updateProps(
 	);
 	setSlots(iRender, slots, nObject.slots);
 	if (!native) { return; }
-	nObject._childNodes
-		= convert(nObject, childNodes, nObject._childNodes);
+	nObject.naitveNodes
+		= convert(nObject, childNodes, nObject.naitveNodes);
 }
 
 function createContext<
@@ -53,44 +48,36 @@ function createContext<
 >(nObject: Entity<P, R>): Context {
 	return initContext({
 		slots: nObject.slots,
-		get inited() {
-			return nObject.inited;
-		},
-		get parent() {
-			return nObject.parent.exposed;
-		},
-		get children() {
-			return nObject.children;
-		},
-		get childNodes() {
-			return nObject.childNodes;
-		},
-		refresh(f) {
-			nObject.refresh(f);
-		}
+		get inited() { return nObject.inited; },
+		get parent() { return nObject.parent.exposed; },
+		get delivered() { return nObject.parent.delivered; },
+		get children() { return nObject.children; },
+		get childNodes() { return nObject.childNodes; },
+		refresh(f) { nObject.refresh(f); }
 	}, nObject.exposed);
 }
 
 /** 初始化渲染 */
 function initRender<R extends object = object>(
 	nObject: Entity<any, R>
-): { render(): any, nodes: any, stopRender?(): void } {
+): { render(): any, nodes: any, stopRender(): void } {
 	const {
 		component,
 		props,
 		context,
-		exposed,
+		entity,
 	} = nObject;
+	const refresh = (changed: boolean) => changed && nObject.refresh()
 	// 初始化执行
-	const result = setCurrent(
+	const result = monitorable.exec(() => setCurrent(
 		() => component(props, context, auxiliary),
-		exposed,
-	);
+		entity,
+	), refresh, true);
 	if (typeof result === 'function') {
 		// 响应式
 		const render = monitorable.createExecutable(
 			() => normalize(nObject, (result as () => NeepNode)()),
-			changed => changed && nObject.refresh(),
+			refresh,
 		);
 		return {
 			nodes: render(),
@@ -99,12 +86,19 @@ function initRender<R extends object = object>(
 		};
 	}
 
-	return {
-		nodes: normalize(nObject, result),
-		render:() => normalize(nObject, setCurrent(
+	const render = monitorable.createExecutable(
+		() => normalize(nObject, setCurrent(
 			() => component(props, context, auxiliary),
-			exposed,
+			entity,
 		)),
+		refresh,
+	);
+	return {
+		nodes: monitorable.exec(
+			() => normalize(nObject, result), refresh, true,
+		),
+		render,
+		stopRender: () => render.stop(),
 	};
 }
 
@@ -120,13 +114,13 @@ export default class Entity<
 	/** 组件槽 */
 	readonly slots: Slots = monitorable.encase(Object.create(null));
 	/** 结果渲染函数 */
-	private readonly _stopRender?:() => void;
-	_childNodes: (TreeNode | TreeNode[])[] | undefined;
-	_children: (MountedNode | MountedNode[])[] = [];
+	private readonly _stopRender:() => void;
+	/** 原生子代 */
+	naitveNodes: (TreeNode | TreeNode[])[] | undefined;
+	naitveTree: (MountedNode | MountedNode[])[] = [];
 	/** 组件上下文 */
 	readonly context: Context;
 	readonly parent: NeepObject;
-	childNodes: any[];
 	/** 结果渲染函数 */
 	constructor(
 		component: Component<P, R>,
@@ -134,7 +128,7 @@ export default class Entity<
 		children: any[],
 		parent: NeepObject,
 	) {
-		super(parent.container);
+		super(parent.iRender, parent, parent.container);
 		this.component = component;
 		Reflect.defineProperty(
 			this.exposed,
@@ -175,9 +169,6 @@ export default class Entity<
 		if (this.destroyed) { return; }
 		this.childNodes = children;
 		updateProps(this, props, children);
-		if (!this._stopRender || this.native) {
-			this.refresh();
-		}
 	}
 	_destroy() {
 		if (this._stopRender) {
@@ -191,9 +182,7 @@ export default class Entity<
 	_refresh() {
 		this.container.markDraw(this);
 	}
-	draw() {
-		if (this.destroyed) { return; }
-		this.callHook('beforeUpdate');
+	_draw() {
 		this.tree = draw(
 			this.container.iRender,
 			this._nodes,
@@ -204,8 +193,6 @@ export default class Entity<
 			// const shadow = this.container.iRender.shadow!(native);
 			// TODO: 更新 childNodes
 		}
-
-		this.callHook('updated');
 	}
 	_mount() {
 		this.tree = draw(this.container.iRender, this._nodes);

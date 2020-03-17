@@ -5,9 +5,7 @@ import {
 	NativeContainer,
 } from '../type';
 import { Tags } from '../auxiliary';
-import { getRender } from '../install';
 import { createMountedNode } from './id';
-import Entity from './Entity';
 import convert, { destroy } from './convert';
 import draw, { unmount, getNodes, MountedNode } from './draw';
 import NeepObject from './Object';
@@ -29,61 +27,50 @@ function markDraw(c: Container) {
 
 export default class Container extends NeepObject {
 	props: MountProps;
-	iRender: IRender;
 	/** 组件树结构 */
 	content: (MountedNode | MountedNode[])[] = [];
 	_node: NativeNode | null = null;
 	_container: NativeContainer | null = null;
 	readonly rootContainer: Container = this;
 	constructor(
+		iRender: IRender,
 		props: MountProps,
 		children: any[],
 		parent?: NeepObject,
 	) {
-		super();
+		super(iRender, parent);
 		this.props = props;
 		this.parent = parent;
 		if (parent) {
 			this.rootContainer = parent.container.rootContainer;
 		}
-		const { type } = props;
-		if (parent && !type) {
-			this.iRender = parent.container.iRender;
-		} else {
-			this.iRender = getRender(type);
-		}
-		// 初始化钩子
 		this.callHook('beforeInit');
 		this._render = () => children;
 		this._nodes = convert(this, children);
-		// 初始化钩子
 		this.callHook('inited');
 		this.inited = true;
 	}
+	_drawChildren = false;
+	_drawContainer = false;
 	setChildren(children: any[]): void {
 		if (this.destroyed) { return; }
+		this.childNodes = children;
 		this._render = () => children;
+		this._drawChildren = true;
 		this.refresh();
 	}
 	setProps(props: MountProps): void {
 		if (this.destroyed) { return; }
 		this.props = props;
-		const { parent, iRender } = this;
-		const { type } = props;
-		if (parent && !type) {
-			this.iRender = parent.container.iRender;
-		} else {
-			this.iRender = getRender(type);
-		}
-		if (!this.mounted) { return; }
-		if (parent && iRender !== this.iRender) {
-			parent.container.markDraw(this);
-		}
+		this._drawContainer = true;
+		this.refresh();
 	}
 	/** 更新属性及子代 */
 	update(props: MountProps, children: any[]): void {
-		this.setProps(props);
-		this.setChildren(children);
+		this.refresh(() => {
+			this.setProps(props);
+			this.setChildren(children);
+		});
 	}
 	_refresh() {
 		this.markDraw(this);
@@ -93,7 +80,7 @@ export default class Container extends NeepObject {
 		const content = draw(this.container.iRender, this._nodes);
 		this.content = content;
 		const [container, node]
-			= iRender.mount(props, parent?.container?.iRender);
+			= iRender.mount(props, parent?.iRender);
 		for (const it of getNodes(content)) {
 			iRender.insert(container, it);
 		}
@@ -113,7 +100,7 @@ export default class Container extends NeepObject {
 	_unmount() {
 		const { parent, iRender } = this;
 		if (parent) {
-			unmount(parent.container.iRender, this.tree);
+			unmount(parent.iRender, this.tree);
 		}
 		iRender.unmount(
 			this._container!,
@@ -122,32 +109,43 @@ export default class Container extends NeepObject {
 		);
 		unmount(this.iRender, this.content);
 	}
-	draw() {
-		// this.callHook('beforeUpdate');
-		// TODO: 调用销毁
-		// TODO: 调用构建
-		// this.callHook('updated');
+	_draw() {
 	}
 	drawSelf() {
 		if (!this.mounted) { return; }
 		if (this.destroyed) { return; }
-		this.callHook('beforeUpdate');
-		this.content = draw(
-			this.container.iRender,
-			this._nodes,
-			this.content,
-		);
-		this.callHook('updated');
-		if (!this._needDraw) { return; }
+		const {
+			_drawChildren: drawChildren,
+			_drawContainer: drawContainer,
+		} = this;
 		this._needDraw = false;
+		this._drawChildren = false;
+		this._drawContainer = false;
+		this.callHook('beforeUpdate');
+		if (drawContainer) {
+			this.iRender.darwContainer(
+				this._container!,
+				this._node!,
+				this.props,
+				this.parent?.iRender,
+			);
+		}
+		if (drawChildren) {
+			this.content = draw(
+				this.iRender,
+				this._nodes,
+				this.content,
+			);
+		}
+		this.callHook('updated');
 	}
 	/** 等待重画的项目 */
-	private _awaitDraw = new Set<Entity<any, any> | Container>();
+	private _awaitDraw = new Set<NeepObject>();
 	/** 自身是否需要重绘 */
 	private _needDraw = false;
 	/** 标记需要绘制的元素 */
 	markDraw(
-		nObject: Entity<any, any> | Container,
+		nObject: NeepObject,
 		remove = false,
 	) {
 		if (nObject === this) {

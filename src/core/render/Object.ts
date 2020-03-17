@@ -1,11 +1,16 @@
-import { Exposed, NativeComponent, Hook, Hooks, NeepNode } from '../type';
+import {
+	Exposed, Delivered,
+	Entity as ComponentEntity,
+	NativeComponent,
+	Hook, Hooks, NeepNode, IRender,
+} from '../type';
 import { callHook, setHook } from '../hook';
 import { MountedNode } from './draw';
 import Container from './Container';
 import convert, { TreeNode } from './convert';
 
 function createExposed(obj: NeepObject): Exposed {
-	const cfg: { [K in Exclude<keyof Exposed, '$label' | '$__hooks'>]-?:
+	const cfg: { [K in Exclude<keyof Exposed, '$label'>]-?:
 		{ configurable: true, value: Exposed[K] }
 		| { configurable: true, get(): Exposed[K] }
 	} = {
@@ -16,42 +21,79 @@ function createExposed(obj: NeepObject): Exposed {
 		$destroyed: { configurable: true, get: () => obj.destroyed },
 		$mounted: { configurable: true, get: () => obj.mounted },
 		$unmounted: { configurable: true, get: () => obj.unmounted },
-		$callHook: {
-			configurable: true,
-			value(h: string) { callHook(h, exposed); },
-		},
-		$setHook: {
-			configurable: true,
-			value(id: string, hook: Hook) {
-				setHook(id, hook, exposed);
-			},
-		},
-		$refresh: {
-			configurable: true,
-			value(f?:() => void) { obj.refresh(f); },
-		},
 	};
 	const exposed: Exposed = Object.create(null, cfg);
 	return exposed;
 }
 
+function createEntity(obj: NeepObject): ComponentEntity {
+	const cfg: { [K in keyof ComponentEntity]-?:
+		{ configurable: true, value: ComponentEntity[K] }
+		| { configurable: true, get(): ComponentEntity[K] }
+	} = {
+		exposed: { configurable: true, get: () => obj.exposed },
+		delivered: { configurable: true, get: () => obj.delivered },
+		parent: { configurable: true, get: () => obj.parent?.entity },
+		component: { configurable: true, value: null },
+		isContainer: { configurable: true, value: false },
+		inited: { configurable: true, get: () => obj.inited },
+		destroyed: { configurable: true, get: () => obj.destroyed },
+		mounted: { configurable: true, get: () => obj.mounted },
+		unmounted: { configurable: true, get: () => obj.unmounted },
+		$_hooks: { configurable: true, value: Object.create(null) },
+		callHook: {
+			configurable: true,
+			value(h: string) { callHook(h, entity); },
+		},
+		setHook: {
+			configurable: true,
+			value(id: string, hook: Hook) {
+				return setHook(id, hook, entity);
+			},
+		},
+		refresh: {
+			configurable: true,
+			value(f?:() => void) { obj.refresh(f); },
+		},
+	};
+	const entity: ComponentEntity = Object.create(null, cfg);
+	return entity;
+}
+
 export default class NeepObject {
+	readonly iRender: IRender;
+	/** TODO: 向后代呈递的值 */
+	readonly delivered: Delivered = {};
 	/** 组件暴露值 */
 	readonly exposed: Exposed = createExposed(this);
+	/** 组件实体 */
+	readonly entity: ComponentEntity = createEntity(this);
+	/** 父组件 */
 	parent?: NeepObject;
 	/** 原生组件 */
 	native: NativeComponent | null = null;
+	/** 状态 */
 	inited: boolean = false;
-	/** 是否销毁的 */
 	destroyed: boolean = false;
-	/** 是否已经挂载完毕 */
 	mounted: boolean = false;
 	unmounted: boolean = false;
+	/**  子组件的暴露值 */
 	readonly children: Set<Exposed> = new Set();
 	/** The subtree mounted on the parent node */
 	tree: (MountedNode | MountedNode[])[] = [];
 	readonly container: Container;
-	constructor(container?: Container) {
+	constructor(
+		iRender: IRender,
+		parent?: NeepObject,
+		container?: Container,
+	) {
+		this.iRender = iRender;
+		if (parent) {
+			this.parent = parent;
+			this.delivered = Object.create(parent.delivered);
+		} else {
+			this.delivered = Object.create(null);
+		}
 		this.container = container || this as any as Container;
 	}
 	/** 结果渲染函数 */
@@ -79,13 +121,13 @@ export default class NeepObject {
 			try {
 				this._delayedRefresh++;
 				f();
-				return;
 			} finally {
 				this._delayedRefresh--;
 				if (this._delayedRefresh <= 0) {
 					this.refresh();
 				}
 			}
+			return;
 		}
 		if (this.destroyed) { return; }
 		if (!this.inited) { return; }
@@ -94,15 +136,16 @@ export default class NeepObject {
 		if (this._refreshing) { return; }
 		this._refreshing = true;
 
-		let nodes: NeepNode[];
+		let nodes: NeepNode[] | undefined;
 		while(this.needRefresh) {
 			nodes = this._render();
 			if (this.destroyed) { return; }
 		}
 		this._refreshing = false;
 		if (!this.canRefresh) { return; }
+		if (!nodes) { return; }
 
-		this._nodes = convert(this, nodes!, this._nodes);
+		this._nodes = convert(this, nodes, this._nodes);
 		if (!this.mounted) { return; }
 		if (this.destroyed) { return; }
 		if (this.unmounted) { return; }
@@ -111,20 +154,23 @@ export default class NeepObject {
 	callHook<H extends Hooks>(id: H): void;
 	callHook(id: string): void;
 	callHook(id: string): void {
-		callHook(id, this.exposed);
+		callHook(id, this.entity);
 	}
 
+	childNodes: any[] = [];
 	/** 更新属性及子代 */
 	protected _update(props: object, children: any[]): void {
+		this.childNodes = children;
 	}
 	/** 更新属性及子代 */
 	update(props: object, children: any[]): void {
 		this._update(props, children);
 	}
+
+
 	private __execed_destroy = false;
 	private __execed_mount = false;
 	private __execed_mounted = false;
-
 	protected _destroy() { }
 	destroy() {
 		if (this.__execed_destroy) { return; }
@@ -153,5 +199,12 @@ export default class NeepObject {
 		this._unmount();
 		this.callHook('unmounted');
 		this.unmounted = true;
+	}
+	_draw() {}
+	draw() {
+		if (this.__execed_destroy) { return; }
+		this.callHook('beforeUpdate');
+		this._draw();
+		this.callHook('updated');
 	}
 }

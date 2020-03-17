@@ -67,12 +67,12 @@ function renderSlots(
 			return {
 				...it,
 				slot: undefined,
-			} as NeepElement; 
+			} as NeepElement;
 		}
 		if (typeof it.render === 'function') {
 			return it.render(...props);
 		}
-		return it.children; 
+		return it.children;
 	});
 }
 function createSlots(

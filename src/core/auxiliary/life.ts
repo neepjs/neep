@@ -42,12 +42,12 @@ export function watch<T>(
 	value: Value<T> | (() => T),
 	cb: (v: Value<T> | T, stoped: boolean) => void
 ): () => void {
-	const exposed = checkCurrent('watch');
+	const entity = checkCurrent('watch');
 	if (typeof value !== 'function') { return () => {}; }
 	const stop = isValue(value)
 		? value.watch(cb)
 		: monitorable.computed(value).watch((v, s) => cb(v(), s));
-	setHook('beforeDestroy', () => stop(), exposed);
+	setHook('beforeDestroy', () => stop(), entity);
 	return stop;
 }
 
@@ -76,10 +76,52 @@ export function hook(
 	hook: Hook,
 	initonly?: boolean,
 ): undefined | (() => void) {
-	const exposed = checkCurrent('setHook');
-	if (initonly && exposed.$inited) { return undefined; }
-	return setHook(name, hook, exposed);
+	const entity = checkCurrent('setHook');
+	if (initonly && entity.inited) { return undefined; }
+	return setHook(name, hook, entity);
 }
+
+/**********************************
+ * 配置 API
+ **********************************/
+
+export function setValue<T>(
+	obj: any,
+	name: string | number | symbol,
+	value: T | Value<T> | (() => T),
+	opt?: boolean | ((value: T) => void),
+): void {
+	if (
+		typeof name === 'string'
+		&& ['$', '_'].includes(name[0])
+	) {
+		return;
+	}
+	if (isValue(value) && opt) {
+		Reflect.defineProperty(obj, name, {
+			get() { return value(); },
+			set(v) { value(v); },
+			configurable: true,
+			enumerable: true,
+		});
+		return;
+	}
+	if (typeof value === 'function' && opt) {
+		Reflect.defineProperty(obj, name, {
+			get: value as () => T,
+			set: typeof opt === 'function' ? opt : undefined,
+			configurable: true,
+			enumerable: true,
+		});
+		return;
+	}
+	Reflect.defineProperty(obj, name, {
+		get() { return value; },
+		configurable: true,
+		enumerable: true,
+	});
+}
+
 
 
 /**********************************
@@ -131,34 +173,57 @@ export function expose<T>(
 	value: T | Value<T> | (() => T),
 	opt?: boolean | ((value: T) => void),
 ): void {
-	const exposed = checkCurrent('expose', true);
-	if (
-		typeof name === 'string'
-		&& ['$', '_'].includes(name[0])
-	) {
-		return;
-	}
-	if (isValue(value) && opt) {
-		Reflect.defineProperty(exposed, name, {
-			get() { return value(); },
-			set(v) { value(v); },
-			configurable: true,
-			enumerable: true,
-		});
-		return;
-	}
-	if (typeof value === 'function' && opt) {
-		Reflect.defineProperty(exposed, name, {
-			get: value as () => T,
-			set: typeof opt === 'function' ? opt : undefined,
-			configurable: true,
-			enumerable: true,
-		});
-		return;
-	}
-	Reflect.defineProperty(exposed, name, {
-		get() { return value; },
-		configurable: true,
-		enumerable: true,
-	});
+	setValue(checkCurrent('expose', true).exposed, name, value, opt);
+}
+
+/**********************************
+ * 配置 API
+ **********************************/
+
+/**
+ * 将 Value 传递给子组件
+ * @param name 导出用的名称
+ */
+export function deliver<T>(
+	name: string | number | symbol,
+	value: Value<T>,
+	mix?: boolean,
+): void;
+/**
+ * 将普通值导出
+ * @param name
+ * @param value
+ */
+export function deliver<T>(
+	name: string | number | symbol,
+	value: T,
+): void;
+/**
+ * 设置基于 getter 的传递
+ * @param name
+ * @param getter
+ * @param nonmodifiable
+ */
+export function deliver<T>(
+	name: string | number | symbol,
+	getter: () => T,
+	nonmodifiable: true,
+): void;
+/**
+ * 设置基于 getter/setter 的传递
+ * @param name
+ * @param getter
+ * @param setter
+ */
+export function deliver<T>(
+	name: string | number | symbol,
+	getter: () => T,
+	setter: (value: T) => void,
+): void;
+export function deliver<T>(
+	name: string | number | symbol,
+	value: T | Value<T> | (() => T),
+	opt?: boolean | ((value: T) => void),
+): void {
+	setValue(checkCurrent('deliver', true).delivered, name, value, opt);
 }

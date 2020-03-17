@@ -8,7 +8,7 @@ export function label(text: string, color = ''): void {
 			setLabel([text, color]);
 			return;
 		}
-		Reflect.defineProperty(current, '$label', {
+		Reflect.defineProperty(current.exposed, '$label', {
 			value: [text, color],
 			configurable: true,
 		});

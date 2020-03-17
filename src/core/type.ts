@@ -3,7 +3,7 @@ import * as symbols from './symbols';
 
 /** 全局钩子 */
 export interface Hook {
-	(nObjcet: Exposed): void
+	(nObjcet: Entity): void
 }
 /** source 对象 */
 export type NeepNode = NeepElement | null;
@@ -37,23 +37,15 @@ export interface Exposed {
 	readonly $unmounted: boolean;
 	/** Only the development mode is valid */
 	readonly $label?: [string, string];
-
-	$callHook<H extends Hooks>(hook: H): void;
-	$callHook(hook: string): void;
-	$setHook<H extends Hooks>(id: H, hook: Hook):() => void;
-	$setHook(id: string,hook: Hook): () => void;
-	readonly $__hooks?: { [name: string]: Set<Hook>; }
-	$refresh(fn?: () => void): void;
+	[name: string]: any;
+}
+export interface Delivered {
 	[name: string]: any;
 }
 export interface RootExposed extends Exposed {
 	$update(node?: NeepElement | Component): RootExposed;
 	$mount(target?: any): RootExposed;
 	$unmount(): void;
-}
-
-export interface Render<R extends object = any> {
-	(data: R, context: Context, auxiliary: Auxiliary): NeepNode;
 }
 
 /** 上下文环境 */
@@ -64,12 +56,35 @@ export interface Context {
 	inited: boolean;
 	/** 父组件 */
 	parent?: Exposed;
+	delivered: Delivered;
 	/** 子组件集合 */
 	children: Set<Exposed>;
 	childNodes: any[];
 	refresh(fn?: () => void): void;
 }
 
+export interface Entity {
+	readonly exposed: Exposed;
+	readonly delivered: Delivered;
+	readonly component: Component<any, any> | null;
+	readonly parent?: Entity;
+	readonly isContainer: boolean;
+	readonly inited: boolean;
+	readonly destroyed: boolean;
+	readonly mounted: boolean;
+	readonly unmounted: boolean;
+
+	callHook<H extends Hooks>(hook: H): void;
+	callHook(hook: string): void;
+	setHook<H extends Hooks>(id: H, hook: Hook):() => void;
+	setHook(id: string,hook: Hook): () => void;
+	readonly $_hooks: { [name: string]: Set<Hook>; }
+	refresh(fn?: () => void): void;
+}
+
+export interface Render<R extends object = any> {
+	(data: R, context: Context, auxiliary: Auxiliary): NeepNode;
+}
 
 /** 组件标记 */
 export interface Marks {
@@ -80,7 +95,7 @@ export interface Marks {
 	[symbols.renderSymbol]?: Render;
 }
 /** 构造函数 */
-export interface NeepResponseComponent<
+export interface Component<
 	P extends object = object,
 	R extends object = object,
 > extends Marks {
@@ -88,24 +103,9 @@ export interface NeepResponseComponent<
 		props: P,
 		context: Context,
 		auxiliary: Auxiliary
-	): () => undefined | NeepNode | NeepNode[] | R;
+	): undefined | null | NeepNode | NeepNode[] | R |
+		(() => undefined | null | NeepNode | NeepNode[] | R);
 }
-
-export interface NeepRepeatedlyComponent<
-	P extends object = object,
-	R extends object = object,
-> extends Marks {
-	(
-		props: P,
-		context: Context,
-		auxiliary: Auxiliary,
-	): undefined | NeepNode | NeepNode[] | R;
-}
-
-export type Component<
-	P extends object = object,
-	R extends object = object,
-> = NeepResponseComponent<P, R> | NeepRepeatedlyComponent<P, R>;
 
 export type Tag = null | string
 	| typeof Tags[keyof typeof Tags]
@@ -180,6 +180,12 @@ export interface IRender {
 		removed: boolean,
 	): any;
 	darw(container: NativeContainer, node: NativeNode): void;
+	darwContainer(
+		container: NativeContainer,
+		node: NativeNode,
+		props: MountProps,
+		parent?: IRender,
+	): [NativeContainer, NativeNode];
 
 	isNode(v: any): v is NativeNode;
 	create(tag: string, props: {[k: string]: any}): NativeElement;
@@ -197,5 +203,5 @@ export interface IRender {
 		node: NativeNode,
 		next?: NativeNode | null,
 	): void;
-	remove(n: NativeNode): void;
+	remove(n: NativeNode, parent?: NativeContainer): void;
 }

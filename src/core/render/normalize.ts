@@ -35,6 +35,7 @@ function execSimple(
 		slots: setSlots(iRender, slots),
 		inited: false,
 		parent: nObject.exposed,
+		delivered: nObject.delivered,
 		children: new Set<Exposed>(),
 		childNodes: children,
 		refresh(f) { nObject.refresh(f); }

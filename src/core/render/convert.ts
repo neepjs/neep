@@ -1,10 +1,11 @@
+import { getRender } from '../install';
 import { NeepNode, NeepElement, Tag } from '../type';
 import { Tags, isElement, Value } from '../auxiliary';
 import { isElementSymbol, typeSymbol } from '../symbols';
 import { recursive2iterable } from './recursive';
 import Entity from './Entity';
-import Container from './Container';
 import NeepObject from './Object';
+import Container from './Container';
 
 export interface TreeNode
 	extends Omit<
@@ -16,7 +17,7 @@ export interface TreeNode
 	tag: Tag;
 	children: (this | this[])[];
 	mounted?: boolean;
-	component?: Entity | Container;
+	component?: NeepObject;
 }
 /** 强制转换为 NeepElement */
 function toElement(t: any): null | NeepElement {
@@ -65,6 +66,19 @@ function createItem(
 			...source, children: [],
 			component: new Entity(
 				tag,
+				source.props || {},
+				source.children,
+				nObject,
+			),
+		};
+	}
+	if (tag === Tags.Container) {
+		const type = source?.props?.type;
+		const iRender = type ? getRender(type) : nObject.iRender;
+		return {
+			...source, children: [],
+			component: new Container(
+				iRender,
 				source.props || {},
 				source.children,
 				nObject,
@@ -163,7 +177,19 @@ function updateItem(
 				component: undefined,
 			};
 		}
-			let { component } = tree;
+		const { component } = tree;
+		if (!component) { return createItem(nObject, source); }
+		component!.update(source.props || {}, source.children);
+		return { ...source, children: [], component };
+	}
+	if (tag === Tags.Container) {
+		const { component } = tree;
+		if (!component) { return createItem(nObject, source); }
+		const type = source?.props?.type;
+		const iRender = type ? getRender(type) : nObject.iRender;
+		if (iRender !== component.iRender) {
+			return createItem(nObject, source);
+		}
 		component!.update(source.props || {}, source.children);
 		return { ...source, children: [], component };
 	}

@@ -2,8 +2,7 @@ import { Tags } from '../auxiliary';
 import { IRender, NativeNode, NativeElement } from '../type';
 import { createMountedNode, recoveryMountedNode } from './id';
 import { TreeNode } from './convert';
-import Container from './Container';
-import Entity from './Entity';
+import NeepObject from './Object';
 
 
 /**
@@ -12,7 +11,7 @@ import Entity from './Entity';
 export interface MountedNode extends TreeNode {
 	id: number;
 	parent?: this;
-	component: undefined | Entity | Container;
+	componen?: NeepObject;
 	node: undefined | NativeNode;
 }
 
@@ -185,7 +184,7 @@ function updateAll(
 		for (; index < length; index++) {
 			const src = source[index];
 			const item = Array.isArray(src)
-				? createList(iRender, src) 
+				? createList(iRender, src)
 				: createItem(iRender, src);
 			list.push(item);
 			if (!parent) { continue; }
@@ -219,14 +218,13 @@ function updateItem(
 		[tree] = tree.splice(index, 1);
 		unmount(iRender, all);
 	}
-	const { tag } = source;
+	const { tag, component } = source;
 	const ref = source.ref !== tree.ref && source.ref;
-	if (tag !== tree.tag) {
+	if (tag !== tree.tag || component !== tree.component) {
 		return replace(iRender, createItem(iRender, source), tree);
 	}
 	if (!tag) { return tree; }
-	if (typeof tag !== 'string') {
-		const { component } = source;
+	if (typeof tag !== 'string' || tag === Tags.Container) {
 		if (!component) {
 			// TODO: ref
 			return createMountedNode({
@@ -392,7 +390,7 @@ function createItem(
 	iRender: IRender,
 	source: TreeNode,
 ): MountedNode {
-	const { tag, ref } = source;
+	const { tag, ref, component } = source;
 	if (!tag) {
 		const node = iRender.placeholder();
 		if (ref) { ref(node); }
@@ -403,8 +401,7 @@ function createItem(
 			children: [],
 		});
 	}
-	if (typeof tag !== 'string') {
-		const { component } = source;
+	if (typeof tag !== 'string' || tag === Tags.Container) {
 		if (!component) {
 			// TODO: ref
 			return createMountedNode({
@@ -416,7 +413,6 @@ function createItem(
 		}
 		component.mount();
 		if (ref) { ref(component.exposed); }
-		// TODO: ref
 		return createMountedNode({
 			...source,
 			node: undefined,

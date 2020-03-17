@@ -1,36 +1,25 @@
 import { monitorable } from './install';
-import { Exposed, Hook, Hooks } from './type';
+import { Hook, Hooks, Entity } from './type';
 const hooks: Record<string, Set<Hook>> = Object.create(null);
-
 
 export function setHook<H extends Hooks>(
 	id: H,
 	hook: Hook,
-	exposed?: Exposed,
+	entity?: Entity,
 ):() => void;
 export function setHook(
 	id: string,
 	hook: Hook,
-	exposed?: Exposed,
+	entity?: Entity,
 ): () => void;
 
 export function setHook(
 	id: string,
 	hook: Hook,
-	exposed?: Exposed,
+	entity?: Entity,
 ):() => void {
-	let list = hooks;
-	if (exposed) {
-		if (!exposed.$__hooks) {
-			list = {}
-			Reflect.defineProperty(exposed, '$__hooks', {
-				configurable: true,
-				value: list,
-			});
-		} else {
-			list = exposed.$__hooks;
-		}
-	}
+	let list = entity?.$_hooks || hooks;
+	if (!list) { return () => {}; }
 	hook = monitorable.safeify(hook);
 	let set = list[id];
 	if (!set) {
@@ -43,12 +32,12 @@ export function setHook(
 
 export function callHook<H extends Hooks>(
 	id: H,
-	exposed: Exposed,
+	exposed: Entity,
 ): void;
-export function callHook(id: string, exposed: Exposed): void;
-export function callHook(id: string, exposed: Exposed): void {
+export function callHook(id: string, exposed: Entity): void;
+export function callHook(id: string, exposed: Entity): void {
 	if (!exposed) { return; }
-	for (const hook of exposed.$__hooks?.[id] || []) {
+	for (const hook of exposed.$_hooks[id] || []) {
 		hook(exposed);
 	}
 	for (const hook of hooks[id] || []) {

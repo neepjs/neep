@@ -6,7 +6,7 @@ import {
 } from '../type';
 import { isElement, createElement } from '../auxiliary';
 import { isProduction } from '../constant';
-import { devtools } from '../install';
+import { devtools, getRender } from '../install';
 import Container from './Container';
 
 export default function render(
@@ -14,8 +14,11 @@ export default function render(
 	p: MountProps = {},
 ): RootExposed {
 	let params = {...p};
-	const container =  new Container(params, e === undefined ? []
-		: isElement(e) ? [e] : [createElement(e)]);
+	const container =  new Container(
+		getRender(p.type),
+		params,
+		e === undefined ? [] : isElement(e) ? [e] : [createElement(e)],
+	);
 	if (!isProduction) {
 		devtools.renderHook(container);
 	}
