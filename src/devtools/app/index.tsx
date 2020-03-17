@@ -75,7 +75,7 @@ function createTag(
 				left: -20px;
 				top: 0;
 				width: 20px;
-				heigth: 20px;
+				height: 20px;
 				text-align: center;
 				cursor: pointer;
 				background: #DDD;;
@@ -142,7 +142,7 @@ function *getList(
 			keys, id, key, [label, ...labels],
 			...getList(children, keys, options)
 		);
-		
+
 		return;
 	}
 	if (type === Type.tag) {
@@ -185,7 +185,7 @@ function *getList(
 				keys, id, key, [label, ...labels],
 				...getList(children, keys, options)
 			);
-			
+
 		} else {
 			yield* getList(children, keys, options, [label, ...labels]);
 		}
@@ -198,7 +198,7 @@ function *getList(
 				keys, id, key, [label, ...labels],
 				...getList(children, keys, options)
 			);
-			
+
 		} else {
 			yield* getList(children, keys, options, [label, ...labels]);
 		}
@@ -211,7 +211,7 @@ function *getList(
 				keys, id, key, [label, ...labels],
 				...getList(children, keys, options)
 			);
-			
+
 		} else {
 			yield* getList(children, keys, options, [label, ...labels]);
 		}
@@ -219,7 +219,7 @@ function *getList(
 	}
 	if (tag === SlotRender) {
 		if (options.slotRender) {
-			
+
 		}
 		return;
 	}

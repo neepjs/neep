@@ -11,7 +11,6 @@ import NeepObject from './Object';
 export interface MountedNode extends TreeNode {
 	id: number;
 	parent?: this;
-	componen?: NeepObject;
 	node: undefined | NativeNode;
 }
 

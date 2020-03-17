@@ -17,7 +17,7 @@ function createExposed(obj: NeepObject): Exposed {
 		$parent: { configurable: true, get: () => obj.parent?.exposed },
 		$component: { configurable: true, value: null },
 		$isContainer: { configurable: true, value: false },
-		$inited: { configurable: true, get: () => obj.inited },
+		$created: { configurable: true, get: () => obj.created },
 		$destroyed: { configurable: true, get: () => obj.destroyed },
 		$mounted: { configurable: true, get: () => obj.mounted },
 		$unmounted: { configurable: true, get: () => obj.unmounted },
@@ -36,7 +36,7 @@ function createEntity(obj: NeepObject): ComponentEntity {
 		parent: { configurable: true, get: () => obj.parent?.entity },
 		component: { configurable: true, value: null },
 		isContainer: { configurable: true, value: false },
-		inited: { configurable: true, get: () => obj.inited },
+		created: { configurable: true, get: () => obj.created },
 		destroyed: { configurable: true, get: () => obj.destroyed },
 		mounted: { configurable: true, get: () => obj.mounted },
 		unmounted: { configurable: true, get: () => obj.unmounted },
@@ -73,7 +73,7 @@ export default class NeepObject {
 	/** 原生组件 */
 	native: NativeComponent | null = null;
 	/** 状态 */
-	inited: boolean = false;
+	created: boolean = false;
 	destroyed: boolean = false;
 	mounted: boolean = false;
 	unmounted: boolean = false;
@@ -130,7 +130,7 @@ export default class NeepObject {
 			return;
 		}
 		if (this.destroyed) { return; }
-		if (!this.inited) { return; }
+		if (!this.created) { return; }
 		this._needRefresh = true;
 
 		if (this._refreshing) { return; }
@@ -168,13 +168,13 @@ export default class NeepObject {
 	}
 
 
-	private __execed_destroy = false;
-	private __execed_mount = false;
-	private __execed_mounted = false;
+	private __executed_destroy = false;
+	private __executed_mount = false;
+	private __executed_mounted = false;
 	protected _destroy() { }
 	destroy() {
-		if (this.__execed_destroy) { return; }
-		this.__execed_destroy = true;
+		if (this.__executed_destroy) { return; }
+		this.__executed_destroy = true;
 		this.callHook('beforeDestroy');
 		this._destroy();
 		this.callHook('destroyed');
@@ -182,9 +182,9 @@ export default class NeepObject {
 	}
 	protected _mount() { }
 	mount() {
-		if (this.__execed_destroy) { return; }
-		if (this.__execed_mount) { return; }
-		this.__execed_mount = true;
+		if (this.__executed_destroy) { return; }
+		if (this.__executed_mount) { return; }
+		this.__executed_mount = true;
 		this.callHook('beforeMount');
 		this._mount();
 		this.callHook('mounted');
@@ -193,16 +193,16 @@ export default class NeepObject {
 	protected _unmount() { }
 	unmount() {
 		if (!this.mounted) { return; }
-		if (this.__execed_mounted) { return; }
-		this.__execed_mounted = true;
-		this.callHook('beforeUnount');
+		if (this.__executed_mounted) { return; }
+		this.__executed_mounted = true;
+		this.callHook('beforeUnmount');
 		this._unmount();
 		this.callHook('unmounted');
 		this.unmounted = true;
 	}
 	_draw() {}
 	draw() {
-		if (this.__execed_destroy) { return; }
+		if (this.__executed_destroy) { return; }
 		this.callHook('beforeUpdate');
 		this._draw();
 		this.callHook('updated');

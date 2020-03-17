@@ -3,7 +3,7 @@ import * as symbols from './symbols';
 
 /** 全局钩子 */
 export interface Hook {
-	(nObjcet: Entity): void
+	(nObject: Entity): void
 }
 /** source 对象 */
 export type NeepNode = NeepElement | null;
@@ -20,18 +20,18 @@ export interface Slots {
 export interface ContextConstructor {
 	(context: Context, exposed?: Exposed): void;
 }
-export type Hooks = 'beforeInit' | 'inited'
+export type Hooks = 'beforeCreate' | 'created'
 	| 'beforeDestroy' | 'destroyed'
 	| 'beforeUpdate' | 'updated'
 	| 'beforeMount' | 'mounted'
-	| 'beforeDraw' | 'drawed'
-	| 'beforeDrawAll' | 'drawedAll'
+	| 'beforeDraw' | 'drawn'
+	| 'beforeDrawAll' | 'drawnAll'
 ;
 export interface Exposed {
 	readonly $component: Component<any, any> | null;
 	readonly $parent?: Exposed;
 	readonly $isContainer: boolean;
-	readonly $inited: boolean;
+	readonly $created: boolean;
 	readonly $destroyed: boolean;
 	readonly $mounted: boolean;
 	readonly $unmounted: boolean;
@@ -53,7 +53,7 @@ export interface Context {
 	/** 作用域槽 */
 	slots: Slots;
 	/** 是否已经完成初始化 */
-	inited: boolean;
+	created: boolean;
 	/** 父组件 */
 	parent?: Exposed;
 	delivered: Delivered;
@@ -69,7 +69,7 @@ export interface Entity {
 	readonly component: Component<any, any> | null;
 	readonly parent?: Entity;
 	readonly isContainer: boolean;
-	readonly inited: boolean;
+	readonly created: boolean;
 	readonly destroyed: boolean;
 	readonly mounted: boolean;
 	readonly unmounted: boolean;
@@ -179,8 +179,8 @@ export interface IRender {
 		node: NativeNode,
 		removed: boolean,
 	): any;
-	darw(container: NativeContainer, node: NativeNode): void;
-	darwContainer(
+	draw(container: NativeContainer, node: NativeNode): void;
+	drawContainer(
 		container: NativeContainer,
 		node: NativeNode,
 		props: MountProps,

@@ -80,7 +80,7 @@ export function *getTree(
 			tag: name,
 			children: [...getTree(
 				'content' in component ? (component as Container).content
-					: isNative ? (component as Entity).naitveTree : component.tree
+					: isNative ? (component as Entity).nativeTree : component.tree
 			)],
 			props,
 			key,

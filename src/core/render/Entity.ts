@@ -38,8 +38,8 @@ function updateProps(
 	);
 	setSlots(iRender, slots, nObject.slots);
 	if (!native) { return; }
-	nObject.naitveNodes
-		= convert(nObject, childNodes, nObject.naitveNodes);
+	nObject.nativeNodes
+		= convert(nObject, childNodes, nObject.nativeNodes);
 }
 
 function createContext<
@@ -48,7 +48,7 @@ function createContext<
 >(nObject: Entity<P, R>): Context {
 	return initContext({
 		slots: nObject.slots,
-		get inited() { return nObject.inited; },
+		get created() { return nObject.created; },
 		get parent() { return nObject.parent.exposed; },
 		get delivered() { return nObject.parent.delivered; },
 		get children() { return nObject.children; },
@@ -116,8 +116,8 @@ export default class Entity<
 	/** 结果渲染函数 */
 	private readonly _stopRender:() => void;
 	/** 原生子代 */
-	naitveNodes: (TreeNode | TreeNode[])[] | undefined;
-	naitveTree: (MountedNode | MountedNode[])[] = [];
+	nativeNodes: (TreeNode | TreeNode[])[] | undefined;
+	nativeTree: (MountedNode | MountedNode[])[] = [];
 	/** 组件上下文 */
 	readonly context: Context;
 	readonly parent: NeepObject;
@@ -150,7 +150,7 @@ export default class Entity<
 		const context = createContext(this);
 		this.context = context;
 		// 初始化钩子
-		this.callHook('beforeInit');
+		this.callHook('beforeCreate');
 		// 更新属性
 		this.childNodes = children;
 		updateProps(this, props, children);
@@ -160,8 +160,8 @@ export default class Entity<
 		this._stopRender = stopRender;
 		this._nodes = convert(this, nodes);
 		// 初始化钩子
-		this.callHook('inited');
-		this.inited = true;
+		this.callHook('created');
+		this.created = true;
 		if (this._needRefresh) { this.refresh(); }
 	}
 	/** 更新属性及子代 */

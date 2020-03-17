@@ -18,7 +18,7 @@ export function setCurrent<T>(
 
 export function checkCurrent(
 	name: string,
-	initonly = false,
+	initOnly = false,
 ): Entity {
 	if (!current) {
 		throw new NeepError(
@@ -26,10 +26,10 @@ export function checkCurrent(
 			'life',
 		);
 	}
-	if (!initonly) {
+	if (!initOnly) {
 		return current;
 	}
-	if (!current.inited) {
+	if (!current.created) {
 		return current;
 	}
 	throw new NeepError(

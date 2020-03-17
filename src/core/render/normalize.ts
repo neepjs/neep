@@ -33,7 +33,7 @@ function execSimple(
 	getSlots(iRender, children, slots);
 	const context: Context = initContext({
 		slots: setSlots(iRender, slots),
-		inited: false,
+		created: false,
 		parent: nObject.exposed,
 		delivered: nObject.delivered,
 		children: new Set<Exposed>(),
@@ -42,7 +42,7 @@ function execSimple(
 	});
 	if (!isProduction) { getLabel(); }
 	const result = tag({...node.props}, context, auxiliary);
-	const nodes = slotless(renderNode(
+	const nodes = removeSlot(renderNode(
 		iRender,
 		result,
 		context,
@@ -61,18 +61,18 @@ function execSimple(
 	} as NeepElement;
 }
 
-function slotless(
+function removeSlot(
 	node: any,
 	slots: Slots,
 	native = false,
 ): any {
 	if (Array.isArray(node)) {
-		return node.map(n => slotless(n, slots, native));
+		return node.map(n => removeSlot(n, slots, native));
 	}
 	if (!isElement(node)) { return node; }
 
 	const children = node.children
-		.map(n => slotless(n, slots, native));
+		.map(n => removeSlot(n, slots, native));
 
 	let { tag, inserted, args = [{}] } = node;
 	if (tag === Tags.Slot) {
@@ -135,7 +135,7 @@ export default function normalize(
 ) {
 	return execSimple(
 		nObject,
-		slotless(
+		removeSlot(
 			renderNode(
 				nObject.container.iRender,
 				result,

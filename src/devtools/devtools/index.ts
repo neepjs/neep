@@ -32,7 +32,7 @@ const devtools: Devtools = {
 				slotRender: true,
 			}));
 		};
-		Neep.setHook('drawedAll', getData, container.entity);
+		Neep.setHook('drawnAll', getData, container.entity);
 		Neep.setHook('mounted', () => {
 			if (!app) { app = create(); }
 			getData();

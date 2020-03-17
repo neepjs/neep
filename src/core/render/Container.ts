@@ -44,11 +44,11 @@ export default class Container extends NeepObject {
 		if (parent) {
 			this.rootContainer = parent.container.rootContainer;
 		}
-		this.callHook('beforeInit');
+		this.callHook('beforeCreate');
 		this._render = () => children;
 		this._nodes = convert(this, children);
-		this.callHook('inited');
-		this.inited = true;
+		this.callHook('created');
+		this.created = true;
 	}
 	_drawChildren = false;
 	_drawContainer = false;
@@ -123,7 +123,7 @@ export default class Container extends NeepObject {
 		this._drawContainer = false;
 		this.callHook('beforeUpdate');
 		if (drawContainer) {
-			this.iRender.darwContainer(
+			this.iRender.drawContainer(
 				this._container!,
 				this._node!,
 				this.props,
@@ -174,8 +174,8 @@ export default class Container extends NeepObject {
 		awaitDraw.clear();
 		if (needDraw) { this.drawSelf(); }
 		list.map(c => c.draw());
-		this.iRender.darw(container, node);
-		this.callHook('drawed');
+		this.iRender.draw(container, node);
+		this.callHook('drawn');
 	}
 	private _containers = new Set<Container>();
 	markDrawContainer(
@@ -195,6 +195,6 @@ export default class Container extends NeepObject {
 		this.callHook('beforeDrawAll');
 		const list = [...containers];
 		list.map(c => c.drawContainer());
-		this.callHook('drawedAll');
+		this.callHook('drawnAll');
 	}
 }

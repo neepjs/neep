@@ -44,7 +44,7 @@ const render: IRender = {
 		if (container === node && removed) { return; }
 		(container as any as Element).remove();
 	},
-	darwContainer(container, node, {target, class: className, style, tag}, parent) {
+	drawContainer(container, node, {target, class: className, style, tag}, parent) {
 		render.update(container as NativeElement, { class: className, style })
 		if (typeof target === 'string') {
 			target = document.querySelector(target);
@@ -81,10 +81,11 @@ const render: IRender = {
 		target.appendChild(node);
 		return [container, node];
 	},
-	darw() {},
+	draw() {},
 
 	create(tag, props) {
 		// TODO: NS
+		// 你好啊
 		return update(document.createElement(tag), props) as any;
 	},
 	text(text: string): NativeText {

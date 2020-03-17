@@ -35,12 +35,12 @@ export function watch<T>(
  */
 export function watch<T>(
 	value: () => T,
-	cb: (v: T, stoped: boolean) => void,
+	cb: (v: T, stopped: boolean) => void,
 ): () => void;
 
 export function watch<T>(
 	value: Value<T> | (() => T),
-	cb: (v: Value<T> | T, stoped: boolean) => void
+	cb: (v: Value<T> | T, stopped: boolean) => void
 ): () => void {
 	const entity = checkCurrent('watch');
 	if (typeof value !== 'function') { return () => {}; }
@@ -59,25 +59,25 @@ export function watch<T>(
  * 为当前组件注册钩子
  * @param name 钩子名称
  * @param hook 钩子
- * @param initonly 是否仅在初始化时有效
+ * @param initOnly 是否仅在初始化时有效
  */
 export function hook<H extends Hooks>(
 	name: H,
 	hook: Hook,
-	initonly?: boolean,
+	initOnly?: boolean,
 ): undefined | (() => void);
 export function hook(
 	name: string,
 	hook: Hook,
-	initonly?: boolean,
+	initOnly?: boolean,
 ): undefined | (() => void);
 export function hook(
 	name: string,
 	hook: Hook,
-	initonly?: boolean,
+	initOnly?: boolean,
 ): undefined | (() => void) {
 	const entity = checkCurrent('setHook');
-	if (initonly && entity.inited) { return undefined; }
+	if (initOnly && entity.created) { return undefined; }
 	return setHook(name, hook, entity);
 }
 
@@ -150,12 +150,12 @@ export function expose<T>(
  * 设置基于 getter 的导出
  * @param name
  * @param getter
- * @param nonmodifiable
+ * @param nonModifiable
  */
 export function expose<T>(
 	name: string | number | symbol,
 	getter: () => T,
-	nonmodifiable: true,
+	nonModifiable: true,
 ): void;
 /**
  * 设置基于 getter/setter 的导出
@@ -202,12 +202,12 @@ export function deliver<T>(
  * 设置基于 getter 的传递
  * @param name
  * @param getter
- * @param nonmodifiable
+ * @param nonModifiable
  */
 export function deliver<T>(
 	name: string | number | symbol,
 	getter: () => T,
-	nonmodifiable: true,
+	nonModifiable: true,
 ): void;
 /**
  * 设置基于 getter/setter 的传递
