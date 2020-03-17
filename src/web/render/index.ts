@@ -8,6 +8,7 @@ import {
 	NativeComponent,
 	NativeShadow,
 	NativeContainer,
+	NativeElement,
 } from '@neep/core';
 
 const render: IRender = {
@@ -15,26 +16,70 @@ const render: IRender = {
 	isNode(v): v is NativeNode {
 		return v instanceof Node;
 	},
-	mount({target}, type) {
-		const node = document.createElement('div');
+	mount({target, class: className, style, tag}, parent) {
+		if (!(
+			typeof tag === 'string' &&
+			/^[a-z][a-z0-9]*(?:\-[a-z0-9]+)?(?:\:[a-z0-9]+(?:\-[a-z0-9]+)?)?$/i.test(tag)
+		)) {
+			tag = 'div';
+		}
+		const container = render.create(tag, { class: className, style });
 		if (typeof target === 'string') {
 			target = document.querySelector(target);
 		}
 		if (target instanceof Element) {
-			target.appendChild(node);
-			if (type) {
-				return [node, document.createComment('')] as any;
+			target.appendChild(container as any);
+			if (parent) {
+				return [container, parent.placeholder] as any;
 			}
-			return [node, node] as any;
+			return [container, container];
 		}
-		if (!type) {
-			document.body.appendChild(node);
+		if (parent !== render) {
+			document.body.appendChild(container as any);
+			return [container, container] as any;
 		}
-		return [node, node] as any;
+		return [container, container] as any;
 	},
 	unmount(container, node, removed) {
 		if (container === node && removed) { return; }
 		(container as any as Element).remove();
+	},
+	darwContainer(container, node, {target, class: className, style, tag}, parent) {
+		render.update(container as NativeElement, { class: className, style })
+		if (typeof target === 'string') {
+			target = document.querySelector(target);
+		}
+		if (parent !== render && !(target instanceof Element)) {
+			target = document.body;
+		}
+		const oldTarget = parent === render && container === node ? undefined : render.parent(node);
+		if (oldTarget === target) {
+			return [container, node];
+		}
+		if (parent !== render) {
+			target.appendChild(container);
+			return [container, node];
+		}
+		if (!oldTarget) {
+			const newNode = parent.placeholder();
+			const pNode = parent.parent(node);
+			if (pNode) {
+				render.insert(pNode, newNode as any, node);
+				render.remove(node);
+			}
+			return [container, newNode];
+		}
+		if (!target) {
+			const pNode = parent.parent(node);
+			if (pNode) {
+				render.insert(pNode, container, node);
+				render.remove(node);
+			}
+			return [container, container];
+
+		}
+		target.appendChild(node);
+		return [container, node];
 	},
 	darw() {},
 

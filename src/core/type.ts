@@ -203,5 +203,5 @@ export interface IRender {
 		node: NativeNode,
 		next?: NativeNode | null,
 	): void;
-	remove(n: NativeNode, parent?: NativeContainer): void;
+	remove(n: NativeNode): void;
 }
