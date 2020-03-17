@@ -1,4 +1,5 @@
 module.exports = {
+	comments: false,
 	plugins: [
 		'@babel/plugin-syntax-async-generators',
 		'@babel/plugin-proposal-class-properties',
