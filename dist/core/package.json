@@ -1,0 +1,25 @@
+{
+  "name": "@neep/core",
+  "version": "0.1.0-alpha.0",
+  "main": "neep.core.common.js",
+  "module": "neep.core.esm.js",
+  "unpkg": "neep.core.js",
+  "jsdelivr": "neep.core.js",
+  "typings": "./types",
+  "keywords": [
+    "neep"
+  ],
+  "author": "Fierflame",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neepjs/neep.git"
+  },
+  "bugs": {
+    "url": "https://github.com/neepjs/neep/issues"
+  },
+  "homepage": "https://github.com/neepjs/neep#readme",
+  "peerDependencies": {
+    "monitorable": "^0.1.0-alpha.3"
+  }
+}

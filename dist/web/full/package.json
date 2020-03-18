@@ -1,0 +1,5 @@
+{
+  "main": "index.js",
+  "module": "../neep.web.full.esm.js",
+  "typings": "./types"
+}

@@ -1,0 +1,28 @@
+{
+  "name": "@neep/web",
+  "version": "0.1.0-alpha.0",
+  "main": "neep.web.render.common.js",
+  "module": "neep.web.render.esm.js",
+  "unpkg": "neep.web.render.js",
+  "jsdelivr": "neep.web.render.js",
+  "typings": "./types",
+  "keywords": [
+    "neep"
+  ],
+  "author": "Fierflame",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neepjs/neep.git"
+  },
+  "bugs": {
+    "url": "https://github.com/neepjs/neep/issues"
+  },
+  "homepage": "https://github.com/neepjs/neep#readme",
+  "peerDependencies": {
+    "@neep/core": "^0.1.0-alpha.0"
+  },
+  "optionalDependencies": {
+    "monitorable": "^0.1.0-alpha.3"
+  }
+}
