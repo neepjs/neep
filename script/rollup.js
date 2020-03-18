@@ -49,7 +49,7 @@ const createOutput = (dir, format, ...build) => ({
 	// exports: 'default',
 });
 const createRenderOutput = (dir, format, ...build) => ({
-	...createOutput(dir, format, 'render', ...build),
+	...createOutput(dir, format, ...build),
 	name: `${ GlobalName }${dir.replace(
 		/(?:^|-)([a-z])/g,
 		(_, s) => s.toUpperCase()
@@ -103,8 +103,8 @@ export default [
 	{
 		input: 'src/web/index.ts',
 		output: [
-			createRenderOutput('web', 'esm', 'web'),
-			createRenderOutput('web', 'cjs', 'web'),
+			createRenderOutput('web', 'esm', 'web', 'render'),
+			createRenderOutput('web', 'cjs', 'web', 'render'),
 		],
 		external,
 		plugins: [ alias(), resolve(), babel(), replace(true) ],
@@ -112,7 +112,7 @@ export default [
 	{
 		input: 'src/web/index.ts',
 		output: [
-			createRenderOutput('web', 'esm', 'web', true),
+			createRenderOutput('web', 'esm', 'web', 'render', true),
 		],
 		external,
 		plugins: [ alias(), resolve(), babel(), replace(), terser() ],
@@ -120,7 +120,7 @@ export default [
 	{
 		input: 'src/web/browser.ts',
 		output: [
-			createRenderOutput('web', 'umd', 'web'),
+			createRenderOutput('web', 'umd', 'web', 'render'),
 		],
 		external,
 		plugins: [ alias(), resolve(), babel(), replace(true) ],
@@ -128,7 +128,7 @@ export default [
 	{
 		input: 'src/web/browser.ts',
 		output: [
-			createRenderOutput('web', 'umd', 'web', true),
+			createRenderOutput('web', 'umd', 'web', 'render', true),
 		],
 		external,
 		plugins: [ alias(), resolve(), babel(), replace(), terser() ],
@@ -136,18 +136,32 @@ export default [
 	createDts('web'),
 
 	{
-		input: 'src/web/index.ts',
+		input: 'src/web/standalone.ts',
 		output: [
 			createOutput('web', 'esm', 'web', 'standalone'),
+		],
+		external: standaloneExternal,
+		plugins: [ alias(), resolve(), babel(), replace(true) ],
+	},
+	{
+		input: 'src/web/standalone.ts',
+		output: [
+			createOutput('web', 'esm', 'web', 'standalone', true),
+		],
+		external: standaloneExternal,
+		plugins: [ alias(), resolve(), babel(), replace(), terser() ],
+	},
+	{
+		input: 'src/web/standalone.browser.ts',
+		output: [
 			createOutput('web', 'umd', 'web', 'standalone'),
 		],
 		external: standaloneExternal,
 		plugins: [ alias(), resolve(), babel(), replace(true) ],
 	},
 	{
-		input: 'src/web/index.ts',
+		input: 'src/web/standalone.browser.ts',
 		output: [
-			createOutput('web', 'esm', 'web', 'standalone', true),
 			createOutput('web', 'umd', 'web', 'standalone', true),
 		],
 		external: standaloneExternal,
