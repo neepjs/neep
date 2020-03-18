@@ -9,7 +9,7 @@ interface NativeAttributes extends Attributes {
 	class?: string;
 }
 interface ClassAttributes<T> extends Attributes {
-	
+
 }
 
 interface SlotAttr {
@@ -19,7 +19,7 @@ interface ScopeSlotAttr {
 	render?(...params: any[]): Node | Node[];
 }
 interface SlotRenderAttr {
-	
+
 }
 
 
@@ -32,17 +32,13 @@ declare global {
 	//     interface ElementAttributesProperty { props: {}; }
 	//     interface ElementChildrenAttribute { children: {}; }
 
-	//     // We can't recurse forever because `type` can't be self-referential;
-	//     // let's assume it's reasonable to do a single React.lazy() around a single React.memo() / vice-versa
 	//     type LibraryManagedAttributes<C, P> = C extends React.MemoExoticComponent<infer T> | React.LazyExoticComponent<infer T>
 	//         ? T extends React.MemoExoticComponent<infer U> | React.LazyExoticComponent<infer U>
 	//             ? ReactManagedAttributes<U, P>
 	//             : ReactManagedAttributes<T, P>
 	//         : ReactManagedAttributes<C, P>;
 
-		// tslint:disable-next-line:no-empty-interface
 		interface IntrinsicAttributes extends NativeAttributes { }
-		// tslint:disable-next-line:no-empty-interface
 		interface IntrinsicClassAttributes<T> extends ClassAttributes<T> { }
 
 		interface IntrinsicElements {
