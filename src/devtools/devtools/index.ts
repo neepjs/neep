@@ -25,11 +25,12 @@ const devtools: Devtools = {
 				tree,
 				value: true,
 				tag: true,
-				simple: true,
-				container: true,
-				template: true,
-				scopeSlot: true,
-				slotRender: true,
+				// simple: true,
+				// container: true,
+				// template: true,
+				// scopeSlot: true,
+				// slotRender: true,
+				// deliver: true,
 			}));
 		};
 		Neep.setHook('drawnAll', getData, container.entity);

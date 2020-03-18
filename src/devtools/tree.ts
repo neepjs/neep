@@ -1,6 +1,6 @@
 import {
 	Template, ScopeSlot, SlotRender, Value,
-	nameSymbol, typeSymbol,
+	nameSymbol, typeSymbol, Deliver,
 } from '@neep/core';
 import { MountedNode } from '../core/render/draw';
 import Container from '../core/render/Container';
@@ -51,18 +51,17 @@ export function *getTree(
 		label = component?.exposed?.$label,
 	} = tree;
 	if (!tag) {
-		yield {
+		return yield {
 			id, parent,
 			type: Type.placeholder,
 			tag: 'placeholder',
 			children: [],
 		};
-		return;
 	}
 	if (typeof tag !== 'string') {
 		const name = tag[nameSymbol] || tag.name;
 		if (!component) {
-			yield {
+			return yield {
 				id, parent,
 				type: Type.simple,
 				tag: name,
@@ -71,10 +70,9 @@ export function *getTree(
 				key,
 				label,
 			};
-			return;
 		}
 		const isNative = tag[typeSymbol] === 'native';
-		yield {
+		return yield {
 			id, parent,
 			type: isNative ? Type.native : Type.standard,
 			tag: name,
@@ -86,10 +84,12 @@ export function *getTree(
 			key,
 			label,
 		};
-		return;
 	}
-	if (tag === Template || tag === ScopeSlot || tag === SlotRender) {
-		yield {
+	if (
+		tag === Template || tag === Deliver
+		|| tag === ScopeSlot || tag === SlotRender
+	) {
+		return yield {
 			id, parent,
 			type: Type.special,
 			tag,
@@ -98,7 +98,6 @@ export function *getTree(
 			key,
 			label,
 		};
-		return;
 	}
 	if (tag === Value) {
 		const treeValue = tree.value;
@@ -131,7 +130,7 @@ export function *getTree(
 			valueType = 'object';
 			value = String(treeValue);
 		}
-		yield {
+		return yield {
 			id, parent,
 			type: Type.special,
 			tag,
@@ -142,7 +141,6 @@ export function *getTree(
 			key,
 			label,
 		};
-		return;
 	}
 	yield {
 		id, parent,

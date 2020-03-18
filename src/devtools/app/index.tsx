@@ -1,4 +1,13 @@
-import { create, createElement, NeepNode, Template, ScopeSlot, SlotRender, Value } from '@neep/core';
+import {
+	create,
+	createElement,
+	NeepNode,
+	Template,
+	ScopeSlot,
+	SlotRender,
+	Value,
+	Deliver,
+} from '@neep/core';
 import { VTreeNode, Type } from '../tree';
 
 interface Options {
@@ -10,6 +19,7 @@ interface Options {
 	template?: boolean;
 	scopeSlot?: boolean;
 	slotRender?: boolean;
+	deliver?: boolean;
 }
 function getOptions({
 	value = false,
@@ -20,6 +30,7 @@ function getOptions({
 	template = false,
 	scopeSlot = false,
 	slotRender = false,
+	deliver = false,
 }: Options): Options {
 	return {
 		value,
@@ -30,6 +41,7 @@ function getOptions({
 		template,
 		scopeSlot,
 		slotRender,
+		deliver,
 	};
 }
 function createText(
@@ -137,85 +149,82 @@ function *getList(
 		valueType,
 	} = list;
 	if (type === Type.standard || type === Type.native) {
-		yield createTag(
+		return yield createTag(
 			<span style="font-weight: bold;">{tag}</span>,
 			keys, id, key, [label, ...labels],
 			...getList(children, keys, options)
 		);
-
-		return;
 	}
 	if (type === Type.tag) {
-		if (!options.tag) { return; }
-		yield createTag(
+		if (!options.tag) {
+			return yield* getList(children, keys, options, [label, ...labels]);
+		}
+		return yield createTag(
 			tag,
 			keys, id, key, [label, ...labels],
 			...getList(children, keys, options)
 		);
-		return;
 	}
 	if (type === Type.simple) {
-		if (options.simple) {
-			yield createTag(
-				<span style="
-					font-style: italic;
-					font-weight: bold;
-				">{tag}</span>,
-				keys, id, key, [label, ...labels],
-				...getList(children, keys, options)
-			);
-		} else {
-			yield* getList(children, keys, options, [label, ...labels]);
+		if (!options.simple) {
+			return yield* getList(children, keys, options, [label, ...labels]);
 		}
-		return;
+		return yield createTag(
+			<span style="
+				font-style: italic;
+				font-weight: bold;
+			">{tag}</span>,
+			keys, id, key, [label, ...labels],
+			...getList(children, keys, options)
+		);
 	}
 	if (type === Type.placeholder) {
 		if (!options.placeholder) { return; }
-		yield createTag(
+		return yield createTag(
 			<span style="font-style: italic;">placeholder</span>,
 			keys, id, key, [label, ...labels],
 			...getList(children, keys, options)
 		);
-		return;
 	}
 	if (type === Type.container) {
-		if (options.container) {
-			yield createTag(
-				<span style="font-style: italic;">container</span>,
-				keys, id, key, [label, ...labels],
-				...getList(children, keys, options)
-			);
-
-		} else {
-			yield* getList(children, keys, options, [label, ...labels]);
+		if (!options.container) {
+			return yield* getList(children, keys, options, [label, ...labels]);
 		}
-		return;
+		return yield createTag(
+			<span style="font-style: italic;">container</span>,
+			keys, id, key, [label, ...labels],
+			...getList(children, keys, options)
+		);
+	}
+	if (tag === Deliver) {
+		if (!options.deliver) {
+			return yield* getList(children, keys, options, [label, ...labels]);
+		}
+		return yield createTag(
+			<span style="font-style: italic;">Deliver</span>,
+			keys, id, key, [label, ...labels],
+			...getList(children, keys, options)
+		);
 	}
 	if (tag === Template) {
-		if (options.template) {
-			yield createTag(
-				<span style="font-style: italic;">Template</span>,
-				keys, id, key, [label, ...labels],
-				...getList(children, keys, options)
-			);
-
-		} else {
-			yield* getList(children, keys, options, [label, ...labels]);
+		if (!options.template) {
+			return yield* getList(children, keys, options, [label, ...labels]);
 		}
-		return;
+		return yield createTag(
+			<span style="font-style: italic;">Template</span>,
+			keys, id, key, [label, ...labels],
+			...getList(children, keys, options)
+		);
 	}
 	if (tag === ScopeSlot) {
-		if (options.scopeSlot) {
-			yield createTag(
-				<span style="font-style: italic;">ScopeSlot</span>,
-				keys, id, key, [label, ...labels],
-				...getList(children, keys, options)
-			);
-
-		} else {
-			yield* getList(children, keys, options, [label, ...labels]);
+		if (!options.scopeSlot) {
+			return yield* getList(children, keys, options, [label, ...labels]);
 		}
-		return;
+		return yield createTag(
+			<span style="font-style: italic;">ScopeSlot</span>,
+			keys, id, key, [label, ...labels],
+			...getList(children, keys, options)
+		);
 	}
 	if (tag === SlotRender) {
 		if (options.slotRender) {
