@@ -54,13 +54,12 @@ export function getSlots(
 	return nativeList;
 }
 function renderSlots(
-	iRender: IRender,
 	list: any[],
 	...props: any
 ): any[] {
 	return list.map(it => {
 		if (Array.isArray(it)) {
-			return renderSlots(iRender, it, ...props);
+			return renderSlots(it, ...props);
 		}
 		if (!isElement(it)) { return it; }
 		if (it.tag !== SlotRender) {
@@ -76,14 +75,13 @@ function renderSlots(
 	});
 }
 function createSlots(
-	iRender: IRender,
 	name: string,
 	list: any[],
 ): SlotFn {
 	const slot = (...props: any) => ({
 		[isElementSymbol]: true,
 		tag: ScopeSlot,
-		children: renderSlots(iRender, list, ...props),
+		children: renderSlots(list, ...props),
 		inserted: true,
 		label: isProduction ? undefined : [`[${name}]`, '#00F'],
 	} as NeepElement);
@@ -91,7 +89,6 @@ function createSlots(
 	return slot;
 }
 export function setSlots(
-	iRender: IRender,
 	children: {[key: string]: any[]},
 	slots: Slots = Object.create(null),
 ) {
@@ -101,7 +98,7 @@ export function setSlots(
 		}
 	}
 	for (const k of Reflect.ownKeys(children) as string[]) {
-		slots[k] = createSlots(iRender, k, children[k]);
+		slots[k] = createSlots(k, children[k]);
 	}
 	return slots;
 }

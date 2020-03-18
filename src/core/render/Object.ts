@@ -63,7 +63,9 @@ function createEntity(obj: NeepObject): ComponentEntity {
 export default class NeepObject {
 	readonly iRender: IRender;
 	/** TODO: 向后代呈递的值 */
-	readonly delivered: Delivered = {};
+	readonly parentDelivered: Delivered;
+	/** TODO: 向后代呈递的值 */
+	readonly delivered: Delivered;
 	/** 组件暴露值 */
 	readonly exposed: Exposed = createExposed(this);
 	/** 组件实体 */
@@ -85,14 +87,14 @@ export default class NeepObject {
 	constructor(
 		iRender: IRender,
 		parent?: NeepObject,
+		delivered: Delivered = parent?.delivered || Object.create(null),
 		container?: Container,
 	) {
 		this.iRender = iRender;
+		this.parentDelivered = delivered;
+		this.delivered = Object.create(delivered);
 		if (parent) {
 			this.parent = parent;
-			this.delivered = Object.create(parent.delivered);
-		} else {
-			this.delivered = Object.create(null);
 		}
 		this.container = container || this as any as Container;
 	}

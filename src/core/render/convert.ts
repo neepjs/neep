@@ -1,11 +1,12 @@
 import { getRender } from '../install';
 import { NeepNode, NeepElement, Tag } from '../type';
-import { Tags, isElement, Value } from '../auxiliary';
+import { Tags, isElement, Value, Template } from '../auxiliary';
 import { isElementSymbol, typeSymbol } from '../symbols';
 import { recursive2iterable } from './recursive';
 import Entity from './Entity';
 import NeepObject from './Object';
 import Container from './Container';
+import { updateProps } from './props';
 
 export interface TreeNode
 	extends Omit<
@@ -69,6 +70,7 @@ function createItem(
 				source.props || {},
 				source.children,
 				nObject,
+				source.$__neep__delivered,
 			),
 		};
 	}
@@ -82,20 +84,18 @@ function createItem(
 				source.props || {},
 				source.children,
 				nObject,
+				source.$__neep__delivered,
 			),
 		};
 	}
 	if (tag === Tags.Value) {
 		return { ...source, children: [] };
 	}
-	if ([Tags.Template, Tags.ScopeSlot].includes(tag)) {
+	if (tag === Template || tag.substr(0, 5) === 'Neep:') {
 		return {
 			...source,
 			children: convert(nObject, source.children),
 		};
-	}
-	if (tag.substr(0, 5) === 'Neep:') {
-		return { tag: null, children: [] };
 	}
 	return {...source, children: convert(nObject, source.children) };
 }
@@ -196,18 +196,29 @@ function updateItem(
 	if (tag === Tags.Value) {
 		return { ...source, children: [] };
 	}
-	if ([Tags.Template, Tags.ScopeSlot].includes(tag)) {
+	if (tag === Template || tag.substr(0, 5) === 'Neep:') {
+		let delivered: any;
+		if (Tags.Deliver === tag) {
+			const props = { ...source.props };
+			delete props.ref;
+			delete props.slot;
+			delete props.key;
+			delivered = updateProps(
+				tree.$__neep__delivered,
+				props,
+				tree.props,
+				true,
+			);
+		}
 		return {
 			...source,
+			$__neep__delivered: delivered,
 			children: convert(
 				nObject,
 				source.children,
 				tree.children,
 			),
 		};
-	}
-	if (tag.substr(0, 5) === 'Neep:') {
-		return { tag: null, children: [] };
 	}
 	return {
 		...source,

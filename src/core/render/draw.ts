@@ -1,4 +1,4 @@
-import { Tags } from '../auxiliary';
+import { Tags, Template } from '../auxiliary';
 import { IRender, NativeNode, NativeElement } from '../type';
 import { createMountedNode, recoveryMountedNode } from './id';
 import { TreeNode } from './convert';
@@ -256,7 +256,7 @@ function updateItem(
 		}
 		return replace( iRender, createValue(iRender, source), tree);
 	}
-	if ([Tags.Template, Tags.ScopeSlot].includes(tag)) {
+	if (tag === Template || tag.substr(0, 5) === 'Neep:') {
 		// TODO: ref
 		return createMountedNode({
 			...source,
@@ -269,7 +269,6 @@ function updateItem(
 			),
 		}, tree.id);
 	}
-	if (tag.substr(0, 5) === 'Neep:') { return tree; }
 	const { node } = tree;
 	iRender.update(
 		node as NativeElement,
@@ -421,23 +420,13 @@ function createItem(
 	if (tag === Tags.Value) {
 		return createValue(iRender, source);
 	}
-	if ([Tags.Template, Tags.ScopeSlot].includes(tag)) {
+	if (tag === Template || tag.substr(0, 5) === 'Neep:') {
 		// TODO: ref
 		return createMountedNode({
 			...source,
 			node: undefined,
 			component: undefined,
 			children: createAll(iRender, source.children),
-		});
-	}
-	if (tag.substr(0, 5) === 'Neep:') {
-		const node = iRender.placeholder();
-		if (ref) { ref(node); }
-		return createMountedNode({
-			tag: null,
-			node,
-			component: undefined,
-			children: [],
 		});
 	}
 	const node = iRender.create(tag, source.props || {});

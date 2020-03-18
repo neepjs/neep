@@ -1,6 +1,6 @@
 import {
-	NeepElement, Exposed,
-	Render, NeepNode, Slots, Context, IRender,
+	NeepElement, Exposed, Delivered,
+	Render, NeepNode, Slots, Context, IRender, Component,
 } from '../type';
 import { typeSymbol } from '../symbols';
 import { isProduction } from '../constant';
@@ -11,76 +11,52 @@ import Container from './Container';
 import Entity from './Entity';
 import { getSlots, setSlots } from './slot';
 import { initContext } from '../helper/context';
+import { updateProps } from './props';
 
 function execSimple(
 	nObject: Container | Entity,
-	node: any,
-): any {
-	if (Array.isArray(node)) {
-		return node.map(n => execSimple(nObject, n));
-	}
-	if (!isElement(node)) { return node; }
-	let { tag } = node;
-	if (typeof tag !== 'function' || tag[typeSymbol] !== 'simple') {
-		return {
-			...node,
-			children: execSimple(nObject, node.children),
-		};
-	}
-	const { children } = node;
+	delivered: Delivered,
+	node: NeepElement,
+	tag: Component,
+	children: any[],
+) {
 	const { iRender } = nObject.container;
-	const slots = Object.create(null);
-	getSlots(iRender, children, slots);
+	const slotMap = Object.create(null);
+	getSlots(iRender, children, slotMap);
+	const slots = setSlots(slotMap);
 	const context: Context = initContext({
-		slots: setSlots(iRender, slots),
+		slots,
 		created: false,
 		parent: nObject.exposed,
-		delivered: nObject.delivered,
+		delivered,
 		children: new Set<Exposed>(),
 		childNodes: children,
 		refresh(f) { nObject.refresh(f); }
 	});
 	if (!isProduction) { getLabel(); }
 	const result = tag({...node.props}, context, auxiliary);
-	const nodes = removeSlot(renderNode(
+	let label: [string, string] | undefined;
+	if (!isProduction) { label = getLabel(); }
+	const nodes = exec(nObject, delivered, renderNode(
 		iRender,
 		result,
 		context,
 		tag[renderSymbol],
-	), context.slots);
+	), slots);
 
-	let label: [string, string] | undefined;
-	if (!isProduction) { label = getLabel(); }
 	return {
 		...node,
-		children: execSimple(
-			nObject,
-			Array.isArray(nodes) ? nodes : [nodes],
-		),
+		children: Array.isArray(nodes) ? nodes : [nodes],
 		label,
 	} as NeepElement;
 }
 
-function removeSlot(
-	node: any,
+function execSlot(
+	node: NeepElement,
 	slots: Slots,
-	native = false,
-): any {
-	if (Array.isArray(node)) {
-		return node.map(n => removeSlot(n, slots, native));
-	}
-	if (!isElement(node)) { return node; }
-
-	const children = node.children
-		.map(n => removeSlot(n, slots, native));
-
-	let { tag, inserted, args = [{}] } = node;
-	if (tag === Tags.Slot) {
-		tag = native ? 'slot' : Tags.ScopeSlot;
-	}
-	if (tag !== Tags.ScopeSlot || inserted) {
-		return { ...node, children, tag };
-	}
+	children: any[],
+	args: any[] = [{}],
+): NeepElement {
 	const slotName = node.props?.name || 'default';
 	const slot = slots[slotName];
 	if (typeof slot === 'function') {
@@ -90,7 +66,7 @@ function removeSlot(
 		};
 	}
 	const { render } = node;
-	const label = isProduction
+	const label: [string, string] | undefined = isProduction
 		? undefined
 		: [`[${ slotName }]`, '#00F'];
 	return {
@@ -101,6 +77,62 @@ function removeSlot(
 			typeof render !== 'function' ? children : render(...args),
 	};
 }
+
+function exec(
+	nObject: Container | Entity,
+	delivered: Delivered,
+	node: any,
+	slots: Slots,
+	native = false,
+): any {
+	if (Array.isArray(node)) {
+		return node.map(n =>
+			exec(nObject, delivered, n, slots, native)
+		);
+	}
+	if (!isElement(node)) { return node; }
+	let { tag, inserted, args = [{}] } = node;
+	if (tag === Tags.Deliver) {
+		const props = { ...node.props };
+		delete props.ref;
+		delete props.slot;
+		delete props.key;
+		const newDelivered = Object.create(delivered);
+		updateProps(newDelivered, props || {}, {}, true);
+		return {
+			...node,
+			tag,
+			$__neep__delivered: newDelivered,
+			children: node.children.map(n => exec(
+				nObject,
+				newDelivered,
+				n,
+				slots,
+				native,
+			)),
+		};
+	}
+
+	const children = node.children
+		.map(n => exec(nObject, delivered, n, slots, native));
+
+	if (typeof tag === 'function') {
+		if (tag[typeSymbol] === 'simple') {
+			return execSimple(nObject, delivered, node, tag, children);
+		}
+		return { ...node, $__neep__delivered: delivered, children, tag };
+
+	}
+	if (tag === Tags.Slot) {
+		tag = native ? 'slot' : Tags.ScopeSlot;
+	}
+	if (tag !== Tags.ScopeSlot || inserted) {
+		return { ...node, children, tag };
+	}
+	return execSlot(node, slots, children, args);
+}
+
+
 
 function renderNode<R extends object = object>(
 	iRender: IRender,
@@ -133,17 +165,16 @@ export default function normalize(
 	nObject: Entity,
 	result: any,
 ) {
-	return execSimple(
+	return exec(
 		nObject,
-		removeSlot(
-			renderNode(
-				nObject.container.iRender,
-				result,
-				nObject.context,
-				nObject.component[renderSymbol],
-			),
-			nObject.context.slots,
-			Boolean(nObject.native),
+		nObject.delivered,
+		renderNode(
+			nObject.iRender,
+			result,
+			nObject.context,
+			nObject.component[renderSymbol],
 		),
+		nObject.context.slots,
+		Boolean(nObject.native),
 	);
 }

@@ -1,4 +1,4 @@
-import { Component, NeepNode, Slots, Context } from '../type';
+import { Component, NeepNode, Slots, Context, Delivered } from '../type';
 import auxiliary from '../auxiliary';
 import { monitorable } from '../install';
 import { setCurrent } from '../helper/current';
@@ -8,22 +8,14 @@ import normalize from './normalize';
 import { getSlots, setSlots } from './slot';
 import NeepObject from './Object';
 import { initContext } from '../helper/context';
+import { updateProps } from './props';
 
-function updateProps(
+function update(
 	nObject: Entity<any, any>,
 	props: any,
 	children:any[],
 ) {
-	const oldProps = nObject.props;
-	const newKeys = new Set(Reflect.ownKeys(props));
-	for (const k of Reflect.ownKeys(oldProps)) {
-		if (!newKeys.has(k)) {
-			delete oldProps[k];
-		}
-	}
-	for (const k of newKeys) {
-		oldProps[k] = props[k];
-	}
+	updateProps(nObject.props, props);
 
 	const slots = Object.create(null);
 	const {
@@ -36,7 +28,7 @@ function updateProps(
 		slots,
 		Boolean(native),
 	);
-	setSlots(iRender, slots, nObject.slots);
+	setSlots(slots, nObject.slots);
 	if (!native) { return; }
 	nObject.nativeNodes
 		= convert(nObject, childNodes, nObject.nativeNodes);
@@ -50,7 +42,7 @@ function createContext<
 		slots: nObject.slots,
 		get created() { return nObject.created; },
 		get parent() { return nObject.parent.exposed; },
-		get delivered() { return nObject.parent.delivered; },
+		get delivered() { return nObject.parentDelivered; },
 		get children() { return nObject.children; },
 		get childNodes() { return nObject.childNodes; },
 		refresh(f) { nObject.refresh(f); }
@@ -127,8 +119,9 @@ export default class Entity<
 		props: object,
 		children: any[],
 		parent: NeepObject,
+		delivered?: Delivered,
 	) {
-		super(parent.iRender, parent, parent.container);
+		super(parent.iRender, parent, delivered, parent.container);
 		this.component = component;
 		Reflect.defineProperty(
 			this.exposed,
@@ -153,7 +146,7 @@ export default class Entity<
 		this.callHook('beforeCreate');
 		// 更新属性
 		this.childNodes = children;
-		updateProps(this, props, children);
+		update(this, props, children);
 		// 获取渲染函数及初始渲染
 		const { render, nodes, stopRender } = initRender(this);
 		this._render = render;
@@ -168,7 +161,7 @@ export default class Entity<
 	_update(props: object, children: any[]): void {
 		if (this.destroyed) { return; }
 		this.childNodes = children;
-		updateProps(this, props, children);
+		update(this, props, children);
 	}
 	_destroy() {
 		if (this._stopRender) {

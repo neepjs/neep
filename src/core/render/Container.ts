@@ -3,6 +3,7 @@ import {
 	MountProps,
 	NativeNode,
 	NativeContainer,
+	Delivered,
 } from '../type';
 import { Tags } from '../auxiliary';
 import { createMountedNode } from './id';
@@ -37,8 +38,9 @@ export default class Container extends NeepObject {
 		props: MountProps,
 		children: any[],
 		parent?: NeepObject,
+		delivered?: Delivered,
 	) {
-		super(iRender, parent);
+		super(iRender, parent, delivered);
 		this.props = props;
 		this.parent = parent;
 		if (parent) {

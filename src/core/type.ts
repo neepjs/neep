@@ -138,6 +138,7 @@ export interface NeepElement {
 	inserted?: boolean;
 	/** 标注 */
 	label?: [string, string];
+	$__neep__delivered?: Delivered;
 }
 
 declare const NativeElementSymbol: unique symbol;
