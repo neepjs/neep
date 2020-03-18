@@ -5,10 +5,11 @@ import C from './C';
 const A = create((
 	props: { name?: string },
 	{},
-	{ value, createElement, label },
+	{ value, createElement, label, deliver },
 ) => {
 	label('{自定义标签文本}', '#F00');
 	const v = value(1);
+	deliver('a', v, true);
 	return () => <C a="1" set={() => v.value++ }>
 			<b>你好</b>
 			<i>{v()}</i>

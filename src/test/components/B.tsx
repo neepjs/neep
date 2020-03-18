@@ -2,10 +2,11 @@ import { create, mark, mName } from '@neep/core';
 
 const B = create((
 	props: { a?: any,  set?: () => void},
-	{slots},
+	{ slots, delivered },
 	{ Template, Slot, createElement }
 ) => {
 	return () => <Template>
+		<div>B: {delivered.a}</div>
 		{slots.name?.()}
 		<br />
 		{slots.default?.()}

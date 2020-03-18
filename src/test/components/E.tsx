@@ -1,18 +1,18 @@
 import { create, mark, mName, mSimple, Deliver } from '@neep/core';
 
-import D from './D';
+import B from './B';
 
-const C = create((
+const E = create((
 	props: {  a?: any,  set?: () => void },
 	{ childNodes, delivered },
 	{ createElement, label },
 ) => {
-	label('{C}', '#F00');
+	label('{E}', '#F00');
 	return <Deliver a={delivered.a + 1}>
-		<div>C: {delivered.a}</div>
-		<D {...props}>
+		<div>E: {delivered.a}</div>
+		<B {...props}>
 			{ childNodes }
-		</D>
+		</B>
 	</Deliver>;
 });
-export default mark(C, mName('C'), mSimple);
+export default mark(E, mName('E'), mSimple);
