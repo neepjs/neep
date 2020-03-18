@@ -1,7 +1,6 @@
 import { install } from '@neep/core';
 import render from '.';
-import * as monitorable from 'monitorable';
 
-install({ render, monitorable });
+install({ render });
 
 export * from '@neep/core';

@@ -1,6 +1,6 @@
 import {
 	recursive2iterable, RecursiveItem,
-} from '../../core/render/recursive';
+} from '../core/render/recursive';
 
 function getId(v: any): string | undefined {
 	if (typeof v === 'string') { return v; }
@@ -206,7 +206,7 @@ function updateEvent(
 	evt: Record<string, Set<EventListener>>,
 	oEvt: Record<string, Set<EventListener>>,
 ) {
-	
+
 	for (const k of Object.keys(evt)) {
 		const set = evt[k];
 		if (k in oEvt) {
