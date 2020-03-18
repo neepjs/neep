@@ -27,6 +27,9 @@ const GlobalName = name.replace(
 	(_, s) => s.toUpperCase()
 );
 
+const standaloneExternal = ['monitorable'];
+const external = [...standaloneExternal, '@neep/core'];
+
 const createOutput = (dir, format, ...build) => ({
 	file: [
 		`dist/${ dir }/${ name }`,
@@ -39,7 +42,19 @@ const createOutput = (dir, format, ...build) => ({
 	format,
 	name: GlobalName,
 	banner,
+	globals: {
+		'monitorable': 'Monitorable',
+		'@neep/core': 'Neep',
+	},
 	// exports: 'default',
+});
+const createRenderOutput = (dir, format, ...build) => ({
+	...createOutput(dir, format, 'render', ...build),
+	name: `${ GlobalName }${dir.replace(
+		/(?:^|-)([a-z])/g,
+		(_, s) => s.toUpperCase()
+	)}`,
+	exports: 'default',
 });
 
 
@@ -55,67 +70,106 @@ export default [
 		output: [
 			createOutput('core', 'esm', 'core'),
 			createOutput('core', 'cjs', 'core'),
-			createOutput('core', 'umd', 'core'),
 		],
+		external,
 		plugins: [ alias(), resolve(), babel(), replace(true) ],
 	},
 	{
 		input: 'src/core/index.ts',
 		output: [
 			createOutput('core', 'esm', 'core', true),
+		],
+		external,
+		plugins: [ alias(), resolve(), babel(), replace(), terser() ],
+	},
+	{
+		input: 'src/core/browser.ts',
+		output: [
+			createOutput('core', 'umd', 'core'),
+		],
+		external,
+		plugins: [ alias(), resolve(), babel(), replace(true) ],
+	},
+	{
+		input: 'src/core/browser.ts',
+		output: [
 			createOutput('core', 'umd', 'core', true),
 		],
+		external,
 		plugins: [ alias(), resolve(), babel(), replace(), terser() ],
 	},
 	createDts('core'),
 
 	{
-		input: 'src/web/render/index.ts',
+		input: 'src/web/index.ts',
 		output: [
-			createOutput('web', 'esm', 'render'),
-			createOutput('web', 'cjs', 'render'),
-			createOutput('web', 'umd', 'render'),
+			createRenderOutput('web', 'esm', 'web'),
+			createRenderOutput('web', 'cjs', 'web'),
 		],
-		plugins: [ alias(), resolve(), babel(), replace() ],
+		external,
+		plugins: [ alias(), resolve(), babel(), replace(true) ],
 	},
 	{
-		input: 'src/web/render/index.ts',
+		input: 'src/web/index.ts',
 		output: [
-			createOutput('web', 'esm', 'render', true),
-			createOutput('web', 'umd', 'render', true),
+			createRenderOutput('web', 'esm', 'web', true),
 		],
+		external,
 		plugins: [ alias(), resolve(), babel(), replace(), terser() ],
 	},
-	createDts('web', 'render/index', 'render/types'),
-
 	{
-		input: 'src/web/index.ts',
+		input: 'src/web/browser.ts',
 		output: [
-			createOutput('web', 'esm'),
-			createOutput('web', 'cjs'),
-			createOutput('web', 'umd'),
+			createRenderOutput('web', 'umd', 'web'),
 		],
-		plugins: [ alias(), resolve(), babel(), replace() ],
+		external,
+		plugins: [ alias(), resolve(), babel(), replace(true) ],
 	},
-
 	{
-		input: 'src/web/index.ts',
+		input: 'src/web/browser.ts',
 		output: [
-			createOutput('web', 'esm', true),
-			createOutput('web', 'umd', true),
+			createRenderOutput('web', 'umd', 'web', true),
 		],
+		external,
 		plugins: [ alias(), resolve(), babel(), replace(), terser() ],
 	},
 	createDts('web'),
 
 	{
+		input: 'src/web/index.ts',
+		output: [
+			createOutput('web', 'esm', 'web', 'standalone'),
+			createOutput('web', 'umd', 'web', 'standalone'),
+		],
+		external: standaloneExternal,
+		plugins: [ alias(), resolve(), babel(), replace(true) ],
+	},
+	{
+		input: 'src/web/index.ts',
+		output: [
+			createOutput('web', 'esm', 'web', 'standalone', true),
+			createOutput('web', 'umd', 'web', 'standalone', true),
+		],
+		external: standaloneExternal,
+		plugins: [ alias(), resolve(), babel(), replace(), terser() ],
+	},
+	createDts('web', 'standalone', 'standalone/types'),
+
+	{
 		input: 'src/web/full.ts',
-		output: [ createOutput('web', 'esm', 'full') ],
-		plugins: [ alias(), resolve(), babel(), replace() ],
+		output: [
+			createOutput('web', 'esm', 'web', 'full'),
+			createOutput('web', 'umd', 'web', 'full'),
+		],
+		plugins: [ alias(), resolve(), babel(), replace(true) ],
 	},
 	{
 		input: 'src/web/full.ts',
-		output: [ createOutput('web', 'esm', 'full', true) ],
+		output: [
+			createOutput('web', 'esm', 'web', 'full', true),
+			createOutput('web', 'umd', 'web', 'full', true),
+		],
 		plugins: [ alias(), resolve(), babel(), replace(), terser() ],
 	},
+	createDts('web', 'full', 'full/types'),
 ];

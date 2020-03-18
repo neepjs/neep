@@ -9,9 +9,9 @@
     "paths": {
       "@neep/core": ["core"],
       "@neep/web": ["web"],
-      "@neep/create": ["create"],
       "@neep/devtools": ["devtools"],
-      "@neep/web/*": ["web/*"]
+      "@neep/web/standalone": ["web/standalone"],
+      "@neep/web/full": ["web/full"]
     },
     "sourceMap": true,
     "skipLibCheck": true,
