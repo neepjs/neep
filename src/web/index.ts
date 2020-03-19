@@ -85,8 +85,6 @@ const render: IRender = {
 	draw() {},
 
 	create(tag, props) {
-		// TODO: NS
-		// 你好啊
 		return update(createElement(tag), props) as any;
 	},
 	text(text: string): NativeText {
