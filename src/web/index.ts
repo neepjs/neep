@@ -10,6 +10,7 @@ import {
 	NativeContainer,
 	NativeElement,
 } from '@neep/core';
+import createElement from './createElement';
 
 const render: IRender = {
 	type: 'html',
@@ -86,7 +87,7 @@ const render: IRender = {
 	create(tag, props) {
 		// TODO: NS
 		// 你好啊
-		return update(document.createElement(tag), props) as any;
+		return update(createElement(tag), props) as any;
 	},
 	text(text: string): NativeText {
 		return document.createTextNode(text) as any;
@@ -95,7 +96,7 @@ const render: IRender = {
 		return document.createComment('') as any;
 	},
 	component(): [NativeComponent, NativeShadow] {
-		const node = document.createElement('neep-component');
+		const node = createElement('neep-component');
 		node.attachShadow({ mode: 'open' });
 		return [node, node.attachShadow({ mode: 'open' })] as any;
 	},
