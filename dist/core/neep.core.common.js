@@ -1,5 +1,5 @@
 /*!
- * neep v0.1.0-alpha.0
+ * neep v0.1.0-alpha.1
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -7,7 +7,7 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-const version = '0.1.0-alpha.0';
+const version = '0.1.0-alpha.1';
 const mode = 'development';
 const isProduction = mode === 'production';
 
@@ -167,7 +167,14 @@ function setCurrent(fn, entity) {
   exports.current = entity;
 
   try {
-    return fn();
+    exports.current.$_valueIndex = 0;
+    const ret = fn();
+
+    if (exports.current.$_valueIndex !== exports.current.$_values.length) {
+      throw new NeepError('Inconsistent number of useValue executions', 'life');
+    }
+
+    return ret;
   } finally {
     exports.current = oldEntity;
   }
@@ -244,6 +251,22 @@ function watch(value, cb) {
   setHook('beforeDestroy', () => stop(), entity);
   return stop;
 }
+function useValue(f, name = 'useValue') {
+  const entity = checkCurrent(name);
+  const index = entity.$_valueIndex++;
+  const values = entity.$_values;
+
+  if (!entity.created) {
+    values[index] = undefined;
+    return values[index] = f();
+  }
+
+  if (index >= values.length) {
+    throw new NeepError('Inconsistent number of useValue executions', 'life');
+  }
+
+  return values[index];
+}
 function hook(name, hook, initOnly) {
   const entity = checkCurrent('setHook');
 
@@ -251,7 +274,7 @@ function hook(name, hook, initOnly) {
     return undefined;
   }
 
-  return setHook(name, hook, entity);
+  return setHook(name, () => hook(), entity);
 }
 function setValue(obj, name, value, opt) {
   if (typeof name === 'string' && ['$', '_'].includes(name[0])) {
@@ -303,6 +326,7 @@ function deliver(name, value, opt) {
 var Life = /*#__PURE__*/Object.freeze({
 	__proto__: null,
 	watch: watch,
+	useValue: useValue,
 	hook: hook,
 	setValue: setValue,
 	expose: expose,
@@ -1469,6 +1493,15 @@ function createEntity(obj) {
       configurable: true,
       value: Object.create(null)
     },
+    $_valueIndex: {
+      configurable: true,
+      value: 0,
+      writable: true
+    },
+    $_values: {
+      configurable: true,
+      value: []
+    },
     callHook: {
       configurable: true,
 
@@ -2597,6 +2630,7 @@ exports.setAuxiliary = setAuxiliary;
 exports.setHook = setHook;
 exports.setValue = setValue;
 exports.typeSymbol = typeSymbol;
+exports.useValue = useValue;
 exports.value = value;
 exports.version = version;
 exports.watch = watch;

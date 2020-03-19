@@ -1,5 +1,5 @@
 /*!
- * neep v0.1.0-alpha.0
+ * neep v0.1.0-alpha.1
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -110,6 +110,7 @@ declare function watch<T>(value: Value$1<T>, cb: WatchCallback<T>): () => void;
  * @param cb    当监听的值发送变化时调用的函数
  */
 declare function watch<T>(value: () => T, cb: (v: T, stopped: boolean) => void): () => void;
+declare function useValue<T>(f: () => T, name?: string): T;
 /**********************************
  * 钩子类 API
  **********************************/
@@ -119,15 +120,12 @@ declare function watch<T>(value: () => T, cb: (v: T, stopped: boolean) => void):
  * @param hook 钩子
  * @param initOnly 是否仅在初始化时有效
  */
-declare function hook<H extends Hooks>(name: H, hook: Hook, initOnly?: boolean): undefined | (() => void);
-declare function hook(name: string, hook: Hook, initOnly?: boolean): undefined | (() => void);
+declare function hook<H extends Hooks>(name: H, hook: () => void, initOnly?: boolean): undefined | (() => void);
+declare function hook(name: string, hook: () => void, initOnly?: boolean): undefined | (() => void);
 /**********************************
  * 配置 API
  **********************************/
 declare function setValue<T>(obj: any, name: string | number | symbol, value: T | Value$1<T> | (() => T), opt?: boolean | ((value: T) => void)): void;
-/**********************************
- * 配置 API
- **********************************/
 /**
  * 将 Value 导出
  * @param name 导出用的名称
@@ -153,9 +151,6 @@ declare function expose<T>(name: string | number | symbol, getter: () => T, nonM
  * @param setter
  */
 declare function expose<T>(name: string | number | symbol, getter: () => T, setter: (value: T) => void): void;
-/**********************************
- * 配置 API
- **********************************/
 /**
  * 将 Value 传递给子组件
  * @param name 导出用的名称
@@ -183,6 +178,7 @@ declare function deliver<T>(name: string | number | symbol, getter: () => T, non
 declare function deliver<T>(name: string | number | symbol, getter: () => T, setter: (value: T) => void): void;
 
 declare const Life_watch: typeof watch;
+declare const Life_useValue: typeof useValue;
 declare const Life_hook: typeof hook;
 declare const Life_setValue: typeof setValue;
 declare const Life_expose: typeof expose;
@@ -190,6 +186,7 @@ declare const Life_deliver: typeof deliver;
 declare namespace Life {
   export {
     Life_watch as watch,
+    Life_useValue as useValue,
     Life_hook as hook,
     Life_setValue as setValue,
     Life_expose as expose,
@@ -326,6 +323,8 @@ interface Entity {
         [name: string]: Set<Hook>;
     };
     refresh(fn?: () => void): void;
+    $_valueIndex: number;
+    readonly $_values: any[];
 }
 interface Render<R extends object = any> {
     (data: R, context: Context, auxiliary: Auxiliary): NeepNode;
@@ -478,4 +477,4 @@ declare function setHook(id: string, hook: Hook, entity?: Entity): () => void;
 declare function callHook<H extends Hooks>(id: H, exposed: Entity): void;
 declare function callHook(id: string, exposed: Entity): void;
 
-export { Auxiliary, Component, Container, Context, ContextConstructor, Deliver, Delivered, Entity, NeepError as Error, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, Render, RootExposed, ScopeSlot, Slot, SlotFn, SlotRender, Slots, Tag, Tags, Template, Value, addContextConstructor, callHook, checkCurrent, computed, create, createElement, current, defineAuxiliary, deliver, elementIteratorOptions, elements, encase, expose, hook, install, isElement, isElementSymbol, isProduction, isValue, label, mName, mNative, mRender, mSimple, mType, mark, mode, nameSymbol, recover, render, renderSymbol, setAuxiliary, setHook, setValue, typeSymbol, value, version, watch };
+export { Auxiliary, Component, Container, Context, ContextConstructor, Deliver, Delivered, Entity, NeepError as Error, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, Render, RootExposed, ScopeSlot, Slot, SlotFn, SlotRender, Slots, Tag, Tags, Template, Value, addContextConstructor, callHook, checkCurrent, computed, create, createElement, current, defineAuxiliary, deliver, elementIteratorOptions, elements, encase, expose, hook, install, isElement, isElementSymbol, isProduction, isValue, label, mName, mNative, mRender, mSimple, mType, mark, mode, nameSymbol, recover, render, renderSymbol, setAuxiliary, setHook, setValue, typeSymbol, useValue, value, version, watch };

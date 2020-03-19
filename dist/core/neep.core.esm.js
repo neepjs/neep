@@ -1,9 +1,9 @@
 /*!
- * neep v0.1.0-alpha.0
+ * neep v0.1.0-alpha.1
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
-const version = '0.1.0-alpha.0';
+const version = '0.1.0-alpha.1';
 const mode = 'development';
 const isProduction = mode === 'production';
 
@@ -164,7 +164,14 @@ function setCurrent(fn, entity) {
   current = entity;
 
   try {
-    return fn();
+    current.$_valueIndex = 0;
+    const ret = fn();
+
+    if (current.$_valueIndex !== current.$_values.length) {
+      throw new NeepError('Inconsistent number of useValue executions', 'life');
+    }
+
+    return ret;
   } finally {
     current = oldEntity;
   }
@@ -241,6 +248,22 @@ function watch(value, cb) {
   setHook('beforeDestroy', () => stop(), entity);
   return stop;
 }
+function useValue(f, name = 'useValue') {
+  const entity = checkCurrent(name);
+  const index = entity.$_valueIndex++;
+  const values = entity.$_values;
+
+  if (!entity.created) {
+    values[index] = undefined;
+    return values[index] = f();
+  }
+
+  if (index >= values.length) {
+    throw new NeepError('Inconsistent number of useValue executions', 'life');
+  }
+
+  return values[index];
+}
 function hook(name, hook, initOnly) {
   const entity = checkCurrent('setHook');
 
@@ -248,7 +271,7 @@ function hook(name, hook, initOnly) {
     return undefined;
   }
 
-  return setHook(name, hook, entity);
+  return setHook(name, () => hook(), entity);
 }
 function setValue(obj, name, value, opt) {
   if (typeof name === 'string' && ['$', '_'].includes(name[0])) {
@@ -300,6 +323,7 @@ function deliver(name, value, opt) {
 var Life = /*#__PURE__*/Object.freeze({
 	__proto__: null,
 	watch: watch,
+	useValue: useValue,
 	hook: hook,
 	setValue: setValue,
 	expose: expose,
@@ -1466,6 +1490,15 @@ function createEntity(obj) {
       configurable: true,
       value: Object.create(null)
     },
+    $_valueIndex: {
+      configurable: true,
+      value: 0,
+      writable: true
+    },
+    $_values: {
+      configurable: true,
+      value: []
+    },
     callHook: {
       configurable: true,
 
@@ -2551,5 +2584,5 @@ function mark(component, ...marks) {
   return component;
 }
 
-export { Container, Deliver, NeepError as Error, Fragment, ScopeSlot, Slot, SlotRender, Tags, Template, Value, addContextConstructor, callHook, checkCurrent, computed, create, createElement, current, defineAuxiliary, deliver, elements, encase, expose, hook, install, isElement, isElementSymbol, isProduction, isValue, label$1 as label, mName, mNative, mRender, mSimple, mType, mark, mode, nameSymbol, recover, render, renderSymbol, setAuxiliary, setHook, setValue, typeSymbol, value, version, watch };
+export { Container, Deliver, NeepError as Error, Fragment, ScopeSlot, Slot, SlotRender, Tags, Template, Value, addContextConstructor, callHook, checkCurrent, computed, create, createElement, current, defineAuxiliary, deliver, elements, encase, expose, hook, install, isElement, isElementSymbol, isProduction, isValue, label$1 as label, mName, mNative, mRender, mSimple, mType, mark, mode, nameSymbol, recover, render, renderSymbol, setAuxiliary, setHook, setValue, typeSymbol, useValue, value, version, watch };
 //# sourceMappingURL=neep.core.esm.js.map

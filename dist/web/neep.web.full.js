@@ -1,5 +1,5 @@
 /*!
- * neep v0.1.0-alpha.0
+ * neep v0.1.0-alpha.1
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -9,7 +9,7 @@
 	(global = global || self, factory(global.Neep = {}));
 }(this, (function (exports) { 'use strict';
 
-	const version = '0.1.0-alpha.0';
+	const version = '0.1.0-alpha.1';
 	const mode = 'development';
 	const isProduction = mode === 'production';
 
@@ -169,7 +169,14 @@
 	  exports.current = entity;
 
 	  try {
-	    return fn();
+	    exports.current.$_valueIndex = 0;
+	    const ret = fn();
+
+	    if (exports.current.$_valueIndex !== exports.current.$_values.length) {
+	      throw new NeepError('Inconsistent number of useValue executions', 'life');
+	    }
+
+	    return ret;
 	  } finally {
 	    exports.current = oldEntity;
 	  }
@@ -246,6 +253,22 @@
 	  setHook('beforeDestroy', () => stop(), entity);
 	  return stop;
 	}
+	function useValue(f, name = 'useValue') {
+	  const entity = checkCurrent(name);
+	  const index = entity.$_valueIndex++;
+	  const values = entity.$_values;
+
+	  if (!entity.created) {
+	    values[index] = undefined;
+	    return values[index] = f();
+	  }
+
+	  if (index >= values.length) {
+	    throw new NeepError('Inconsistent number of useValue executions', 'life');
+	  }
+
+	  return values[index];
+	}
 	function hook(name, hook, initOnly) {
 	  const entity = checkCurrent('setHook');
 
@@ -253,7 +276,7 @@
 	    return undefined;
 	  }
 
-	  return setHook(name, hook, entity);
+	  return setHook(name, () => hook(), entity);
 	}
 	function setValue(obj, name, value, opt) {
 	  if (typeof name === 'string' && ['$', '_'].includes(name[0])) {
@@ -305,6 +328,7 @@
 	var Life = /*#__PURE__*/Object.freeze({
 		__proto__: null,
 		watch: watch,
+		useValue: useValue,
 		hook: hook,
 		setValue: setValue,
 		expose: expose,
@@ -1470,6 +1494,15 @@
 	    $_hooks: {
 	      configurable: true,
 	      value: Object.create(null)
+	    },
+	    $_valueIndex: {
+	      configurable: true,
+	      value: 0,
+	      writable: true
+	    },
+	    $_values: {
+	      configurable: true,
+	      value: []
 	    },
 	    callHook: {
 	      configurable: true,
@@ -2656,22 +2689,20 @@
 	  return JSON.stringify(data);
 	}
 
-	function getAttrs(props) {
+	function getAttrs(props, hasStyle) {
 	  const attrs = Object.create(null);
 
 	  for (const k in props) {
 	    const name = k.replace(/([A-Z])/g, '-$1').replace(/(\-)\-+/g, '$1').toLowerCase();
 
 	    switch (name) {
-	      case 'is':
-	        continue;
-
-	      case 'id':
-	        continue;
-
 	      case 'style':
-	        continue;
+	        if (!hasStyle) {
+	          break;
+	        }
 
+	      case 'is':
+	      case 'id':
 	      case 'class':
 	        continue;
 	    }
@@ -2711,12 +2742,12 @@
 	  class: className,
 	  style,
 	  ...attrs
-	}) {
+	}, hasStyle) {
 	  return {
 	    id: getId(id),
 	    classes: getClass(className),
-	    style: getStyle(style),
-	    attrs: getAttrs(attrs),
+	    style: hasStyle ? getStyle(style) : undefined,
+	    attrs: getAttrs(attrs, hasStyle),
 	    event: getEvent(attrs)
 	  };
 	}
@@ -2842,6 +2873,8 @@
 
 	const PropsMap = new WeakMap();
 	function update$1(el, props) {
+	  const css = el.style;
+	  const hasStyle = css instanceof CSSStyleDeclaration;
 	  const old = PropsMap.get(el) || {
 	    attrs: {},
 	    event: {}
@@ -2852,7 +2885,7 @@
 	    style,
 	    attrs,
 	    event
-	  } = getProps(props);
+	  } = getProps(props, hasStyle);
 	  PropsMap.set(el, {
 	    id,
 	    classes,
@@ -2870,10 +2903,33 @@
 	  }
 
 	  updateClass(el, classes, old.classes);
-	  updateStyle(el.style, style, old.style);
+
+	  if (hasStyle) {
+	    updateStyle(css, style, old.style);
+	  }
+
 	  updateAttrs(el, attrs, old.attrs);
 	  updateEvent(el, event, old.event);
 	  return el;
+	}
+
+	const xmlnsMap = {
+	  svg: 'http://www.w3.org/2000/svg',
+	  html: 'http://www.w3.org/1999/xhtml',
+	  mathml: 'http://www.w3.org/1998/Math/MathML'
+	};
+	const SVGTags = new Set(['altGlyph', 'altGlyphDef', 'altGlyphItem', 'animate', 'animateColor', 'animateMotion', 'animateTransform', 'circle', 'clipPath', 'color-profile', 'cursor', 'defs', 'desc', 'ellipse', 'feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite', 'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap', 'feDistantLight', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR', 'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode', 'feMorphology', 'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile', 'feTurbulence', 'filter', 'font-face', 'font-face-format', 'font-face-name', 'font-face-src', 'font-face-uri', 'foreignObject', 'g', 'glyph', 'glyphRef', 'hkern', 'image', 'line', 'linearGradient', 'marker', 'mask', 'metadata', 'missing-glyph', 'mpath', 'path', 'pattern', 'polygon', 'polyline', 'radialGradient', 'rect', 'script', 'set', 'stop', 'style', 'svg', 'switch', 'symbol', 'text', 'textPath', 'title', 'tref', 'tspan', 'use', 'view', 'vkern']);
+	const MathMLTags = new Set(['maction', 'math', 'menclose', 'merror', 'mfenced', 'mfrac', 'mglyph', 'mi', 'mlabeledtr', 'mmultiscripts', 'mn', 'mo', 'mover', 'mpadded', 'mphantom', 'mroot', 'mrow', 'ms', 'mspace', 'msqrt', 'mstyle', 'msub', 'msubsup', 'msup', 'mtable', 'mtd', 'mtext', 'mtr', 'munder', 'munderover', 'semantics']);
+	function createElement$1(tagname, namespace) {
+	  const res = /^([a-z][a-z0-9-]*):([a-z0-9-]+)$/i.exec(tagname);
+	  const tag = res ? res[2] : tagname;
+	  const ns = (namespace || (res === null || res === void 0 ? void 0 : res[1]) || SVGTags.has(tag.toLowerCase()) && 'svg' || MathMLTags.has(tag.toLowerCase()) && 'mathml' || '').toLowerCase();
+
+	  if (!ns) {
+	    return document.createElement(tag);
+	  }
+
+	  return document.createElementNS(ns in xmlnsMap && xmlnsMap[ns] || ns, tag);
 	}
 
 	const render$1 = {
@@ -2988,7 +3044,7 @@
 	  draw() {},
 
 	  create(tag, props) {
-	    return update$1(document.createElement(tag), props);
+	    return update$1(createElement$1(tag), props);
 	  },
 
 	  text(text) {
@@ -3000,7 +3056,7 @@
 	  },
 
 	  component() {
-	    const node = document.createElement('neep-component');
+	    const node = createElement$1('neep-component');
 	    node.attachShadow({
 	      mode: 'open'
 	    });
@@ -3860,6 +3916,7 @@
 	exports.setHook = setHook;
 	exports.setValue = setValue;
 	exports.typeSymbol = typeSymbol;
+	exports.useValue = useValue;
 	exports.value = value;
 	exports.version = version;
 	exports.watch = watch;

@@ -1,6 +1,6 @@
 {
   "name": "@neep/core",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "main": "neep.core.common.js",
   "module": "neep.core.esm.js",
   "unpkg": "neep.core.js",

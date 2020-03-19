@@ -1,6 +1,6 @@
 {
   "name": "@neep/web",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "main": "neep.web.render.common.js",
   "module": "neep.web.render.esm.js",
   "unpkg": "neep.web.render.js",
