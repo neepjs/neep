@@ -3,9 +3,11 @@ import { create, mark, mName } from '@neep/core';
 const B = create((
 	props: { a?: any,  set?: () => void},
 	{ slots, delivered },
-	{ Template, Slot, createElement }
+	{ Template, Slot, createElement, useValue }
 ) => {
-	return () => <Template>
+	const v = useValue(() => Math.random());
+	return <Template>
+		<div>v: {v}</div>
 		<div>B: {delivered.a}</div>
 		{slots.name?.()}
 		<br />
