@@ -6,6 +6,7 @@ import { Value, WatchCallback } from 'monitorable';
 import { Hooks, Hook } from '../type';
 import { checkCurrent } from '../helper';
 import { monitorable } from '../install';
+import NeepError from '../Error';
 import { setHook } from '../hook';
 import { isValue } from './state';
 
@@ -51,6 +52,23 @@ export function watch<T>(
 	return stop;
 }
 
+export function useValue<T>(f: () => T, name = 'useValue'): T {
+	const entity = checkCurrent(name);
+	const index = entity.$_valueIndex++;
+	const values = entity.$_values;
+	if (!entity.created) {
+		values[index] = undefined;
+		return values[index] = f();
+	}
+	if (index >= values.length) {
+		throw new NeepError(
+			'Inconsistent number of useValue executions',
+			'life',
+		);
+	}
+	return values[index];
+
+}
 
 /**********************************
  * 钩子类 API
@@ -63,22 +81,22 @@ export function watch<T>(
  */
 export function hook<H extends Hooks>(
 	name: H,
-	hook: Hook,
+	hook: () => void,
 	initOnly?: boolean,
 ): undefined | (() => void);
 export function hook(
 	name: string,
-	hook: Hook,
+	hook: () => void,
 	initOnly?: boolean,
 ): undefined | (() => void);
 export function hook(
 	name: string,
-	hook: Hook,
+	hook: () => void,
 	initOnly?: boolean,
 ): undefined | (() => void) {
 	const entity = checkCurrent('setHook');
 	if (initOnly && entity.created) { return undefined; }
-	return setHook(name, hook, entity);
+	return setHook(name, () => hook(), entity);
 }
 
 /**********************************
@@ -122,11 +140,6 @@ export function setValue<T>(
 	});
 }
 
-
-
-/**********************************
- * 配置 API
- **********************************/
 
 /**
  * 将 Value 导出
@@ -176,9 +189,6 @@ export function expose<T>(
 	setValue(checkCurrent('expose', true).exposed, name, value, opt);
 }
 
-/**********************************
- * 配置 API
- **********************************/
 
 /**
  * 将 Value 传递给子组件

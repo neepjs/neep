@@ -80,6 +80,9 @@ export interface Entity {
 	setHook(id: string,hook: Hook): () => void;
 	readonly $_hooks: { [name: string]: Set<Hook>; }
 	refresh(fn?: () => void): void;
+
+	$_valueIndex: number;
+	readonly $_values: any[];
 }
 
 export interface Render<R extends object = any> {

@@ -10,7 +10,15 @@ export function setCurrent<T>(
 	const oldEntity = current;
 	current = entity;
 	try {
-		return fn();
+		current.$_valueIndex = 0;
+		const ret = fn();
+		if (current.$_valueIndex !== current.$_values.length) {
+			throw new NeepError(
+				'Inconsistent number of useValue executions',
+				'life',
+			);
+		}
+		return ret;
 	} finally {
 		current = oldEntity;
 	}

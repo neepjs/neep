@@ -28,7 +28,7 @@ function createExposed(obj: NeepObject): Exposed {
 
 function createEntity(obj: NeepObject): ComponentEntity {
 	const cfg: { [K in keyof ComponentEntity]-?:
-		{ configurable: true, value: ComponentEntity[K] }
+		{ configurable: true, value: ComponentEntity[K], writable?: boolean }
 		| { configurable: true, get(): ComponentEntity[K] }
 	} = {
 		exposed: { configurable: true, get: () => obj.exposed },
@@ -41,6 +41,8 @@ function createEntity(obj: NeepObject): ComponentEntity {
 		mounted: { configurable: true, get: () => obj.mounted },
 		unmounted: { configurable: true, get: () => obj.unmounted },
 		$_hooks: { configurable: true, value: Object.create(null) },
+		$_valueIndex: { configurable: true, value: 0, writable: true },
+		$_values: { configurable: true, value: [] },
 		callHook: {
 			configurable: true,
 			value(h: string) { callHook(h, entity); },
