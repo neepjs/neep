@@ -67,7 +67,7 @@ function stringify(data: any, isOn = false): string | null {
 	}
 	return JSON.stringify(data);
 }
-function getAttrs(props: {[k: string]: any}) {
+function getAttrs(props: {[k: string]: any}, hasStyle: boolean) {
 	const attrs: Record<string, string> = Object.create(null);
 	for (const k in props) {
 		const name = k
@@ -75,10 +75,12 @@ function getAttrs(props: {[k: string]: any}) {
 			.replace(/(\-)\-+/g, '$1')
 			.toLowerCase();
 		switch(name) {
-			case 'is': continue;
-			case 'id': continue;
-			case 'style': continue;
-			case 'class': continue;
+			case 'style':
+				if (!hasStyle) { break; }
+			case 'is':
+			case 'id':
+			case 'class':
+				continue;
 		}
 		const value = stringify(props[k], name.substr(0, 2) === 'on');
 		if (value !== null) { attrs[name] = value; }
@@ -107,18 +109,18 @@ function getProps({
 	class: className,
 	style,
 	...attrs
-}: {[k: string]: any}): Props {
+}: {[k: string]: any}, hasStyle: boolean): Props {
 	return {
 		id: getId(id),
 		classes: getClass(className),
-		style: getStyle(style),
-		attrs: getAttrs(attrs),
+		style: hasStyle ? getStyle(style) : undefined,
+		attrs: getAttrs(attrs, hasStyle),
 		event: getEvent(attrs),
 	};
 }
 
 function updateClass(
-	el: HTMLElement | SVGElement,
+	el: Element,
 	classes?: Set<string>,
 	oClasses?: Set<string>,
 ) {
@@ -184,7 +186,7 @@ function updateStyle(
 	}
 }
 function updateAttrs(
-	el: HTMLElement | SVGElement,
+	el: Element,
 	attrs: Record<string, string>,
 	oAttrs: Record<string, string>,
 ) {
@@ -202,7 +204,7 @@ function updateAttrs(
 }
 
 function updateEvent(
-	el: HTMLElement | SVGElement,
+	el: Element,
 	evt: Record<string, Set<EventListener>>,
 	oEvt: Record<string, Set<EventListener>>,
 ) {
@@ -233,11 +235,13 @@ function updateEvent(
 
 const PropsMap = new WeakMap<Element, Props>();
 export default function update(
-	el: HTMLElement | SVGElement,
+	el: Element,
 	props: {[k: string]: any},
 ) {
+	const css = (el as any).style;
+	const hasStyle = css instanceof CSSStyleDeclaration;
 	const old = PropsMap.get(el) || { attrs: {}, event: {} };
-	const { id,  classes, style, attrs, event } = getProps(props);
+	const { id,  classes, style, attrs, event } = getProps(props, hasStyle);
 	PropsMap.set(el, { id, classes, style, attrs, event });
 	if (id !== old.id) {
 		if (typeof id === 'string') {
@@ -247,7 +251,7 @@ export default function update(
 		}
 	}
 	updateClass(el, classes, old.classes);
-	updateStyle(el.style, style, old.style);
+	if (hasStyle) { updateStyle(css, style, old.style); }
 	updateAttrs(el, attrs, old.attrs);
 	updateEvent(el, event, old.event);
 	return el;
