@@ -1,4 +1,4 @@
-import Container from '../core/render/Container';
+import Container from '../../core/src/render/Container';
 
 export interface Devtools {
 	renderHook(container: Container): void;

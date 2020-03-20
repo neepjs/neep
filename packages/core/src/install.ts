@@ -2,7 +2,7 @@ import * as monitorableApi from 'monitorable';
 import { IRender } from './type';
 import { isProduction } from './constant';
 
-import { Devtools } from '../devtools/type';
+import { Devtools } from '../../devtools/src/type';
 
 export let monitorable: typeof monitorableApi;
 

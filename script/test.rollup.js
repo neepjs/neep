@@ -2,19 +2,25 @@
 import resolve from './rollup-plugins/resolve';
 import babel from './rollup-plugins/babel';
 import replace from './rollup-plugins/replace';
-import alias from './rollup-plugins/alias';
+import alias from '@rollup/plugin-alias';
 
 export default {
-	input: './src/test/index.tsx',
+	input: './test/index.tsx',
 	output: [
 		{
-			file: './test/index.js',
+			file: './test/bundle/index.js',
 			sourcemap: true,
 			format: 'umd',
 		},
 	],
 	plugins: [
-		alias(),
+		alias({
+			entries: {
+				'@neep/core': './packages/core/src/index.ts',
+				'@neep/web-render': './packages/web-render/src/index.ts',
+				'@neep/devtools': './packages/devtools/src/index.ts',
+			},
+		}),
 		resolve(),
 		babel(),
 		replace(true),

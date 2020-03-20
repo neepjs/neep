@@ -5,13 +5,11 @@
     "outDir": "./types/",
     "module": "commonjs",
     "target": "esnext",
-    "baseUrl": "./src",
+    "baseUrl": ".",
     "paths": {
-      "@neep/core": ["core"],
-      "@neep/web": ["web"],
-      "@neep/devtools": ["devtools"],
-      "@neep/web/standalone": ["web/standalone"],
-      "@neep/web/full": ["web/full"]
+      "@neep/core": ["packages/core/src"],
+      "@neep/web-render": ["packages/web-render/src"],
+      "@neep/devtools": ["packages/devtools/src"]
     },
     "sourceMap": true,
     "skipLibCheck": true,

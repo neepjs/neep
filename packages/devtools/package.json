@@ -1,13 +1,20 @@
 {
-  "name": "@neep/core",
+  "name": "@neep/devtools",
   "version": "0.1.0-alpha.1",
-  "main": "neep.core.common.js",
-  "module": "neep.core.esm.js",
-  "unpkg": "neep.core.js",
-  "jsdelivr": "neep.core.js",
+  "main": "dist/neep.devtools.common.js",
+  "module": "dist/neep.devtools.esm.js",
+  "unpkg": "dist/neep.devtools.js",
+  "jsdelivr": "dist/neep.devtools.js",
   "typings": "./types",
   "keywords": [
-    "neep"
+    "neep",
+    "devtools"
+  ],
+  "files": [
+    "types.d.ts",
+    "README.md",
+    "LICENSE",
+    "dist"
   ],
   "author": "Fierflame",
   "license": "MIT",
@@ -20,6 +27,6 @@
   },
   "homepage": "https://github.com/neepjs/neep#readme",
   "peerDependencies": {
-    "monitorable": "^0.1.0-alpha.3"
+    "@neep/core": "^0.1.0-alpha.0"
   }
 }

@@ -1,6 +1,6 @@
 import {
 	recursive2iterable, RecursiveItem,
-} from '../core/render/recursive';
+} from '../../core/src/render/recursive';
 
 function getId(v: any): string | undefined {
 	if (typeof v === 'string') { return v; }

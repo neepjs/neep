@@ -2,9 +2,9 @@ import {
 	Template, ScopeSlot, SlotRender, Value,
 	nameSymbol, typeSymbol, Deliver,
 } from '@neep/core';
-import { MountedNode } from '../core/render/draw';
-import Container from '../core/render/Container';
-import Entity from '../core/render/Entity';
+import { MountedNode } from '../../core/src/render/draw';
+import Container from '../../core/src/render/Container';
+import Entity from '../../core/src/render/Entity';
 export enum Type {
 	tag = 'tag',
 	placeholder = 'placeholder',

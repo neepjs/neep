@@ -1,4 +1,4 @@
-import { ScopeSlot, Slot, SlotRender, Value, Template, NeepElement, Node } from './core';
+import { ScopeSlot, Slot, SlotRender, Value, Template, NeepElement, Node } from '.';
 
 interface Attributes {
 	slot?: string;
