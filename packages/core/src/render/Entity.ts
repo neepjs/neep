@@ -1,14 +1,15 @@
-import { Component, NeepNode, Slots, Context, Delivered } from '../type';
-import auxiliary from '../auxiliary';
+import { Component, NeepNode, Slots, Context, Delivered, NativeShadow } from '../type';
+import auxiliary, { createElement, Value } from '../auxiliary';
 import { monitorable } from '../install';
 import { setCurrent } from '../helper/current';
 import convert, { destroy, TreeNode } from './convert';
-import draw, { unmount, MountedNode } from './draw';
+import draw, { unmount, MountedNode, getNodes } from './draw';
 import normalize from './normalize';
 import { getSlots, setSlots } from './slot';
 import NeepObject from './Object';
 import { initContext } from '../helper/context';
 import { updateProps } from './props';
+import { typeSymbol } from '../symbols';
 
 function update(
 	nObject: Entity<any, any>,
@@ -20,7 +21,7 @@ function update(
 	const slots = Object.create(null);
 	const {
 		native,
-		container: { iRender },
+		iRender,
 	} = nObject;
 	const childNodes = getSlots(
 		iRender,
@@ -32,6 +33,8 @@ function update(
 	if (!native) { return; }
 	nObject.nativeNodes
 		= convert(nObject, childNodes, nObject.nativeNodes);
+	if (!nObject.mounted) { return; }
+	nObject.container.markDraw(nObject);
 }
 
 function createContext<
@@ -112,7 +115,9 @@ export default class Entity<
 	private readonly _stopRender:() => void;
 	/** 原生子代 */
 	nativeNodes: (TreeNode | TreeNode[])[] | undefined;
+	shadowTree: (MountedNode | MountedNode[])[] = [];
 	nativeTree: (MountedNode | MountedNode[])[] = [];
+	private readonly _shadow: NativeShadow | undefined;
 	/** 组件上下文 */
 	readonly context: Context;
 	readonly parent: NeepObject;
@@ -131,14 +136,10 @@ export default class Entity<
 			'$component',
 			{ value: component, enumerable: true, configurable: true },
 		);
-		// // 原生组件
-		// const native = nativeRender.component
-		// 	&& component[typeSymbol] === 'native' && false;
-		// // 原生组件
-		// const nativeComponent = native
-		// 	? nativeRender.component!()
-		// 	: null;
-		// this.native = nativeComponent;
+		// 原生组件
+		[this.native, this._shadow] =
+			component[typeSymbol] === 'native' &&
+			this.iRender.component?.() || [];
 		// 父子关系
 		this.parent = parent;
 		parent.children.add(this.exposed);
@@ -179,21 +180,47 @@ export default class Entity<
 		this.container.markDraw(this);
 	}
 	_draw() {
-		this.tree = draw(
-			this.container.iRender,
-			this._nodes,
-			this.tree,
-		);
-		const {native} = this;
-		if (native) {
-			// const shadow = this.container.iRender.shadow!(native);
-			// TODO: 更新 childNodes
+		const {nativeNodes, iRender, _shadow, native} = this;
+		if (!native || !nativeNodes || !_shadow) {
+			this.tree = draw(
+				iRender,
+				this._nodes,
+				this.tree,
+			);
+			return;
 		}
+		this.shadowTree = draw(
+			iRender,
+			this._nodes,
+			this.shadowTree,
+		);
+		console.log(nativeNodes);
+		this.nativeTree = draw(
+			iRender,
+			nativeNodes,
+			this.nativeTree,
+		);
 	}
 	_mount() {
-		this.tree = draw(this.container.iRender, this._nodes);
+		const {nativeNodes, iRender, _shadow, native, _nodes} = this;
+		if (!native || !nativeNodes || !_shadow) {
+			this.tree = draw(iRender, _nodes);
+			return;
+		}
+		this.tree = draw(iRender, convert(this, native));
+		this.shadowTree = draw(iRender, _nodes);
+		for (const it of getNodes(this.shadowTree)) {
+			iRender.insert(_shadow, it);
+		}
+		this.nativeTree = draw(iRender, nativeNodes);
+		for (const it of getNodes(this.nativeTree)) {
+			iRender.insert(native, it);
+		}
 	}
 	_unmount() {
-		unmount(this.container.iRender, this.tree);
+		const {iRender, nativeTree} = this;
+		unmount(iRender, this.tree);
+		if (!nativeTree) { return; }
+		unmount(iRender, nativeTree);
 	}
 }

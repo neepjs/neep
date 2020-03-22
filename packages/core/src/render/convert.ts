@@ -265,7 +265,7 @@ function *updateAll(
 	if (source.length > length) {
 		// 创建多余项
 		for (; index < length; index++) {
-			const src = source[index];
+			const src = toElement(source[index]);
 			if (Array.isArray(src)) {
 				yield [...recursive2iterable(src)]
 					.map(it => createItem(nObject, it));
@@ -288,7 +288,7 @@ function convert(
 	source: any,
 	tree?: (TreeNode | TreeNode[])[],
 ): (TreeNode | TreeNode[])[] {
-	if (!Array.isArray(source)) { source = []; }
+	if (!Array.isArray(source)) { source = [source]; }
 	if (!tree) {
 		return createAll(nObject, source);
 	}

@@ -65,9 +65,9 @@ function createEntity(obj: NeepObject): ComponentEntity {
 
 export default class NeepObject {
 	readonly iRender: IRender;
-	/** TODO: 向后代呈递的值 */
+	/** 接受到的呈递值 */
 	readonly parentDelivered: Delivered;
-	/** TODO: 向后代呈递的值 */
+	/** 向后代呈递的值 */
 	readonly delivered: Delivered;
 	/** 组件暴露值 */
 	readonly exposed: Exposed = createExposed(this);
@@ -76,7 +76,7 @@ export default class NeepObject {
 	/** 父组件 */
 	parent?: NeepObject;
 	/** 原生组件 */
-	native: NativeComponent | null = null;
+	native: NativeComponent | undefined;
 	/** 状态 */
 	created: boolean = false;
 	destroyed: boolean = false;

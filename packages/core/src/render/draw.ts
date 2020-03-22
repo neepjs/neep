@@ -2,8 +2,6 @@ import { Tags, Template } from '../auxiliary';
 import { IRender, NativeNode, NativeElement } from '../type';
 import { createMountedNode, recoveryMountedNode } from './id';
 import { TreeNode } from './convert';
-import NeepObject from './Object';
-
 
 /**
  * @description node / component / children 至少一个有效
