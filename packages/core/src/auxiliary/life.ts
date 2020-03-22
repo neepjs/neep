@@ -3,12 +3,11 @@
  * @description 简单组件不支持
  **********************************/
 import { Value, WatchCallback } from 'monitorable';
-import { Hooks, Hook } from '../type';
+import { Hooks } from '../type';
 import { checkCurrent } from '../helper';
-import { monitorable } from '../install';
 import NeepError from '../Error';
 import { setHook } from '../hook';
-import { isValue } from './state';
+import { isValue, value, computed } from './state';
 
 
 /**********************************
@@ -47,18 +46,22 @@ export function watch<T>(
 	if (typeof value !== 'function') { return () => {}; }
 	const stop = isValue(value)
 		? value.watch(cb)
-		: monitorable.computed(value).watch((v, s) => cb(v(), s));
+		: computed(value).watch((v, s) => cb(v(), s));
 	setHook('beforeDestroy', () => stop(), entity);
 	return stop;
 }
 
-export function useValue<T>(f: () => T, name = 'useValue'): T {
+export function useValue(): Value<any>;
+export function useValue<T>(fn: () => T, name?: string): T;
+export function useValue<T>(fn?: () => T, name?: string): T | Value<any>;
+export function useValue<T>(fn?: () => T, name = 'useValue'): T | Value<any> {
 	const entity = checkCurrent(name);
 	const index = entity.$_valueIndex++;
 	const values = entity.$_values;
 	if (!entity.created) {
 		values[index] = undefined;
-		return values[index] = f();
+		const v = typeof fn === 'function' ? fn() : value(undefined);
+		return values[index] = v;
 	}
 	if (index >= values.length) {
 		throw new NeepError(

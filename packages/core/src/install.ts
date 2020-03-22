@@ -7,6 +7,22 @@ import { assert } from './Error';
 
 export let monitorable: typeof monitorableApi;
 
+export let value: typeof monitorableApi.value;
+export let computed: typeof monitorableApi.computed;
+export let isValue: typeof monitorableApi.isValue;
+export let encase: typeof monitorableApi.encase;
+export let recover: typeof monitorableApi.recover;
+
+function installMonitorable(api?: typeof monitorableApi) {
+	if (!api) { return; }
+	monitorable = api;
+	value = monitorable.value;
+	computed = monitorable.computed;
+	isValue = monitorable.isValue;
+	encase = monitorable.encase;
+	recover = monitorable.recover;
+}
+
 export interface InstallOptions {
 	monitorable?: typeof monitorableApi;
 	render?: IRender;
@@ -68,9 +84,7 @@ function installDevtools(tools?: Partial<Devtools>) {
 
 
 export default function install(apis: InstallOptions) {
-	if (apis.monitorable) {
-		monitorable = apis.monitorable;
-	}
+	installMonitorable(apis.monitorable);
 	installRender(apis);
 	if (!isProduction) {
 		installDevtools(apis.devtools);

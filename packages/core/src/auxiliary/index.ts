@@ -13,7 +13,6 @@ export * from './dev';
 
 export { Tags };
 
-
 /** 辅助 */
 export interface Auxiliary extends
 	Readonly<typeof Tags>,
@@ -26,11 +25,15 @@ export interface Auxiliary extends
 
 const auxiliary: Auxiliary = {
 	...Tags,
-	...State,
 	...Life,
 	...Element,
 	...Dev,
 	...Constant,
+	get value() { return State.value },
+	get computed() { return State.computed },
+	get isValue() { return State.isValue },
+	get encase() { return State.encase },
+	get recover() { return State.recover },
 };
 
 export function setAuxiliary<T>(
