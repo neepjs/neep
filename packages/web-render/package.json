@@ -1,6 +1,6 @@
 {
   "name": "@neep/web",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "main": "dist/neep.web.render.common.js",
   "module": "dist/neep.web.render.esm.js",
   "unpkg": "dist/neep.web.render.js",
@@ -27,7 +27,7 @@
     "url": "https://github.com/neepjs/neep/issues"
   },
   "homepage": "https://github.com/neepjs/neep#readme",
-  "peerDependencies": {
+  "optionalDependencies": {
     "@neep/core": "^0.1.0-alpha.0"
   }
 }

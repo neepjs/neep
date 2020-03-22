@@ -1,6 +1,6 @@
 {
   "name": "neep",
-  "version": "0.1.0-alpha.1",
+  "private": true,
   "main": "dist/neep.common.js",
   "module": "dist/neep.esm.js",
   "scripts": {
@@ -68,6 +68,6 @@
     "typescript": "^3.5.3"
   },
   "dependencies": {
-    "monitorable": "0.1.0-alpha.3"
+    "monitorable": "0.1.0-alpha.5"
   }
 }

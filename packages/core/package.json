@@ -1,6 +1,6 @@
 {
   "name": "@neep/core",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "main": "dist/neep.core.common.js",
   "module": "dist/neep.core.esm.js",
   "unpkg": "dist/neep.core.js",
@@ -10,6 +10,7 @@
     "neep"
   ],
   "files": [
+    "core.d.ts",
     "types.d.ts",
     "README.md",
     "LICENSE",
@@ -25,7 +26,7 @@
     "url": "https://github.com/neepjs/neep/issues"
   },
   "homepage": "https://github.com/neepjs/neep#readme",
-  "peerDependencies": {
-    "monitorable": "^0.1.0-alpha.3"
+  "optionalDependencies": {
+    "monitorable": "^0.1.0-alpha.5"
   }
 }

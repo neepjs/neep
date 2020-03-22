@@ -53,6 +53,7 @@ const input = `${ dir }/src/index.ts`;
 const browser = `${ dir }/src/browser.ts`;
 const external = ['monitorable', '@neep/core'];
 
+const typesOutput = `${ dir }/${isCore ? 'core' : 'types'}.d.ts`;
 let config;
 if (!isCore && !isRender) {
 	config = [
@@ -70,7 +71,7 @@ if (!isCore && !isRender) {
 		},
 		{
 			input,
-			output: { file: `${ dir }/types.d.ts`, format: 'esm', banner },
+			output: { file: typesOutput, format: 'esm', banner },
 			plugins: [ dts() ],
 		},
 	];
@@ -108,7 +109,7 @@ if (!isCore && !isRender) {
 		},
 		{
 			input,
-			output: { file: `${ dir }/types.d.ts`, format: 'esm', banner },
+			output: { file: typesOutput, format: 'esm', banner },
 			plugins: [ dts() ],
 		},
 	];
