@@ -124,6 +124,9 @@ export type Tag = null | string
 	| typeof Tags[keyof typeof Tags]
 	| Component;
 
+export interface Ref {
+	(node: NativeNode | Exposed, isRemove?: boolean): void;
+}
 
 export interface NeepElement {
 	[symbols.isElementSymbol]: true,
@@ -136,7 +139,7 @@ export interface NeepElement {
 	/** 子节点 */
 	children: any[];
 	/** 引用绑定 */
-	ref?(node: NativeNode | Exposed, isRemove?: boolean): void;
+	ref?: Ref;
 	/** 插槽 */
 	slot?: string;
 	/** 列表对比 key */
