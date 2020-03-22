@@ -9,7 +9,7 @@ import { isProduction } from '../constant';
 import { devtools, getRender } from '../install';
 import Container from './Container';
 
-export default function render(
+export function render(
 	e?: NeepElement | Component,
 	p: MountProps = {},
 ): RootExposed {
@@ -58,3 +58,4 @@ export default function render(
 	}
 	return exposed as any as RootExposed;
 }
+export { default as refresh } from './refresh';

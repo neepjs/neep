@@ -8,6 +8,7 @@ import { callHook, setHook } from '../hook';
 import { MountedNode } from './draw';
 import Container from './Container';
 import convert, { TreeNode } from './convert';
+import { wait } from './refresh';
 
 function createExposed(obj: NeepObject): Exposed {
 	const cfg: { [K in Exclude<keyof Exposed, '$label'>]-?:
@@ -104,9 +105,11 @@ export default class NeepObject {
 	protected _render: () => NeepNode[] = () => [];
 
 	get canRefresh(): boolean {
+		if (wait(this)) { return false; }
 		return !this._delayedRefresh;
 	}
 	protected get needRefresh(): boolean {
+		if (wait(this)) { return false; }
 		if (this._delayedRefresh) { return false; }
 		const needRefresh = this._needRefresh;
 		this._needRefresh = false;
