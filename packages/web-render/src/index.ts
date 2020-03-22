@@ -96,7 +96,6 @@ const render: IRender = {
 	},
 	component(): [NativeComponent, NativeShadow] {
 		const node = createElement('neep-component');
-		node.attachShadow({ mode: 'open' });
 		return [node, node.attachShadow({ mode: 'open' })] as any;
 	},
 
