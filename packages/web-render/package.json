@@ -1,5 +1,5 @@
 {
-  "name": "@neep/web",
+  "name": "@neep/web-render",
   "version": "0.1.0-alpha.2",
   "main": "dist/neep.web.render.common.js",
   "module": "dist/neep.web.render.esm.js",
