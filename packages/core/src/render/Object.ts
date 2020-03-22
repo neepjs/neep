@@ -56,7 +56,7 @@ function createEntity(obj: NeepObject): ComponentEntity {
 		},
 		refresh: {
 			configurable: true,
-			value(f?:() => void) { obj.refresh(f); },
+			value: obj.refresh.bind(obj),
 		},
 	};
 	const entity: ComponentEntity = Object.create(null, cfg);
@@ -123,22 +123,45 @@ export default class NeepObject {
 	/** 渲染结果 */
 	protected _nodes: (TreeNode | TreeNode[])[] = [];
 	protected _refresh() { }
-	refresh(f?: () => void) {
+	async asyncRefresh<T>(f: () => PromiseLike<T> | T): Promise<T> {
+		try {
+			this._delayedRefresh++;
+			return await f();
+		} finally {
+			this._delayedRefresh--;
+			this.refresh();
+		}
+	}
+	refresh(): void;
+	refresh<T>(f: () => T, async?: false): T;
+	refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
+	refresh<T>(
+		f: () => PromiseLike<T> | T,
+		async?: boolean,
+	): PromiseLike<T> | T;
+	refresh<T>(
+		f?: () => PromiseLike<T> | T,
+		async?: boolean,
+	): PromiseLike<T> | T | undefined;
+	refresh<T>(
+		f?: () => PromiseLike<T> | T,
+		async?: boolean,
+	): PromiseLike<T> | T | undefined {
 		if (typeof f === 'function') {
+			if (async) { return this.asyncRefresh(f); }
 			try {
 				this._delayedRefresh++;
-				f();
+				return f();
 			} finally {
 				this._delayedRefresh--;
 				if (this._delayedRefresh <= 0) {
 					this.refresh();
 				}
 			}
-			return;
 		}
 		if (this.destroyed) { return; }
-		if (!this.created) { return; }
 		this._needRefresh = true;
+		if (!this.created) { return; }
 
 		if (this._refreshing) { return; }
 		this._refreshing = true;

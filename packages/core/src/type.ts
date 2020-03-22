@@ -79,7 +79,17 @@ export interface Entity {
 	setHook<H extends Hooks>(id: H, hook: Hook):() => void;
 	setHook(id: string,hook: Hook): () => void;
 	readonly $_hooks: { [name: string]: Set<Hook>; }
-	refresh(fn?: () => void): void;
+	refresh(): void;
+	refresh<T>(f: () => T, async?: false): T;
+	refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
+	refresh<T>(
+		f: () => PromiseLike<T> | T,
+		async?: boolean,
+	): PromiseLike<T> | T;
+	refresh<T>(
+		f?: () => PromiseLike<T> | T,
+		async?: boolean,
+	): PromiseLike<T> | T | undefined;
 
 	$_valueIndex: number;
 	readonly $_values: any[];
