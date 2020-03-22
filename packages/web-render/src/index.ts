@@ -1,5 +1,3 @@
-
-import update from './update';
 import {
 	IRender,
 	NativeNode,
@@ -10,10 +8,13 @@ import {
 	NativeContainer,
 	NativeElement,
 } from '@neep/core';
+import update from './update';
+import nextFrame from './nextFrame';
 import createElement from './createElement';
 
 const render: IRender = {
-	type: 'html',
+	type: 'web',
+	nextFrame,
 	isNode(v): v is NativeNode {
 		return v instanceof Node;
 	},

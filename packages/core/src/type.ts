@@ -186,6 +186,7 @@ export interface MountProps {
 }
 export interface IRender {
 	type: string;
+	nextFrame?(fn: () => void): void;
 	mount(props: MountProps, parent?: IRender):
 		[NativeContainer, NativeNode];
 	unmount(

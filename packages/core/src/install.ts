@@ -3,6 +3,7 @@ import { IRender } from './type';
 import { isProduction } from './constant';
 
 import { Devtools } from '../../devtools/src/type';
+import { assert } from './Error';
 
 export let monitorable: typeof monitorableApi;
 
@@ -13,33 +14,44 @@ export interface InstallOptions {
 	devtools?: any;
 }
 
+
+let nextFrameApi: undefined | ((fn: () => void) => void);
+export function nextFrame(fn: () => void): void {
+	assert(nextFrameApi, 'The basic renderer is not installed', 'install');
+	nextFrameApi!(fn);
+}
+
 export const renders: Record<string, IRender>
 	= Object.create(null);
 
-	export function getRender(
+export function getRender(
 	type: string | number | IRender = ''
 	): IRender {
 	if (typeof type === 'object') { return type; }
 	return renders[type] || renders.default;
 }
 
-function installRender({ render, renders: list}: InstallOptions) {
-	if (render) {
-		renders[render.type] = render;
-		if (!renders.default) {
-			renders.default = render;
-		}
+function addRender(render?: IRender): void {
+	if (!render) { return; }
+	renders[render.type] = render;
+	if (nextFrameApi) { return; }
+	if (!renders.default) {
+		renders.default = render;
 	}
-	if (Array.isArray(list)) {
-		for (const render of list) {
-			renders[render.type] = render;
-		}
-		if (!renders.default) {
-			const [render] = list;
-			if (render) { renders.default = render; }
-		}
+	if (!nextFrameApi && render.nextFrame) {
+		renders.default = render;
+		nextFrameApi = render.nextFrame;
+	}
+
+}
+function installRender({ render, renders}: InstallOptions) {
+	addRender(render);
+	if (!Array.isArray(renders)) { return; }
+	for (const render of renders) {
+		addRender(render);
 	}
 }
+
 
 export const devtools: Devtools = {
 	renderHook(){},
@@ -53,6 +65,7 @@ function installDevtools(tools?: Partial<Devtools>) {
 		devtools.renderHook = renderHook;
 	}
 }
+
 
 export default function install(apis: InstallOptions) {
 	if (apis.monitorable) {

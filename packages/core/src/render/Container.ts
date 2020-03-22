@@ -10,6 +10,7 @@ import { createMountedNode } from './id';
 import convert, { destroy } from './convert';
 import draw, { unmount, getNodes, MountedNode } from './draw';
 import NeepObject from './Object';
+import { nextFrame } from '../install';
 
 
 let awaitDraw = new Set<Container>();
@@ -18,7 +19,7 @@ function markDraw(c: Container) {
 	awaitDraw.add(c);
 	if (requested) { return; }
 	requested = true;
-	window.requestAnimationFrame(() => {
+	nextFrame(() => {
 		requested = false;
 		const list = [...awaitDraw];
 		awaitDraw.clear();
