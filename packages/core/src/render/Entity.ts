@@ -64,7 +64,7 @@ function initRender<R extends object = object>(
 	const result = monitorable.exec(() => setCurrent(
 		() => component(props, context, auxiliary),
 		entity,
-	), refresh, true);
+	), refresh, { resultOnly: true, postpone: true });
 	if (typeof result === 'function') {
 		// 响应式
 		const render = monitorable.createExecutable(
@@ -84,10 +84,13 @@ function initRender<R extends object = object>(
 			entity,
 		)),
 		refresh,
+		{ postpone: true },
 	);
 	return {
 		nodes: monitorable.exec(
-			() => normalize(nObject, result), refresh, true,
+			() => normalize(nObject, result),
+			refresh,
+			{ resultOnly: true, postpone: true },
 		),
 		render,
 		stopRender: () => render.stop(),
