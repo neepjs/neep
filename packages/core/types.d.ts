@@ -3,6 +3,8 @@ import {
 	NeepElement, Node, Ref,
 } from './core';
 
+export * from './core';
+
 interface Attributes {
 	slot?: string;
 	ref?: Ref;
