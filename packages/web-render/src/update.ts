@@ -1,6 +1,8 @@
 import {
 	recursive2iterable, RecursiveItem,
 } from '../../core/src/render/recursive';
+import * as monitorable from 'monitorable';
+import { getElementModel, ModelInfo } from './props';
 
 function getId(v: any): string | undefined {
 	if (typeof v === 'string') { return v; }
@@ -54,7 +56,10 @@ function getStyle(
 	return css;
 }
 
-function stringify(data: any, isOn = false): string | null {
+function stringify(
+	data: any,
+	isOn = false,
+): string | null {
 	if (data === undefined || data === null) { return null; }
 	if (isOn && typeof data === 'function') { return null; }
 	if (typeof data === 'boolean') { return data ? '' : null; }
@@ -67,9 +72,14 @@ function stringify(data: any, isOn = false): string | null {
 	}
 	return JSON.stringify(data);
 }
-function getAttrs(props: {[k: string]: any}, hasStyle: boolean) {
+function getAttrs(
+	props: {[k: string]: any},
+	hasStyle: boolean,
+	isValue: typeof monitorable.isValue,
+) {
 	const attrs: Record<string, string> = Object.create(null);
 	for (const k in props) {
+		if (!/^[a-zA-Z0-9_-]/.test(k[0])) { continue; }
 		const name = k
 			.replace(/([A-Z])/g, '-$1')
 			.replace(/(\-)\-+/g, '$1')
@@ -77,23 +87,46 @@ function getAttrs(props: {[k: string]: any}, hasStyle: boolean) {
 		switch(name) {
 			case 'style':
 				if (!hasStyle) { break; }
+			case 'ref':
 			case 'is':
 			case 'id':
 			case 'class':
 				continue;
 		}
-		const value = stringify(props[k], name.substr(0, 2) === 'on');
+		let data = props[k];
+		if (isValue(data)) { data = data(); }
+		const value = stringify(data, name.substr(0, 2) === 'on');
 		if (value !== null) { attrs[name] = value; }
 	}
 	return attrs;
 }
-function getEvent(props: {[k: string]: any}) {
+function getEvent(
+	props: {[k: string]: any},
+	isValue: typeof monitorable.isValue,
+	modelInfo?: ModelInfo,
+) {
 	const evt: Record<string, Set<EventListener>> = Object.create(null);
+	function addEvt(name: string, f: EventListener) {
+		let set = evt[name];
+		if (!set) {
+			set = new Set();
+			evt[name] = set;
+		}
+		set.add(f);
+	}
 	for (const k in props) {
 		const f = props[k];
 		if (typeof f !== 'function') { continue; }
-		if (k.substr(0, 2) !== 'on') { continue; }
-		evt[k.substr(2).toLowerCase()] = new Set([f]);
+		if (k[0] !== '@' && k.substr(0, 2) !== 'on') { continue; }
+		const name = k.substr(k[0] !== '@' ? 1 : 2).toLowerCase();
+		addEvt(name, f);
+	}
+	if (modelInfo) {
+		const [prop, name , t] = modelInfo;
+		const value = props[prop];
+		if (isValue(value)) {
+			addEvt(name, e => value(t(e)));
+		}
 	}
 	return evt;
 }
@@ -104,18 +137,23 @@ interface Props {
 	attrs: Record<string, string>;
 	event: Record<string, Set<EventListener>>;
 }
-function getProps({
-	id,
-	class: className,
-	style,
-	...attrs
-}: {[k: string]: any}, hasStyle: boolean): Props {
+function getProps(
+	{
+		id,
+		class: className,
+		style,
+		...attrs
+	}: {[k: string]: any},
+	hasStyle: boolean,
+	isValue: typeof monitorable.isValue,
+	modelInfo?: ModelInfo,
+): Props {
 	return {
-		id: getId(id),
-		classes: getClass(className),
-		style: hasStyle ? getStyle(style) : undefined,
-		attrs: getAttrs(attrs, hasStyle),
-		event: getEvent(attrs),
+		id: getId(isValue(id) ? id() : id),
+		classes: getClass(isValue(className) ? id() : className),
+		style: hasStyle ? getStyle(isValue(style) ? style() : style) : undefined,
+		attrs: getAttrs(attrs, hasStyle, isValue),
+		event: getEvent(attrs, isValue, modelInfo),
 	};
 }
 
@@ -237,11 +275,14 @@ const PropsMap = new WeakMap<Element, Props>();
 export default function update(
 	el: Element,
 	props: {[k: string]: any},
+	isValue: typeof monitorable.isValue,
 ) {
 	const css = (el as any).style;
 	const hasStyle = css instanceof CSSStyleDeclaration;
 	const old = PropsMap.get(el) || { attrs: {}, event: {} };
-	const { id,  classes, style, attrs, event } = getProps(props, hasStyle);
+
+	const { id,  classes, style, attrs, event } =
+		getProps(props, hasStyle, isValue, getElementModel(el));
 	PropsMap.set(el, { id, classes, style, attrs, event });
 	if (id !== old.id) {
 		if (typeof id === 'string') {

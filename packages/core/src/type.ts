@@ -1,5 +1,6 @@
 import { Auxiliary, Tags } from './auxiliary';
 import * as symbols from './symbols';
+import * as monitorable from 'monitorable';
 
 /** 全局钩子 */
 export interface Hook {
@@ -190,7 +191,11 @@ export interface MountProps {
 export interface IRender {
 	type: string;
 	nextFrame?(fn: () => void): void;
-	mount(props: MountProps, parent?: IRender):
+	mount(
+		props: MountProps,
+		isValue: typeof import('monitorable').isValue,
+		parent?: IRender
+	):
 		[NativeContainer, NativeNode];
 	unmount(
 		container: NativeContainer,
@@ -202,11 +207,21 @@ export interface IRender {
 		container: NativeContainer,
 		node: NativeNode,
 		props: MountProps,
+		isValue: typeof import('monitorable').isValue,
 		parent?: IRender,
 	): [NativeContainer, NativeNode];
 
 	isNode(v: any): v is NativeNode;
-	create(tag: string, props: {[k: string]: any}): NativeElement;
+	create(
+		tag: string,
+		props: Record<string, any>,
+		isValue: typeof import('monitorable').isValue,
+	): NativeElement;
+	update(
+		node: NativeElement,
+		props: Record<string, any>,
+		isValue: typeof import('monitorable').isValue,
+	): void;
 	text(text: string): NativeText;
 	placeholder(): NativePlaceholder;
 
@@ -215,7 +230,6 @@ export interface IRender {
 	parent(node: NativeNode): NativeContainer | null;
 	next(node: NativeNode): NativeNode | null;
 
-	update(node: NativeElement, props: {[key: string]: string}): void;
 	insert(
 		parent: NativeContainer,
 		node: NativeNode,

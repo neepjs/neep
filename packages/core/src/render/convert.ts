@@ -179,7 +179,7 @@ function updateItem(
 		}
 		const { component } = tree;
 		if (!component) { return createItem(nObject, source); }
-		component!.update(source.props || {}, source.children);
+		component.update(source.props || {}, source.children);
 		return { ...source, children: [], component };
 	}
 	if (tag === Tags.Container) {
@@ -190,7 +190,7 @@ function updateItem(
 		if (iRender !== component.iRender) {
 			return createItem(nObject, source);
 		}
-		component!.update(source.props || {}, source.children);
+		component.update(source.props || {}, source.children);
 		return { ...source, children: [], component };
 	}
 	if (tag === Tags.Value) {

@@ -10,7 +10,7 @@ import { createMountedNode } from './id';
 import convert, { destroy } from './convert';
 import draw, { unmount, getNodes, MountedNode } from './draw';
 import NeepObject from './Object';
-import { nextFrame } from '../install';
+import { nextFrame, isValue } from '../install';
 
 
 let awaitDraw = new Set<Container>();
@@ -83,7 +83,7 @@ export default class Container extends NeepObject {
 		const content = draw(this.container.iRender, this._nodes);
 		this.content = content;
 		const [container, node]
-			= iRender.mount(props, parent?.iRender);
+			= iRender.mount(props, isValue, parent?.iRender);
 		for (const it of getNodes(content)) {
 			iRender.insert(container, it);
 		}
@@ -130,6 +130,7 @@ export default class Container extends NeepObject {
 				this._container!,
 				this._node!,
 				this.props,
+				isValue,
 				this.parent?.iRender,
 			);
 		}

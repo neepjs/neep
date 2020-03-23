@@ -1,4 +1,4 @@
-import { Tags, Template } from '../auxiliary';
+import { Tags, Template, isValue } from '../auxiliary';
 import { IRender, NativeNode, NativeElement } from '../type';
 import { createMountedNode, recoveryMountedNode } from './id';
 import { TreeNode } from './convert';
@@ -271,6 +271,7 @@ function updateItem(
 	iRender.update(
 		node as NativeElement,
 		source.props || {},
+		isValue,
 	);
 	if (ref) { ref(node!); }
 	if (!source.children.length && !tree.children.length) {
@@ -427,7 +428,7 @@ function createItem(
 			children: createAll(iRender, source.children),
 		});
 	}
-	const node = iRender.create(tag, source.props || {});
+	const node = iRender.create(tag, source.props || {}, isValue);
 	if (ref) { ref(node); }
 	let children: (MountedNode | MountedNode[])[] = [];
 	if (source.children) {
