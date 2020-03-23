@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.2
+ * Neep v0.1.0-alpha.3
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -48,6 +48,25 @@ function assert(v, message, tag) {
 }
 
 let monitorable;
+let value;
+let computed;
+let isValue;
+let encase;
+let recover;
+
+function installMonitorable(api) {
+  if (!api) {
+    return;
+  }
+
+  monitorable = api;
+  value = monitorable.value;
+  computed = monitorable.computed;
+  isValue = monitorable.isValue;
+  encase = monitorable.encase;
+  recover = monitorable.recover;
+}
+
 let nextFrameApi;
 function nextFrame(fn) {
   assert(nextFrameApi, 'The basic renderer is not installed', 'install');
@@ -122,10 +141,7 @@ function installDevtools(tools) {
 }
 
 function install(apis) {
-  if (apis.monitorable) {
-    monitorable = apis.monitorable;
-  }
-
+  installMonitorable(apis.monitorable);
   installRender(apis);
 
   {
@@ -152,31 +168,6 @@ var Tags = /*#__PURE__*/Object.freeze({
   Deliver: Deliver,
   Template: Template,
   Fragment: Fragment
-});
-
-function value(...v) {
-  return monitorable.value(...v);
-}
-function computed(...v) {
-  return monitorable.computed(...v);
-}
-function isValue(...v) {
-  return monitorable.isValue(...v);
-}
-function encase(...v) {
-  return monitorable.encase(...v);
-}
-function recover(...v) {
-  return monitorable.recover(...v);
-}
-
-var State = /*#__PURE__*/Object.freeze({
-  __proto__: null,
-  value: value,
-  computed: computed,
-  isValue: isValue,
-  encase: encase,
-  recover: recover
 });
 
 let current;
@@ -265,18 +256,19 @@ function watch(value, cb) {
     return () => {};
   }
 
-  const stop = isValue(value) ? value.watch(cb) : monitorable.computed(value).watch((v, s) => cb(v(), s));
+  const stop = isValue(value) ? value.watch(cb) : computed(value).watch((v, s) => cb(v(), s));
   setHook('beforeDestroy', () => stop(), entity);
   return stop;
 }
-function useValue(f, name = 'useValue') {
+function useValue(fn, name = 'useValue') {
   const entity = checkCurrent(name);
   const index = entity.$_valueIndex++;
   const values = entity.$_values;
 
   if (!entity.created) {
     values[index] = undefined;
-    return values[index] = f();
+    const v = typeof fn === 'function' ? fn() : value(undefined);
+    return values[index] = v;
   }
 
   if (index >= values.length) {
@@ -536,11 +528,31 @@ var Dev = /*#__PURE__*/Object.freeze({
 });
 
 const auxiliary = { ...Tags,
-  ...State,
   ...Life,
   ...Element,
   ...Dev,
-  ...Constant
+  ...Constant,
+
+  get value() {
+    return value;
+  },
+
+  get computed() {
+    return computed;
+  },
+
+  get isValue() {
+    return isValue;
+  },
+
+  get encase() {
+    return encase;
+  },
+
+  get recover() {
+    return recover;
+  }
+
 };
 function setAuxiliary(name, value) {
   Reflect.defineProperty(auxiliary, name, {
@@ -1604,7 +1616,7 @@ class NeepObject {
 
     _defineProperty(this, "parent", void 0);
 
-    _defineProperty(this, "native", null);
+    _defineProperty(this, "native", void 0);
 
     _defineProperty(this, "created", false);
 
@@ -1842,9 +1854,7 @@ function update(nObject, props, children) {
   const slots = Object.create(null);
   const {
     native,
-    container: {
-      iRender
-    }
+    iRender
   } = nObject;
   const childNodes = getSlots(iRender, children, slots, Boolean(native));
   setSlots(slots, nObject.slots);
@@ -1854,6 +1864,12 @@ function update(nObject, props, children) {
   }
 
   nObject.nativeNodes = convert(nObject, childNodes, nObject.nativeNodes);
+
+  if (!nObject.mounted) {
+    return;
+  }
+
+  nObject.container.markDraw(nObject);
 }
 
 function createContext(nObject) {
@@ -1926,6 +1942,8 @@ function initRender(nObject) {
 
 class Entity extends NeepObject {
   constructor(component, props, children, parent, delivered) {
+    var _this$iRender$compone, _this$iRender;
+
     super(parent.iRender, parent, delivered, parent.container);
 
     _defineProperty(this, "component", void 0);
@@ -1938,7 +1956,11 @@ class Entity extends NeepObject {
 
     _defineProperty(this, "nativeNodes", void 0);
 
+    _defineProperty(this, "shadowTree", []);
+
     _defineProperty(this, "nativeTree", []);
+
+    _defineProperty(this, "_shadow", void 0);
 
     _defineProperty(this, "context", void 0);
 
@@ -1950,6 +1972,7 @@ class Entity extends NeepObject {
       enumerable: true,
       configurable: true
     });
+    [this.native, this._shadow] = component[typeSymbol] === 'native' && ((_this$iRender$compone = (_this$iRender = this.iRender).component) === null || _this$iRender$compone === void 0 ? void 0 : _this$iRender$compone.call(_this$iRender)) || [];
     this.parent = parent;
     parent.children.add(this.exposed);
     const context = createContext(this);
@@ -1996,15 +2019,63 @@ class Entity extends NeepObject {
   }
 
   _draw() {
-    this.tree = draw(this.container.iRender, this._nodes, this.tree);
+    const {
+      nativeNodes,
+      iRender,
+      _shadow,
+      native
+    } = this;
+
+    if (!native || !nativeNodes || !_shadow) {
+      this.tree = draw(iRender, this._nodes, this.tree);
+      return;
+    }
+
+    this.shadowTree = draw(iRender, this._nodes, this.shadowTree);
+    console.log(nativeNodes);
+    this.nativeTree = draw(iRender, nativeNodes, this.nativeTree);
   }
 
   _mount() {
-    this.tree = draw(this.container.iRender, this._nodes);
+    const {
+      nativeNodes,
+      iRender,
+      _shadow,
+      native,
+      _nodes
+    } = this;
+
+    if (!native || !nativeNodes || !_shadow) {
+      this.tree = draw(iRender, _nodes);
+      return;
+    }
+
+    this.tree = draw(iRender, convert(this, native));
+    this.shadowTree = draw(iRender, _nodes);
+
+    for (const it of getNodes(this.shadowTree)) {
+      iRender.insert(_shadow, it);
+    }
+
+    this.nativeTree = draw(iRender, nativeNodes);
+
+    for (const it of getNodes(this.nativeTree)) {
+      iRender.insert(native, it);
+    }
   }
 
   _unmount() {
-    unmount(this.container.iRender, this.tree);
+    const {
+      iRender,
+      nativeTree
+    } = this;
+    unmount(iRender, this.tree);
+
+    if (!nativeTree) {
+      return;
+    }
+
+    unmount(iRender, nativeTree);
   }
 
 }
@@ -2292,7 +2363,7 @@ function* updateAll$1(nObject, source, tree) {
 
   if (source.length > length) {
     for (; index < length; index++) {
-      const src = source[index];
+      const src = toElement(source[index]);
 
       if (Array.isArray(src)) {
         yield [...recursive2iterable(src)].map(it => createItem$1(nObject, it));
@@ -2305,7 +2376,7 @@ function* updateAll$1(nObject, source, tree) {
 
 function convert(nObject, source, tree) {
   if (!Array.isArray(source)) {
-    source = [];
+    source = [source];
   }
 
   if (!tree) {

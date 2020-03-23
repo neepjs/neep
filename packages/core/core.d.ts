@@ -1,10 +1,10 @@
 /*!
- * Neep v0.1.0-alpha.2
+ * Neep v0.1.0-alpha.3
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
 import * as monitorableApi from 'monitorable';
-import { Options, Value as Value$1, WatchCallback } from 'monitorable';
+import { Value as Value$1, WatchCallback, value as value$1, computed as computed$1, isValue as isValue$1, encase as encase$1, recover as recover$1 } from 'monitorable';
 
 /**
  * Global constant
@@ -68,11 +68,7 @@ declare namespace Tags {
   };
 }
 
-declare function value<T>(value: T, options?: boolean | Options): Value$1<T>;
-declare function computed<T>(getter: () => T, options?: boolean | Options): Value$1<T>;
-declare function isValue(v: any): v is Value$1<any>;
-declare function encase<T>(value: T, nest?: number | boolean): T;
-declare function recover<T>(v: T): T;
+
 
 declare const State_value: typeof value;
 declare const State_computed: typeof computed;
@@ -110,7 +106,9 @@ declare function watch<T>(value: Value$1<T>, cb: WatchCallback<T>): () => void;
  * @param cb    当监听的值发送变化时调用的函数
  */
 declare function watch<T>(value: () => T, cb: (v: T, stopped: boolean) => void): () => void;
-declare function useValue<T>(f: () => T, name?: string): T;
+declare function useValue(): Value$1<any>;
+declare function useValue<T>(fn: () => T, name?: string): T;
+declare function useValue<T>(fn?: () => T, name?: string): T | Value$1<any>;
 /**********************************
  * 钩子类 API
  **********************************/
@@ -436,6 +434,11 @@ interface IRender {
     remove(n: NativeNode): void;
 }
 
+declare let value: typeof value$1;
+declare let computed: typeof computed$1;
+declare let isValue: typeof isValue$1;
+declare let encase: typeof encase$1;
+declare let recover: typeof recover$1;
 interface InstallOptions {
     monitorable?: typeof monitorableApi;
     render?: IRender;
