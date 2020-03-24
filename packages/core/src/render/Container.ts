@@ -75,7 +75,7 @@ export default class Container extends NeepObject {
 			this.setChildren(children);
 		});
 	}
-	_refresh() {
+	requestDraw() {
 		this.markDraw(this);
 	}
 	_mount() {
@@ -113,6 +113,31 @@ export default class Container extends NeepObject {
 		unmount(this.iRender, this.content);
 	}
 	_draw() {
+		const {
+			_drawChildren: drawChildren,
+			_drawContainer: drawContainer,
+		} = this;
+		this._drawContainer = false;
+		if (drawContainer) {
+			this.iRender.drawContainer(
+				this._container!,
+				this._node!,
+				this.props,
+				isValue,
+				this.parent?.iRender,
+			);
+		}
+		if (this.parent && this.parent.iRender !== this.iRender) {
+			return;
+		}
+		this._drawChildren = false;
+		if (drawChildren) {
+			this.content = draw(
+				this.iRender,
+				this._nodes,
+				this.content,
+			);
+		}
 	}
 	_drawSelf() {
 		const {
@@ -130,6 +155,7 @@ export default class Container extends NeepObject {
 				this.props,
 				isValue,
 				this.parent?.iRender,
+				true,
 			);
 		}
 		if (drawChildren) {
@@ -159,7 +185,12 @@ export default class Container extends NeepObject {
 		nObject: NeepObject,
 		remove = false,
 	) {
-		if (nObject === this) {
+		if (this.parent?.iRender === this.iRender) {
+			this.parent.container.markDraw(nObject, remove);
+			return;
+		}
+		if (nObject === this && this.parent) {
+			this.parent.container.markDraw(this, remove);
 			this._needDraw = !remove;
 		} else if (remove) {
 			this._awaitDraw.delete(nObject);

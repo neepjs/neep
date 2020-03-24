@@ -34,7 +34,7 @@ function update(
 	nObject.nativeNodes
 		= convert(nObject, childNodes, nObject.nativeNodes);
 	if (!nObject.mounted) { return; }
-	nObject.container.markDraw(nObject);
+	nObject.requestDraw();
 }
 
 function createContext<
@@ -176,7 +176,7 @@ export default class Entity<
 	}
 
 	/** 刷新 */
-	_refresh() {
+	requestDraw() {
 		this.container.markDraw(this);
 	}
 	_draw() {

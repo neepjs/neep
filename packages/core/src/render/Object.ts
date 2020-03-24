@@ -10,7 +10,6 @@ import Container from './Container';
 import convert, { TreeNode } from './convert';
 import { wait } from './refresh';
 import { monitorable } from '../install';
-import { ExecResult } from 'monitorable';
 
 function createExposed(obj: NeepObject): Exposed {
 	const cfg: { [K in Exclude<keyof Exposed, '$label'>]-?:
@@ -124,7 +123,7 @@ export default class NeepObject {
 	private _refreshing = false;
 	/** 渲染结果 */
 	protected _nodes: (TreeNode | TreeNode[])[] = [];
-	protected _refresh() { }
+	protected requestDraw() { }
 	async asyncRefresh<T>(f: () => PromiseLike<T> | T): Promise<T> {
 		try {
 			this._delayedRefresh++;
@@ -181,7 +180,7 @@ export default class NeepObject {
 		if (!this.mounted) { return; }
 		if (this.destroyed) { return; }
 		if (this.unmounted) { return; }
-		this._refresh();
+		this.requestDraw();
 	}
 	callHook<H extends Hooks>(id: H): void;
 	callHook(id: string): void;
@@ -224,7 +223,7 @@ export default class NeepObject {
 				this.callHook('mounted');
 				this.mounted = true;
 			},
-			() => this.container.markDraw(this),
+			() => this.requestDraw(),
 			{ postpone: true }
 		);
 		this._cancelDrawMonitor = result.stop;
@@ -250,7 +249,7 @@ export default class NeepObject {
 				this._draw();
 				this.callHook('updated');
 			},
-			() => this.container.markDraw(this),
+			() => this.requestDraw(),
 			{ postpone: true }
 		);
 		this._cancelDrawMonitor = result.stop;
