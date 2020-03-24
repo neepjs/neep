@@ -137,26 +137,6 @@ interface Props {
 	attrs: Record<string, string | null>;
 	event: Record<string, Set<EventListener>>;
 }
-function getProps(
-	{
-		id,
-		class: className,
-		style,
-		...attrs
-	}: {[k: string]: any},
-	hasStyle: boolean,
-	isValue: typeof monitorable.isValue,
-	modelInfo?: ModelInfo,
-): Props {
-	return {
-		id: getId(isValue(id) ? id() : id),
-		classes: getClass(isValue(className) ? id() : className),
-		style: hasStyle ? getStyle(isValue(style) ? style() : style) : undefined,
-		attrs: getAttrs(attrs, hasStyle, isValue),
-		event: getEvent(attrs, isValue, modelInfo),
-	};
-}
-
 function updateClass(
 	el: Element,
 	classes?: Set<string>,
@@ -286,9 +266,7 @@ export default function update(
 	const hasStyle = css instanceof CSSStyleDeclaration;
 	const old = PropsMap.get(el) || { attrs: {}, event: {} };
 
-	const { id,  classes, style, attrs, event } =
-		getProps(props, hasStyle, isValue, getElementModel(el));
-	PropsMap.set(el, { id, classes, style, attrs, event });
+	const id = getId(isValue(props.id) ? props.id() : props.id);
 	if (id !== old.id) {
 		if (typeof id === 'string') {
 			el.id = props.id;
@@ -296,9 +274,14 @@ export default function update(
 			el.removeAttribute('id');
 		}
 	}
+	const classes = getClass(isValue(props.className) ? props.className() : props.className);
 	updateClass(el, classes, old.classes);
+	const style = hasStyle ? getStyle(isValue(props.style) ? props.style() : props.style) : undefined;
 	if (hasStyle) { updateStyle(css, style, old.style); }
+	const attrs = getAttrs(props, hasStyle, isValue);
 	updateAttrs(el, attrs, old.attrs);
+	const event = getEvent(props, isValue, getElementModel(el));
 	updateEvent(el, event, old.event);
+	PropsMap.set(el, { id, classes, style, attrs, event });
 	return el;
 }
