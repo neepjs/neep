@@ -1,10 +1,10 @@
 /*!
- * Neep v0.1.0-alpha.3
+ * Neep v0.1.0-alpha.4
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
 import * as monitorableApi from 'monitorable';
-import { Value as Value$1, WatchCallback, value as value$1, computed as computed$1, isValue as isValue$1, encase as encase$1, recover as recover$1 } from 'monitorable';
+import { Value as Value$1, WatchCallback, isValue as isValue$1, value as value$1, computed as computed$1, encase as encase$1, recover as recover$1 } from 'monitorable';
 
 /**
  * Global constant
@@ -414,22 +414,18 @@ interface MountProps {
 interface IRender {
     type: string;
     nextFrame?(fn: () => void): void;
-    mount(props: MountProps, parent?: IRender): [NativeContainer, NativeNode];
+    mount(props: MountProps, isValue: typeof isValue$1, parent?: IRender): [NativeContainer, NativeNode];
     unmount(container: NativeContainer, node: NativeNode, removed: boolean): any;
     draw(container: NativeContainer, node: NativeNode): void;
-    drawContainer(container: NativeContainer, node: NativeNode, props: MountProps, parent?: IRender): [NativeContainer, NativeNode];
+    drawContainer(container: NativeContainer, node: NativeNode, props: MountProps, isValue: typeof isValue$1, parent?: IRender): [NativeContainer, NativeNode];
     isNode(v: any): v is NativeNode;
-    create(tag: string, props: {
-        [k: string]: any;
-    }): NativeElement;
+    create(tag: string, props: Record<string, any>, isValue: typeof isValue$1): NativeElement;
+    update(node: NativeElement, props: Record<string, any>, isValue: typeof isValue$1): void;
     text(text: string): NativeText;
     placeholder(): NativePlaceholder;
     component?(): [NativeComponent, NativeShadow];
     parent(node: NativeNode): NativeContainer | null;
     next(node: NativeNode): NativeNode | null;
-    update(node: NativeElement, props: {
-        [key: string]: string;
-    }): void;
     insert(parent: NativeContainer, node: NativeNode, next?: NativeNode | null): void;
     remove(n: NativeNode): void;
 }

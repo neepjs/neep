@@ -1,5 +1,5 @@
 /*!
- * NeepWebRender v0.1.0-alpha.3
+ * NeepWebRender v0.1.0-alpha.4
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -13,6 +13,44 @@ function* recursive2iterable(list) {
 
   for (const it of list) {
     yield* recursive2iterable(it);
+  }
+}
+
+function getElementModel(el) {
+  if (el instanceof HTMLInputElement) {
+    switch (el.type.toLowerCase()) {
+      case 'checkbox':
+      case 'radio':
+        return ['checked', 'change', e => e.currentTarget.checked];
+    }
+
+    return ['value', 'input', e => e.currentTarget.value];
+  }
+
+  if (el instanceof HTMLSelectElement) {
+    return ['value', 'select', e => e.currentTarget.value];
+  }
+
+  return;
+}
+function setAttrs(el, attrs) {
+  if (el instanceof HTMLInputElement && 'checked' in attrs) {
+    switch (el.type.toLowerCase()) {
+      case 'checkbox':
+      case 'radio':
+        if (attrs.checked !== null !== el.checked) {
+          el.checked = attrs.checked !== null;
+        }
+
+    }
+  }
+
+  if ((el instanceof HTMLSelectElement || el instanceof HTMLInputElement) && 'value' in attrs) {
+    const value = attrs.value || '';
+
+    if (el.value !== value) {
+      el.value = value;
+    }
   }
 }
 
@@ -90,11 +128,11 @@ function getStyle(style) {
 
 function stringify(data, isOn = false) {
   if (data === undefined || data === null) {
-    return null;
+    return data;
   }
 
   if (isOn && typeof data === 'function') {
-    return null;
+    return undefined;
   }
 
   if (typeof data === 'boolean') {
@@ -116,10 +154,14 @@ function stringify(data, isOn = false) {
   return JSON.stringify(data);
 }
 
-function getAttrs(props, hasStyle) {
+function getAttrs(props, hasStyle, isValue) {
   const attrs = Object.create(null);
 
   for (const k in props) {
+    if (!/^[a-zA-Z0-9_-]/.test(k[0])) {
+      continue;
+    }
+
     const name = k.replace(/([A-Z])/g, '-$1').replace(/(\-)\-+/g, '$1').toLowerCase();
 
     switch (name) {
@@ -128,15 +170,22 @@ function getAttrs(props, hasStyle) {
           break;
         }
 
+      case 'ref':
       case 'is':
       case 'id':
       case 'class':
         continue;
     }
 
-    const value = stringify(props[k], name.substr(0, 2) === 'on');
+    let data = props[k];
 
-    if (value !== null) {
+    if (isValue(data)) {
+      data = data();
+    }
+
+    const value = stringify(data, name.substr(0, 2) === 'on');
+
+    if (value !== undefined) {
       attrs[name] = value;
     }
   }
@@ -144,8 +193,19 @@ function getAttrs(props, hasStyle) {
   return attrs;
 }
 
-function getEvent(props) {
+function getEvent(props, isValue, modelInfo) {
   const evt = Object.create(null);
+
+  function addEvt(name, f) {
+    let set = evt[name];
+
+    if (!set) {
+      set = new Set();
+      evt[name] = set;
+    }
+
+    set.add(f);
+  }
 
   for (const k in props) {
     const f = props[k];
@@ -154,11 +214,21 @@ function getEvent(props) {
       continue;
     }
 
-    if (k.substr(0, 2) !== 'on') {
+    if (k[0] !== '@' && k.substr(0, 2) !== 'on') {
       continue;
     }
 
-    evt[k.substr(2).toLowerCase()] = new Set([f]);
+    const name = k.substr(k[0] === '@' ? 1 : 2).toLowerCase();
+    addEvt(name, f);
+  }
+
+  if (modelInfo) {
+    const [prop, name, t] = modelInfo;
+    const value = props[prop];
+
+    if (isValue(value)) {
+      addEvt(name, e => value(t(e)));
+    }
   }
 
   return evt;
@@ -169,13 +239,13 @@ function getProps({
   class: className,
   style,
   ...attrs
-}, hasStyle) {
+}, hasStyle, isValue, modelInfo) {
   return {
-    id: getId(id),
-    classes: getClass(className),
-    style: hasStyle ? getStyle(style) : undefined,
-    attrs: getAttrs(attrs, hasStyle),
-    event: getEvent(attrs)
+    id: getId(isValue(id) ? id() : id),
+    classes: getClass(isValue(className) ? id() : className),
+    style: hasStyle ? getStyle(isValue(style) ? style() : style) : undefined,
+    attrs: getAttrs(attrs, hasStyle, isValue),
+    event: getEvent(attrs, isValue, modelInfo)
   };
 }
 
@@ -251,7 +321,11 @@ function updateAttrs(el, attrs, oAttrs) {
     const v = attrs[k];
 
     if (!(k in oAttrs) || oAttrs[k] !== v) {
-      el.setAttribute(k, v);
+      if (v === null) {
+        el.removeAttribute(k);
+      } else {
+        el.setAttribute(k, v);
+      }
     }
   }
 
@@ -260,6 +334,8 @@ function updateAttrs(el, attrs, oAttrs) {
       el.removeAttribute(k);
     }
   }
+
+  setAttrs(el, attrs);
 }
 
 function updateEvent(el, evt, oEvt) {
@@ -299,7 +375,7 @@ function updateEvent(el, evt, oEvt) {
 }
 
 const PropsMap = new WeakMap();
-function update(el, props) {
+function update(el, props, isValue) {
   const css = el.style;
   const hasStyle = css instanceof CSSStyleDeclaration;
   const old = PropsMap.get(el) || {
@@ -312,7 +388,7 @@ function update(el, props) {
     style,
     attrs,
     event
-  } = getProps(props, hasStyle);
+  } = getProps(props, hasStyle, isValue, getElementModel(el));
   PropsMap.set(el, {
     id,
     classes,
@@ -392,7 +468,7 @@ const render = {
     class: className,
     style,
     tag
-  }, parent) {
+  }, isValue, parent) {
     if (!(typeof tag === 'string' && /^[a-z][a-z0-9]*(?:\-[a-z0-9]+)?(?:\:[a-z0-9]+(?:\-[a-z0-9]+)?)?$/i.test(tag))) {
       tag = 'div';
     }
@@ -400,7 +476,7 @@ const render = {
     const container = render.create(tag, {
       class: className,
       style
-    });
+    }, isValue);
 
     if (typeof target === 'string') {
       target = document.querySelector(target);
@@ -437,11 +513,11 @@ const render = {
     class: className,
     style,
     tag
-  }, parent) {
+  }, isValue, parent) {
     render.update(container, {
       class: className,
       style
-    });
+    }, isValue);
 
     if (typeof target === 'string') {
       target = document.querySelector(target);
@@ -491,8 +567,8 @@ const render = {
 
   draw() {},
 
-  create(tag, props) {
-    return update(createElement(tag), props);
+  create(tag, props, isValue) {
+    return update(createElement(tag), props, isValue);
   },
 
   text(text) {
@@ -518,8 +594,8 @@ const render = {
     return node.nextSibling;
   },
 
-  update(node, props) {
-    update(node, props);
+  update(node, props, isValue) {
+    update(node, props, isValue);
   },
 
   insert(parent, node, next = null) {

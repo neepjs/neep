@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.3
+ * Neep v0.1.0-alpha.4
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -824,18 +824,25 @@ function updateItem(iRender, source, tree) {
   }
 
   if (tag === Value) {
-    if (tree.value === source.value) {
+    let value = source.value;
+
+    if (exports.isValue(value)) {
+      value = value();
+    }
+
+    if (tree.value === value) {
       if (ref && tree.node) {
         ref(tree.node);
       }
 
       return createMountedNode({ ...tree,
         ...source,
+        value,
         children: []
       }, tree.id);
     }
 
-    return replace(iRender, createValue(iRender, source), tree);
+    return replace(iRender, createValue(iRender, source, value), tree);
   }
 
   if (tag === Template || tag.substr(0, 5) === 'Neep:') {
@@ -849,7 +856,7 @@ function updateItem(iRender, source, tree) {
   const {
     node
   } = tree;
-  iRender.update(node, source.props || {});
+  iRender.update(node, source.props || {}, exports.isValue);
 
   if (ref) {
     ref(node);
@@ -885,18 +892,18 @@ function updateItem(iRender, source, tree) {
   }, tree.id);
 }
 
-function createValue(iRender, source) {
-  const {
-    value,
+function createValue(iRender, source, value) {
+  let {
     ref
   } = source;
 
-  if (iRender.isNode(source.value)) {
+  if (iRender.isNode(value)) {
     if (ref) {
       ref(value);
     }
 
     return createMountedNode({ ...source,
+      value,
       node: value,
       children: [],
       component: undefined
@@ -923,6 +930,7 @@ function createValue(iRender, source) {
   }
 
   return createMountedNode({ ...source,
+    value,
     node,
     component: undefined,
     children: []
@@ -1000,7 +1008,7 @@ function createItem(iRender, source) {
   }
 
   if (tag === Value) {
-    return createValue(iRender, source);
+    return createValue(iRender, source, source.value);
   }
 
   if (tag === Template || tag.substr(0, 5) === 'Neep:') {
@@ -1011,7 +1019,7 @@ function createItem(iRender, source) {
     });
   }
 
-  const node = iRender.create(tag, source.props || {});
+  const node = iRender.create(tag, source.props || {}, exports.isValue);
 
   if (ref) {
     ref(node);
@@ -1568,6 +1576,8 @@ class NeepObject {
 
     _defineProperty(this, "__executed_mounted", false);
 
+    _defineProperty(this, "_cancelDrawMonitor", void 0);
+
     this.iRender = iRender;
     this.parentDelivered = delivered;
     this.delivered = Object.create(delivered);
@@ -1723,12 +1733,17 @@ class NeepObject {
     }
 
     this.__executed_mount = true;
-    this.callHook('beforeMount');
+    const result = monitorable.exec(() => {
+      this.callHook('beforeMount');
 
-    this._mount();
+      this._mount();
 
-    this.callHook('mounted');
-    this.mounted = true;
+      this.callHook('mounted');
+      this.mounted = true;
+    }, () => this.container.markDraw(this), {
+      postpone: true
+    });
+    this._cancelDrawMonitor = result.stop;
   }
 
   _unmount() {}
@@ -1754,15 +1769,23 @@ class NeepObject {
   _draw() {}
 
   draw() {
+    var _this$_cancelDrawMoni;
+
     if (this.__executed_destroy) {
       return;
     }
 
-    this.callHook('beforeUpdate');
+    (_this$_cancelDrawMoni = this._cancelDrawMonitor) === null || _this$_cancelDrawMoni === void 0 ? void 0 : _this$_cancelDrawMoni.call(this);
+    const result = monitorable.exec(() => {
+      this.callHook('beforeUpdate');
 
-    this._draw();
+      this._draw();
 
-    this.callHook('updated');
+      this.callHook('updated');
+    }, () => this.container.markDraw(this), {
+      postpone: true
+    });
+    this._cancelDrawMonitor = result.stop;
   }
 
 }
@@ -2405,7 +2428,7 @@ class Container$1 extends NeepObject {
     } = this;
     const content = draw(this.container.iRender, this._nodes);
     this.content = content;
-    const [container, node] = iRender.mount(props, parent === null || parent === void 0 ? void 0 : parent.iRender);
+    const [container, node] = iRender.mount(props, exports.isValue, parent === null || parent === void 0 ? void 0 : parent.iRender);
 
     for (const it of getNodes(content)) {
       iRender.insert(container, it);
@@ -2442,15 +2465,7 @@ class Container$1 extends NeepObject {
 
   _draw() {}
 
-  drawSelf() {
-    if (!this.mounted) {
-      return;
-    }
-
-    if (this.destroyed) {
-      return;
-    }
-
+  _drawSelf() {
     const {
       _drawChildren: drawChildren,
       _drawContainer: drawContainer
@@ -2463,7 +2478,7 @@ class Container$1 extends NeepObject {
     if (drawContainer) {
       var _this$parent;
 
-      this.iRender.drawContainer(this._container, this._node, this.props, (_this$parent = this.parent) === null || _this$parent === void 0 ? void 0 : _this$parent.iRender);
+      this.iRender.drawContainer(this._container, this._node, this.props, exports.isValue, (_this$parent = this.parent) === null || _this$parent === void 0 ? void 0 : _this$parent.iRender);
     }
 
     if (drawChildren) {
@@ -2471,6 +2486,20 @@ class Container$1 extends NeepObject {
     }
 
     this.callHook('updated');
+  }
+
+  drawSelf() {
+    if (!this.mounted) {
+      return;
+    }
+
+    if (this.destroyed) {
+      return;
+    }
+
+    monitorable.exec(() => this._drawSelf, () => this.markDraw(this), {
+      postpone: true
+    });
   }
 
   markDraw(nObject, remove = false) {
