@@ -22,3 +22,24 @@ export function getElementModel(el: Element): ModelInfo | undefined {
 	}
 	return ;
 }
+
+export function setAttrs(el: Element, attrs: Record<string, string | null>) {
+	if (el instanceof HTMLInputElement && 'checked' in attrs) {
+
+		switch(el.type.toLowerCase()) {
+			case 'checkbox':
+			case 'radio':
+				if ((attrs.checked !== null) !== el.checked) {
+					el.checked = attrs.checked !== null;
+				}
+		}
+	}
+
+	if ((el instanceof HTMLSelectElement || el instanceof HTMLInputElement) && 'value' in attrs) {
+		const value = attrs.value || '';
+		if (el.value !== value) {
+			el.value = value;
+		}
+	}
+
+}

@@ -10,7 +10,7 @@ import { createMountedNode } from './id';
 import convert, { destroy } from './convert';
 import draw, { unmount, getNodes, MountedNode } from './draw';
 import NeepObject from './Object';
-import { nextFrame, isValue } from '../install';
+import { nextFrame, isValue, monitorable } from '../install';
 
 
 let awaitDraw = new Set<Container>();
@@ -114,9 +114,7 @@ export default class Container extends NeepObject {
 	}
 	_draw() {
 	}
-	drawSelf() {
-		if (!this.mounted) { return; }
-		if (this.destroyed) { return; }
+	_drawSelf() {
 		const {
 			_drawChildren: drawChildren,
 			_drawContainer: drawContainer,
@@ -142,6 +140,15 @@ export default class Container extends NeepObject {
 			);
 		}
 		this.callHook('updated');
+	}
+	drawSelf() {
+		if (!this.mounted) { return; }
+		if (this.destroyed) { return; }
+		monitorable.exec(
+			() => this._drawSelf,
+			() => this.markDraw(this),
+			{ postpone: true }
+		);
 	}
 	/** 等待重画的项目 */
 	private _awaitDraw = new Set<NeepObject>();

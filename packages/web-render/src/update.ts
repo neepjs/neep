@@ -2,7 +2,7 @@ import {
 	recursive2iterable, RecursiveItem,
 } from '../../core/src/render/recursive';
 import * as monitorable from 'monitorable';
-import { getElementModel, ModelInfo } from './props';
+import { getElementModel, ModelInfo, setAttrs } from './props';
 
 function getId(v: any): string | undefined {
 	if (typeof v === 'string') { return v; }
@@ -59,9 +59,9 @@ function getStyle(
 function stringify(
 	data: any,
 	isOn = false,
-): string | null {
-	if (data === undefined || data === null) { return null; }
-	if (isOn && typeof data === 'function') { return null; }
+): string | null | undefined {
+	if (data === undefined || data === null) { return data; }
+	if (isOn && typeof data === 'function') { return undefined; }
 	if (typeof data === 'boolean') { return data ? '' : null; }
 	if (typeof data !== 'object') { return String(data); }
 	if (data instanceof Date) {
@@ -77,7 +77,7 @@ function getAttrs(
 	hasStyle: boolean,
 	isValue: typeof monitorable.isValue,
 ) {
-	const attrs: Record<string, string> = Object.create(null);
+	const attrs: Record<string, string | null> = Object.create(null);
 	for (const k in props) {
 		if (!/^[a-zA-Z0-9_-]/.test(k[0])) { continue; }
 		const name = k
@@ -96,7 +96,7 @@ function getAttrs(
 		let data = props[k];
 		if (isValue(data)) { data = data(); }
 		const value = stringify(data, name.substr(0, 2) === 'on');
-		if (value !== null) { attrs[name] = value; }
+		if (value !== undefined) { attrs[name] = value; }
 	}
 	return attrs;
 }
@@ -118,7 +118,7 @@ function getEvent(
 		const f = props[k];
 		if (typeof f !== 'function') { continue; }
 		if (k[0] !== '@' && k.substr(0, 2) !== 'on') { continue; }
-		const name = k.substr(k[0] !== '@' ? 1 : 2).toLowerCase();
+		const name = k.substr(k[0] === '@' ? 1 : 2).toLowerCase();
 		addEvt(name, f);
 	}
 	if (modelInfo) {
@@ -134,7 +134,7 @@ interface Props {
 	id?: string;
 	classes?: Set<string>;
 	style?: string | Record<string, [string, 'important' | null]>;
-	attrs: Record<string, string>;
+	attrs: Record<string, string | null>;
 	event: Record<string, Set<EventListener>>;
 }
 function getProps(
@@ -225,13 +225,17 @@ function updateStyle(
 }
 function updateAttrs(
 	el: Element,
-	attrs: Record<string, string>,
-	oAttrs: Record<string, string>,
+	attrs: Record<string, string | null>,
+	oAttrs: Record<string, string | null>,
 ) {
 	for (const k of Object.keys(attrs)) {
 		const v = attrs[k];
 		if (!(k in oAttrs) || oAttrs[k] !== v) {
-			el.setAttribute(k, v);
+			if (v === null) {
+				el.removeAttribute(k);
+			} else {
+				el.setAttribute(k, v);
+			}
 		}
 	}
 	for (const k of Object.keys(oAttrs)) {
@@ -239,6 +243,7 @@ function updateAttrs(
 			el.removeAttribute(k);
 		}
 	}
+	setAttrs(el, attrs);
 }
 
 function updateEvent(

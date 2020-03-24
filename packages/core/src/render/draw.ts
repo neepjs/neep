@@ -244,15 +244,18 @@ function updateItem(
 		}, tree.id);
 	}
 	if (tag === Tags.Value) {
-		if(tree.value === source.value) {
+		let value = source.value;
+		if (isValue(value)) { value = value(); }
+		if(tree.value === value) {
 			if (ref && tree.node) { ref(tree.node); }
 			return createMountedNode({
 				...tree,
 				...source,
+				value,
 				children: [],
 			}, tree.id);
 		}
-		return replace( iRender, createValue(iRender, source), tree);
+		return replace(iRender, createValue(iRender, source, value), tree);
 	}
 	if (tag === Template || tag.substr(0, 5) === 'Neep:') {
 		// TODO: ref
@@ -310,12 +313,14 @@ function updateItem(
 function createValue(
 	iRender: IRender,
 	source: TreeNode,
+	value: any,
 ): MountedNode {
-	const { value, ref } = source;
-	if (iRender.isNode(source.value)) {
+	let { ref } = source;
+	if (iRender.isNode(value)) {
 		if (ref) { ref(value); }
 		return createMountedNode({
 			...source,
+			value,
 			node: value,
 			children: [],
 			component: undefined,
@@ -342,6 +347,7 @@ function createValue(
 	if (ref) { ref(node); }
 	return createMountedNode({
 		...source,
+		value,
 		node,
 		component: undefined,
 		children: [],
@@ -417,7 +423,7 @@ function createItem(
 		});
 	}
 	if (tag === Tags.Value) {
-		return createValue(iRender, source);
+		return createValue(iRender, source, source.value);
 	}
 	if (tag === Template || tag.substr(0, 5) === 'Neep:') {
 		// TODO: ref

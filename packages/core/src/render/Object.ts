@@ -9,6 +9,8 @@ import { MountedNode } from './draw';
 import Container from './Container';
 import convert, { TreeNode } from './convert';
 import { wait } from './refresh';
+import { monitorable } from '../install';
+import { ExecResult } from 'monitorable';
 
 function createExposed(obj: NeepObject): Exposed {
 	const cfg: { [K in Exclude<keyof Exposed, '$label'>]-?:
@@ -215,10 +217,17 @@ export default class NeepObject {
 		if (this.__executed_destroy) { return; }
 		if (this.__executed_mount) { return; }
 		this.__executed_mount = true;
-		this.callHook('beforeMount');
-		this._mount();
-		this.callHook('mounted');
-		this.mounted = true;
+		const result = monitorable.exec(
+			() => {
+				this.callHook('beforeMount');
+				this._mount();
+				this.callHook('mounted');
+				this.mounted = true;
+			},
+			() => this.container.markDraw(this),
+			{ postpone: true }
+		);
+		this._cancelDrawMonitor = result.stop;
 	}
 	protected _unmount() { }
 	unmount() {
@@ -231,10 +240,19 @@ export default class NeepObject {
 		this.unmounted = true;
 	}
 	_draw() {}
+	_cancelDrawMonitor?: () => void;
 	draw() {
 		if (this.__executed_destroy) { return; }
-		this.callHook('beforeUpdate');
-		this._draw();
-		this.callHook('updated');
+		this._cancelDrawMonitor?.();
+		const result = monitorable.exec(
+			() => {
+				this.callHook('beforeUpdate');
+				this._draw();
+				this.callHook('updated');
+			},
+			() => this.container.markDraw(this),
+			{ postpone: true }
+		);
+		this._cancelDrawMonitor = result.stop;
 	}
 }
