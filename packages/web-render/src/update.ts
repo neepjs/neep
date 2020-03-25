@@ -274,7 +274,7 @@ export default function update(
 			el.removeAttribute('id');
 		}
 	}
-	const classes = getClass(isValue(props.className) ? props.className() : props.className);
+	const classes = getClass(isValue(props.class) ? props.class() : props.class);
 	updateClass(el, classes, old.classes);
 	const style = hasStyle ? getStyle(isValue(props.style) ? props.style() : props.style) : undefined;
 	if (hasStyle) { updateStyle(css, style, old.style); }
