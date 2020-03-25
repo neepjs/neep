@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.4
+ * Neep v0.1.0-alpha.5
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -417,7 +417,11 @@ interface IRender {
     mount(props: MountProps, isValue: typeof isValue$1, parent?: IRender): [NativeContainer, NativeNode];
     unmount(container: NativeContainer, node: NativeNode, removed: boolean): any;
     draw(container: NativeContainer, node: NativeNode): void;
-    drawContainer(container: NativeContainer, node: NativeNode, props: MountProps, isValue: typeof isValue$1, parent?: IRender): [NativeContainer, NativeNode];
+    drawContainer(container: NativeContainer, node: NativeNode, props: MountProps, isValue: typeof isValue$1, parent?: IRender, 
+    /**
+     * 当 parent 存在且与当前节点不同时，用于区分
+     */
+    isSelf?: boolean): [NativeContainer, NativeNode];
     isNode(v: any): v is NativeNode;
     create(tag: string, props: Record<string, any>, isValue: typeof isValue$1): NativeElement;
     update(node: NativeElement, props: Record<string, any>, isValue: typeof isValue$1): void;

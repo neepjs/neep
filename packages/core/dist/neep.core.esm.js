@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.4
+ * Neep v0.1.0-alpha.5
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -1693,7 +1693,7 @@ class NeepObject {
     return needRefresh;
   }
 
-  _refresh() {}
+  requestDraw() {}
 
   async asyncRefresh(f) {
     try {
@@ -1772,7 +1772,7 @@ class NeepObject {
       return;
     }
 
-    this._refresh();
+    this.requestDraw();
   }
 
   callHook(id) {
@@ -1822,7 +1822,7 @@ class NeepObject {
 
       this.callHook('mounted');
       this.mounted = true;
-    }, () => this.container.markDraw(this), {
+    }, () => this.requestDraw(), {
       postpone: true
     });
     this._cancelDrawMonitor = result.stop;
@@ -1864,7 +1864,7 @@ class NeepObject {
       this._draw();
 
       this.callHook('updated');
-    }, () => this.container.markDraw(this), {
+    }, () => this.requestDraw(), {
       postpone: true
     });
     this._cancelDrawMonitor = result.stop;
@@ -1892,7 +1892,7 @@ function update(nObject, props, children) {
     return;
   }
 
-  nObject.container.markDraw(nObject);
+  nObject.requestDraw();
 }
 
 function createContext(nObject) {
@@ -2037,7 +2037,7 @@ class Entity extends NeepObject {
     destroy(this._nodes);
   }
 
-  _refresh() {
+  requestDraw() {
     this.container.markDraw(this);
   }
 
@@ -2498,7 +2498,7 @@ class Container$1 extends NeepObject {
     });
   }
 
-  _refresh() {
+  requestDraw() {
     this.markDraw(this);
   }
 
@@ -2545,7 +2545,29 @@ class Container$1 extends NeepObject {
     unmount(this.iRender, this.content);
   }
 
-  _draw() {}
+  _draw() {
+    const {
+      _drawChildren: drawChildren,
+      _drawContainer: drawContainer
+    } = this;
+    this._drawContainer = false;
+
+    if (drawContainer) {
+      var _this$parent;
+
+      this.iRender.drawContainer(this._container, this._node, this.props, isValue, (_this$parent = this.parent) === null || _this$parent === void 0 ? void 0 : _this$parent.iRender);
+    }
+
+    if (this.parent && this.parent.iRender !== this.iRender) {
+      return;
+    }
+
+    this._drawChildren = false;
+
+    if (drawChildren) {
+      this.content = draw(this.iRender, this._nodes, this.content);
+    }
+  }
 
   _drawSelf() {
     const {
@@ -2558,9 +2580,9 @@ class Container$1 extends NeepObject {
     this.callHook('beforeUpdate');
 
     if (drawContainer) {
-      var _this$parent;
+      var _this$parent2;
 
-      this.iRender.drawContainer(this._container, this._node, this.props, isValue, (_this$parent = this.parent) === null || _this$parent === void 0 ? void 0 : _this$parent.iRender);
+      this.iRender.drawContainer(this._container, this._node, this.props, isValue, (_this$parent2 = this.parent) === null || _this$parent2 === void 0 ? void 0 : _this$parent2.iRender, true);
     }
 
     if (drawChildren) {
@@ -2585,7 +2607,15 @@ class Container$1 extends NeepObject {
   }
 
   markDraw(nObject, remove = false) {
-    if (nObject === this) {
+    var _this$parent3;
+
+    if (((_this$parent3 = this.parent) === null || _this$parent3 === void 0 ? void 0 : _this$parent3.iRender) === this.iRender) {
+      this.parent.container.markDraw(nObject, remove);
+      return;
+    }
+
+    if (nObject === this && this.parent) {
+      this.parent.container.markDraw(this, remove);
       this._needDraw = !remove;
     } else if (remove) {
       this._awaitDraw.delete(nObject);

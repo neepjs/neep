@@ -1,5 +1,5 @@
 /*!
- * NeepWebRender v0.1.0-alpha.4
+ * NeepWebRender v0.1.0-alpha.5
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -238,21 +238,6 @@
 	  return evt;
 	}
 
-	function getProps({
-	  id,
-	  class: className,
-	  style,
-	  ...attrs
-	}, hasStyle, isValue, modelInfo) {
-	  return {
-	    id: getId(isValue(id) ? id() : id),
-	    classes: getClass(isValue(className) ? id() : className),
-	    style: hasStyle ? getStyle(isValue(style) ? style() : style) : undefined,
-	    attrs: getAttrs(attrs, hasStyle, isValue),
-	    event: getEvent(attrs, isValue, modelInfo)
-	  };
-	}
-
 	function updateClass(el, classes, oClasses) {
 	  if (classes && oClasses) {
 	    const list = el.getAttribute('class') || '';
@@ -386,20 +371,7 @@
 	    attrs: {},
 	    event: {}
 	  };
-	  const {
-	    id,
-	    classes,
-	    style,
-	    attrs,
-	    event
-	  } = getProps(props, hasStyle, isValue, getElementModel(el));
-	  PropsMap.set(el, {
-	    id,
-	    classes,
-	    style,
-	    attrs,
-	    event
-	  });
+	  const id = getId(isValue(props.id) ? props.id() : props.id);
 
 	  if (id !== old.id) {
 	    if (typeof id === 'string') {
@@ -409,14 +381,25 @@
 	    }
 	  }
 
+	  const classes = getClass(isValue(props.className) ? props.className() : props.className);
 	  updateClass(el, classes, old.classes);
+	  const style = hasStyle ? getStyle(isValue(props.style) ? props.style() : props.style) : undefined;
 
 	  if (hasStyle) {
 	    updateStyle(css, style, old.style);
 	  }
 
+	  const attrs = getAttrs(props, hasStyle, isValue);
 	  updateAttrs(el, attrs, old.attrs);
+	  const event = getEvent(props, isValue, getElementModel(el));
 	  updateEvent(el, event, old.event);
+	  PropsMap.set(el, {
+	    id,
+	    classes,
+	    style,
+	    attrs,
+	    event
+	  });
 	  return el;
 	}
 

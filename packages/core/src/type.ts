@@ -209,6 +209,10 @@ export interface IRender {
 		props: MountProps,
 		isValue: typeof import('monitorable').isValue,
 		parent?: IRender,
+		/**
+		 * 当 parent 存在且与当前节点不同时，用于区分
+		 */
+		isSelf?: boolean,
 	): [NativeContainer, NativeNode];
 
 	isNode(v: any): v is NativeNode;

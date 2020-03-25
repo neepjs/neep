@@ -1,6 +1,6 @@
 {
   "name": "@neep/web-render",
-  "version": "0.1.0-alpha.4",
+  "version": "0.1.0-alpha.5",
   "main": "dist/neep.web.render.common.js",
   "module": "dist/neep.web.render.esm.js",
   "unpkg": "dist/neep.web.render.js",
