@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.5
+ * Neep v0.1.0-alpha.6
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -610,6 +610,27 @@
     }
   }
 
+  let refList;
+  function setRefList(list) {
+    refList = list;
+  }
+
+  function setRef(ref, node, isRemove) {
+    if (typeof ref !== 'function') {
+      return;
+    }
+
+    if (!node) {
+      return;
+    }
+
+    if (!refList) {
+      ref(node, isRemove);
+    } else {
+      refList.push(() => ref(node, isRemove));
+    }
+  }
+
   function getLastNode(tree) {
     if (Array.isArray(tree)) {
       return getLastNode(tree[tree.length - 1]);
@@ -696,19 +717,13 @@
     recoveryMountedNode(tree);
 
     if (node) {
-      if (ref) {
-        ref(node, true);
-      }
-
+      setRef(ref, node, true);
       iRender.remove(node);
       return;
     }
 
     if (component) {
-      if (ref) {
-        ref(component.exposed, true);
-      }
-
+      setRef(ref, component.exposed, true);
       component.unmount();
       return;
     }
@@ -867,7 +882,7 @@
       tag,
       component
     } = source;
-    const ref = source.ref !== tree.ref && source.ref;
+    const ref = source.ref !== tree.ref && source.ref || undefined;
 
     if (tag !== tree.tag || component !== tree.component) {
       return replace(iRender, createItem(iRender, source), tree);
@@ -886,10 +901,7 @@
         }, tree.id);
       }
 
-      if (ref) {
-        ref(component.exposed);
-      }
-
+      setRef(ref, component.exposed);
       return createMountedNode({ ...source,
         node: undefined,
         component,
@@ -905,10 +917,7 @@
       }
 
       if (tree.value === value) {
-        if (ref && tree.node) {
-          ref(tree.node);
-        }
-
+        setRef(ref, tree.node);
         return createMountedNode({ ...tree,
           ...source,
           value,
@@ -931,10 +940,7 @@
       node
     } = tree;
     iRender.update(node, source.props || {}, exports.isValue);
-
-    if (ref) {
-      ref(node);
-    }
+    setRef(ref, node);
 
     if (!source.children.length && !tree.children.length) {
       return createMountedNode({ ...tree,
@@ -972,10 +978,7 @@
     } = source;
 
     if (iRender.isNode(value)) {
-      if (ref) {
-        ref(value);
-      }
-
+      setRef(ref, value);
       return createMountedNode({ ...source,
         value,
         node: value,
@@ -999,10 +1002,7 @@
       node = iRender.placeholder();
     }
 
-    if (ref) {
-      ref(node);
-    }
-
+    setRef(ref, node);
     return createMountedNode({ ...source,
       value,
       node,
@@ -1046,11 +1046,7 @@
 
     if (!tag) {
       const node = iRender.placeholder();
-
-      if (ref) {
-        ref(node);
-      }
-
+      setRef(ref, node);
       return createMountedNode({
         tag: null,
         node,
@@ -1069,11 +1065,7 @@
       }
 
       component.mount();
-
-      if (ref) {
-        ref(component.exposed);
-      }
-
+      setRef(ref, component.exposed);
       return createMountedNode({ ...source,
         node: undefined,
         component,
@@ -1094,11 +1086,7 @@
     }
 
     const node = iRender.create(tag, source.props || {}, exports.isValue);
-
-    if (ref) {
-      ref(node);
-    }
-
+    setRef(ref, node);
     let children = [];
 
     if (source.children) {
@@ -1530,6 +1518,18 @@
     return exposed;
   }
 
+  let completeList;
+  function setCompleteList(list) {
+    completeList = list;
+  }
+  function complete(it) {
+    if (!completeList) {
+      it();
+    } else {
+      completeList.push(it);
+    }
+  }
+
   function createEntity(obj) {
     const cfg = {
       exposed: {
@@ -1815,17 +1815,16 @@
       }
 
       this.__executed_mount = true;
+      this.callHook('beforeMount');
       const result = monitorable.exec(() => {
-        this.callHook('beforeMount');
-
         this._mount();
 
-        this.callHook('mounted');
         this.mounted = true;
-      }, () => this.requestDraw(), {
+      }, c => c && this.requestDraw(), {
         postpone: true
       });
       this._cancelDrawMonitor = result.stop;
+      complete(() => this.callHook('mounted'));
     }
 
     _unmount() {}
@@ -1858,16 +1857,12 @@
       }
 
       (_this$_cancelDrawMoni = this._cancelDrawMonitor) === null || _this$_cancelDrawMoni === void 0 ? void 0 : _this$_cancelDrawMoni.call(this);
-      const result = monitorable.exec(() => {
-        this.callHook('beforeUpdate');
-
-        this._draw();
-
-        this.callHook('updated');
-      }, () => this.requestDraw(), {
+      this.callHook('beforeUpdate');
+      const result = monitorable.exec(() => this._draw(), c => c && this.requestDraw(), {
         postpone: true
       });
       this._cancelDrawMonitor = result.stop;
+      complete(() => this.callHook('updated'));
     }
 
   }
@@ -2055,7 +2050,6 @@
       }
 
       this.shadowTree = draw(iRender, this._nodes, this.shadowTree);
-      console.log(nativeNodes);
       this.nativeTree = draw(iRender, nativeNodes, this.nativeTree);
     }
 
@@ -2577,7 +2571,6 @@
       this._needDraw = false;
       this._drawChildren = false;
       this._drawContainer = false;
-      this.callHook('beforeUpdate');
 
       if (drawContainer) {
         var _this$parent2;
@@ -2588,8 +2581,6 @@
       if (drawChildren) {
         this.content = draw(this.iRender, this._nodes, this.content);
       }
-
-      this.callHook('updated');
     }
 
     drawSelf() {
@@ -2601,9 +2592,11 @@
         return;
       }
 
-      monitorable.exec(() => this._drawSelf, () => this.markDraw(this), {
+      this.callHook('beforeUpdate');
+      monitorable.exec(() => this._drawSelf(), c => c && this.markDraw(this), {
         postpone: true
       });
+      complete(() => this.callHook('updated'));
     }
 
     markDraw(nObject, remove = false) {
@@ -2649,7 +2642,7 @@
 
       list.map(c => c.draw());
       this.iRender.draw(container, node);
-      this.callHook('drawn');
+      complete(() => this.callHook('drawn'));
     }
 
     markDrawContainer(container, remove = false) {
@@ -2670,8 +2663,16 @@
       }
 
       this.callHook('beforeDrawAll');
+      const refs = [];
+      const completeList = [];
+      setCompleteList(completeList);
+      setRefList(refs);
       const list = [...containers];
-      list.map(c => c.drawContainer());
+      containers.clear();
+      list.forEach(c => c.drawContainer());
+      setRefList();
+      refs.forEach(r => r());
+      completeList.forEach(r => r());
       this.callHook('drawnAll');
     }
 

@@ -1,5 +1,5 @@
 /*!
- * NeepWebRender v0.1.0-alpha.5
+ * NeepWebRender v0.1.0-alpha.6
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -377,7 +377,7 @@ function update(el, props, isValue) {
     }
   }
 
-  const classes = getClass(isValue(props.className) ? props.className() : props.className);
+  const classes = getClass(isValue(props.class) ? props.class() : props.class);
   updateClass(el, classes, old.classes);
   const style = hasStyle ? getStyle(isValue(props.style) ? props.style() : props.style) : undefined;
 
