@@ -8,8 +8,8 @@ import {
 import { Tags } from '../auxiliary';
 import { createMountedNode } from './id';
 import convert, { destroy } from './convert';
-import draw, { unmount, getNodes, MountedNode } from './draw';
-import NeepObject from './Object';
+import draw, { unmount, getNodes, MountedNode, setRefList } from './draw';
+import NeepObject, { setCompleteList, complete } from './Object';
 import { nextFrame, isValue, monitorable } from '../install';
 
 
@@ -147,7 +147,6 @@ export default class Container extends NeepObject {
 		this._needDraw = false;
 		this._drawChildren = false;
 		this._drawContainer = false;
-		this.callHook('beforeUpdate');
 		if (drawContainer) {
 			this.iRender.drawContainer(
 				this._container!,
@@ -165,16 +164,17 @@ export default class Container extends NeepObject {
 				this.content,
 			);
 		}
-		this.callHook('updated');
 	}
 	drawSelf() {
 		if (!this.mounted) { return; }
 		if (this.destroyed) { return; }
+		this.callHook('beforeUpdate');
 		monitorable.exec(
-			() => this._drawSelf,
-			() => this.markDraw(this),
+			() => this._drawSelf(),
+			c => c && this.markDraw(this),
 			{ postpone: true }
 		);
+		complete(() => this.callHook('updated'));
 	}
 	/** 等待重画的项目 */
 	private _awaitDraw = new Set<NeepObject>();
@@ -217,7 +217,7 @@ export default class Container extends NeepObject {
 		if (needDraw) { this.drawSelf(); }
 		list.map(c => c.draw());
 		this.iRender.draw(container, node);
-		this.callHook('drawn');
+		complete(() => this.callHook('drawn'));
 	}
 	private _containers = new Set<Container>();
 	markDrawContainer(
@@ -235,8 +235,16 @@ export default class Container extends NeepObject {
 		const containers = this._containers;
 		if (!containers.size) { return; }
 		this.callHook('beforeDrawAll');
+		const refs: (() => void)[] = [];
+		const completeList: (() => void)[] = [];
+		setCompleteList(completeList);
+		setRefList(refs);
 		const list = [...containers];
-		list.map(c => c.drawContainer());
+		containers.clear();
+		list.forEach(c => c.drawContainer());
+		setRefList();
+		refs.forEach(r => r());
+		completeList.forEach(r => r());
 		this.callHook('drawnAll');
 	}
 }

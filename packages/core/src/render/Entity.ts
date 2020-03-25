@@ -194,7 +194,6 @@ export default class Entity<
 			this._nodes,
 			this.shadowTree,
 		);
-		console.log(nativeNodes);
 		this.nativeTree = draw(
 			iRender,
 			nativeNodes,

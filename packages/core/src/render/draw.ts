@@ -1,5 +1,5 @@
 import { Tags, Template, isValue } from '../auxiliary';
-import { IRender, NativeNode, NativeElement } from '../type';
+import { IRender, NativeNode, NativeElement, Exposed, Ref } from '../type';
 import { createMountedNode, recoveryMountedNode } from './id';
 import { TreeNode } from './convert';
 
@@ -12,6 +12,23 @@ export interface MountedNode extends TreeNode {
 	node: undefined | NativeNode;
 }
 
+let refList: (() => void)[] | undefined;
+export function setRefList(list?: (() => void)[]) {
+	refList = list;
+}
+function setRef(
+	ref?: Ref,
+	node?: Exposed | NativeNode,
+	isRemove?: boolean,
+) {
+	if (typeof ref !== 'function') { return; }
+	if (!node) { return; }
+	if (!refList) {
+		ref(node, isRemove);
+	} else {
+		refList.push(() => ref(node, isRemove));
+	}
+}
 
 type MountedNodes = MountedNode | MountedNode[]
 	| (MountedNode | MountedNode[])[];
@@ -61,12 +78,12 @@ export function unmount(iRender: IRender, tree: MountedNodes): void {
 	const { component, children, node, ref } = tree;
 	recoveryMountedNode(tree);
 	if (node) {
-		if (ref) { ref(node, true); }
+		setRef(ref, node, true);
 		iRender.remove(node);
 		return;
 	}
 	if (component) {
-		if (ref) { ref(component.exposed, true); }
+		setRef(ref, component.exposed, true);
 		component.unmount();
 		return;
 	}
@@ -216,7 +233,7 @@ function updateItem(
 		unmount(iRender, all);
 	}
 	const { tag, component } = source;
-	const ref = source.ref !== tree.ref && source.ref;
+	const ref = source.ref !== tree.ref && source.ref || undefined;
 	if (tag !== tree.tag || component !== tree.component) {
 		return replace(iRender, createItem(iRender, source), tree);
 	}
@@ -235,7 +252,7 @@ function updateItem(
 				),
 			}, tree.id);
 		}
-		if (ref) { ref(component.exposed); }
+		setRef(ref, component.exposed);
 		return createMountedNode({
 			...source,
 			node: undefined,
@@ -247,7 +264,7 @@ function updateItem(
 		let value = source.value;
 		if (isValue(value)) { value = value(); }
 		if(tree.value === value) {
-			if (ref && tree.node) { ref(tree.node); }
+			setRef(ref, tree.node);
 			return createMountedNode({
 				...tree,
 				...source,
@@ -276,7 +293,7 @@ function updateItem(
 		source.props || {},
 		isValue,
 	);
-	if (ref) { ref(node!); }
+	setRef(ref, node);
 	if (!source.children.length && !tree.children.length) {
 		return createMountedNode(
 			{
@@ -317,7 +334,7 @@ function createValue(
 ): MountedNode {
 	let { ref } = source;
 	if (iRender.isNode(value)) {
-		if (ref) { ref(value); }
+		setRef(ref, value);
 		return createMountedNode({
 			...source,
 			value,
@@ -344,7 +361,7 @@ function createValue(
 		// TODO: 对象处理
 	}
 	if (!node) { node = iRender.placeholder(); }
-	if (ref) { ref(node); }
+	setRef(ref, node);
 	return createMountedNode({
 		...source,
 		value,
@@ -396,7 +413,7 @@ function createItem(
 	const { tag, ref, component } = source;
 	if (!tag) {
 		const node = iRender.placeholder();
-		if (ref) { ref(node); }
+		setRef(ref, node);
 		return createMountedNode({
 			tag: null,
 			node,
@@ -415,7 +432,7 @@ function createItem(
 			});
 		}
 		component.mount();
-		if (ref) { ref(component.exposed); }
+		setRef(ref, component.exposed);
 		return createMountedNode({
 			...source,
 			node: undefined,
@@ -435,7 +452,7 @@ function createItem(
 		});
 	}
 	const node = iRender.create(tag, source.props || {}, isValue);
-	if (ref) { ref(node); }
+	setRef(ref, node);
 	let children: (MountedNode | MountedNode[])[] = [];
 	if (source.children) {
 		children = createAll(iRender, source.children);

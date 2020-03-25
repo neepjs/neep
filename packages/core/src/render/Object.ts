@@ -28,6 +28,18 @@ function createExposed(obj: NeepObject): Exposed {
 	return exposed;
 }
 
+let completeList: (() => void)[] | undefined;
+export function setCompleteList(list?: (() => void)[]) {
+	completeList = list;
+}
+export function complete(it: () => void) {
+	if (!completeList) {
+		it();
+	} else {
+		completeList.push(it);
+	}
+}
+
 function createEntity(obj: NeepObject): ComponentEntity {
 	const cfg: { [K in keyof ComponentEntity]-?:
 		{ configurable: true, value: ComponentEntity[K], writable?: boolean }
@@ -216,17 +228,17 @@ export default class NeepObject {
 		if (this.__executed_destroy) { return; }
 		if (this.__executed_mount) { return; }
 		this.__executed_mount = true;
+		this.callHook('beforeMount');
 		const result = monitorable.exec(
 			() => {
-				this.callHook('beforeMount');
 				this._mount();
-				this.callHook('mounted');
 				this.mounted = true;
 			},
-			() => this.requestDraw(),
+			c => c && this.requestDraw(),
 			{ postpone: true }
 		);
 		this._cancelDrawMonitor = result.stop;
+		complete(() => this.callHook('mounted'));
 	}
 	protected _unmount() { }
 	unmount() {
@@ -243,15 +255,13 @@ export default class NeepObject {
 	draw() {
 		if (this.__executed_destroy) { return; }
 		this._cancelDrawMonitor?.();
+		this.callHook('beforeUpdate');
 		const result = monitorable.exec(
-			() => {
-				this.callHook('beforeUpdate');
-				this._draw();
-				this.callHook('updated');
-			},
-			() => this.requestDraw(),
+			() => this._draw(),
+			c => c && this.requestDraw(),
 			{ postpone: true }
 		);
 		this._cancelDrawMonitor = result.stop;
+		complete(() => this.callHook('updated'));
 	}
 }
