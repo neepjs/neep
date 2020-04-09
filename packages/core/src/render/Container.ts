@@ -170,9 +170,8 @@ export default class Container extends NeepObject {
 		if (this.destroyed) { return; }
 		this.callHook('beforeUpdate');
 		monitorable.exec(
-			() => this._drawSelf(),
 			c => c && this.markDraw(this),
-			{ postpone: true }
+			() => this._drawSelf(),
 		);
 		complete(() => this.callHook('updated'));
 	}

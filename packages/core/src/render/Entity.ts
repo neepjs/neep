@@ -64,15 +64,15 @@ function initRender<R extends object = object>(
 	} = nObject;
 	const refresh = (changed: boolean) => changed && nObject.refresh()
 	// 初始化执行
-	const result = monitorable.exec(() => setCurrent(
+	const result = monitorable.exec(refresh, () => setCurrent(
 		() => component(props, context, auxiliary),
 		entity,
-	), refresh, { resultOnly: true, postpone: true });
+	), { resultOnly: true });
 	if (typeof result === 'function') {
 		// 响应式
 		const render = monitorable.createExecutable(
-			() => normalize(nObject, (result as () => NeepNode)()),
 			refresh,
+			() => normalize(nObject, (result as () => NeepNode)()),
 		);
 		return {
 			nodes: render(),
@@ -82,18 +82,17 @@ function initRender<R extends object = object>(
 	}
 
 	const render = monitorable.createExecutable(
+		refresh,
 		() => normalize(nObject, setCurrent(
 			() => component(props, context, auxiliary),
 			entity,
 		)),
-		refresh,
-		{ postpone: true },
 	);
 	return {
 		nodes: monitorable.exec(
-			() => normalize(nObject, result),
 			refresh,
-			{ resultOnly: true, postpone: true },
+			() => normalize(nObject, result),
+			{ resultOnly: true },
 		),
 		render,
 		stopRender: () => render.stop(),

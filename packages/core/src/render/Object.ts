@@ -230,12 +230,11 @@ export default class NeepObject {
 		this.__executed_mount = true;
 		this.callHook('beforeMount');
 		const result = monitorable.exec(
+			c => c && this.requestDraw(),
 			() => {
 				this._mount();
 				this.mounted = true;
 			},
-			c => c && this.requestDraw(),
-			{ postpone: true }
 		);
 		this._cancelDrawMonitor = result.stop;
 		complete(() => this.callHook('mounted'));
@@ -257,9 +256,8 @@ export default class NeepObject {
 		this._cancelDrawMonitor?.();
 		this.callHook('beforeUpdate');
 		const result = monitorable.exec(
-			() => this._draw(),
 			c => c && this.requestDraw(),
-			{ postpone: true }
+			() => this._draw(),
 		);
 		this._cancelDrawMonitor = result.stop;
 		complete(() => this.callHook('updated'));
