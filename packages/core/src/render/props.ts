@@ -28,7 +28,7 @@ export function updateProps(
 				configurable: true,
 				enumerable: true,
 				get() { return value(); },
-				set(v) { value(v); }
+				set(v) { value(v); },
 			});
 			continue;
 		}

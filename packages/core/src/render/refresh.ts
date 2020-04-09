@@ -1,4 +1,4 @@
-import NeepObject from "./Object";
+import NeepObject from './Object';
 
 let delayedRefresh = 0;
 const objectSet = new Set<NeepObject>();

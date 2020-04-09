@@ -19,7 +19,7 @@ module.exports = {
 		// 禁止或强制在单行代码块中使用空格
 		'block-spacing': ['error', 'always'],
 		// 驼峰法命名
-		'@typescript-eslint/camelcase': 'error',
+		'@typescript-eslint/camelcase': ['error', {allow: ['^(\\$|_)_']}],
 		// 数组和对象键值对最后一个逗号， never参数：不能带末尾的逗号, always参数：必须带末尾的逗,always-multiline：多行模式必须带逗号，单行模式不能带逗号号
 		'comma-dangle': ['error', 'always-multiline'],
 		// 控制逗号前后的空格

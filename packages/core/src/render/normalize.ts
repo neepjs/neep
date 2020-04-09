@@ -31,7 +31,7 @@ function execSimple(
 		delivered,
 		children: new Set<Exposed>(),
 		childNodes: children,
-		refresh(f) { nObject.refresh(f); }
+		refresh(f) { nObject.refresh(f); },
 	});
 	if (!isProduction) { getLabel(); }
 	const result = tag({...node.props}, context, auxiliary);
@@ -131,7 +131,6 @@ function exec(
 	}
 	return execSlot(node, slots, children, args);
 }
-
 
 
 function renderNode<R extends object = object>(

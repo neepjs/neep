@@ -1,6 +1,5 @@
 import { Auxiliary, Tags } from './auxiliary';
 import * as symbols from './symbols';
-import * as monitorable from 'monitorable';
 
 /** 全局钩子 */
 export interface Hook {
@@ -78,7 +77,7 @@ export interface Entity {
 	callHook<H extends Hooks>(hook: H): void;
 	callHook(hook: string): void;
 	setHook<H extends Hooks>(id: H, hook: Hook):() => void;
-	setHook(id: string,hook: Hook): () => void;
+	setHook(id: string, hook: Hook): () => void;
 	readonly $_hooks: { [name: string]: Set<Hook>; }
 	refresh(): void;
 	refresh<T>(f: () => T, async?: false): T;

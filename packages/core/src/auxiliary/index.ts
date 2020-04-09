@@ -29,11 +29,11 @@ const auxiliary: Auxiliary = {
 	...Element,
 	...Dev,
 	...Constant,
-	get value() { return State.value },
-	get computed() { return State.computed },
-	get isValue() { return State.isValue },
-	get encase() { return State.encase },
-	get recover() { return State.recover },
+	get value() { return State.value; },
+	get computed() { return State.computed; },
+	get isValue() { return State.isValue; },
+	get encase() { return State.encase; },
+	get recover() { return State.recover; },
 };
 
 export function setAuxiliary<T>(

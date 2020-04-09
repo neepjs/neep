@@ -48,7 +48,7 @@ function createContext<
 		get delivered() { return nObject.parentDelivered; },
 		get children() { return nObject.children; },
 		get childNodes() { return nObject.childNodes; },
-		refresh(f) { nObject.refresh(f); }
+		refresh(f) { nObject.refresh(f); },
 	}, nObject.exposed);
 }
 
@@ -62,7 +62,7 @@ function initRender<R extends object = object>(
 		context,
 		entity,
 	} = nObject;
-	const refresh = (changed: boolean) => changed && nObject.refresh()
+	const refresh = (changed: boolean) => changed && nObject.refresh();
 	// 初始化执行
 	const result = monitorable.exec(refresh, () => setCurrent(
 		() => component(props, context, auxiliary),
