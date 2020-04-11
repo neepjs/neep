@@ -17,7 +17,7 @@ const A = create((
 	const v = value(1);
 	deliver('a', v, true);
 	const ref = (x: any) => console.log('Ref', 'B', x);
-	return () => <C a="1" set={() => v.value++ } ref={ref}>
+	return () => <C a="1" onset={() => v.value++ } ref={ref}>
 			<b ref={ref}>你好</b>
 			<i ref={ref}>{v()}</i>
 			<u ref={ref} slot="name">{props.name}</u>

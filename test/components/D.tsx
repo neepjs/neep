@@ -3,7 +3,7 @@ import { create, mark, mName, mSimple } from '@neep/core';
 import E from './E';
 
 const D = create((
-	props: {  a?: any,  set?: () => void },
+	props: {  a?: any, onset?: () => void },
 	{ childNodes },
 	{ createElement, label },
 ) => {
