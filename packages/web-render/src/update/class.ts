@@ -1,7 +1,7 @@
 import {
 	recursive2iterable, RecursiveItem,
 } from '../../../core/src/render/recursive';
-import { IsValue } from '../type';
+import { isValue } from '../install';
 
 export type Class = Set<string>;
 function getClass(
@@ -45,7 +45,6 @@ function update(
 }
 export default function updateClass(
 	props: {[k: string]: any},
-	isValue: IsValue,
 	el: Element,
 	old?: Class,
 ) {

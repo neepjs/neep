@@ -1,4 +1,4 @@
-import { IsValue } from '../type';
+import { isValue } from '../install';
 
 export type Id = string;
 
@@ -9,7 +9,6 @@ function getId(v: any): Id | undefined {
 }
 export default function updateId(
 	props: {[k: string]: any},
-	isValue: IsValue,
 	el: Element,
 	old?: Id,
 ) {

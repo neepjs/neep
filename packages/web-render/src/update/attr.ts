@@ -1,4 +1,4 @@
-import { IsValue } from '../type';
+import { isValue } from '../install';
 
 export type Attrs = Record<string, string | null>;
 
@@ -13,7 +13,10 @@ export function setAttrs(el: Element, attrs: Record<string, string | null>) {
 				}
 		}
 	}
-	if ((el instanceof HTMLSelectElement || el instanceof HTMLInputElement) && 'value' in attrs) {
+	if ((
+		el instanceof HTMLSelectElement 
+		|| el instanceof HTMLInputElement
+	) && 'value' in attrs) {
 		const value = attrs.value || '';
 		if (el.value !== value) {
 			el.value = value;
@@ -40,14 +43,11 @@ function stringify(
 function getAttrs(
 	props: {[k: string]: any},
 	hasStyle: boolean,
-	isValue: IsValue,
 ) {
 	const attrs: Attrs = Object.create(null);
 	for (const k in props) {
-		if (!/^[a-zA-Z0-9_-]/.test(k[0])) { continue; }
+		if (!/^[a-zA-Z:_][a-zA-Z0-9:_-]*$/.test(k)) { continue; }
 		const name = k
-			.replace(/([A-Z])/g, '-$1')
-			.replace(/(\-)\-+/g, '$1')
 			.toLowerCase();
 		switch(name) {
 			case 'style':
@@ -68,11 +68,11 @@ function getAttrs(
 function update(
 	el: Element,
 	attrs: Attrs,
-	oAttrs: Attrs,
+	old: Attrs,
 ) {
 	for (const k of Object.keys(attrs)) {
 		const v = attrs[k];
-		if (!(k in oAttrs) || oAttrs[k] !== v) {
+		if (!(k in old) || old[k] !== v) {
 			if (v === null) {
 				el.removeAttribute(k);
 			} else {
@@ -80,22 +80,21 @@ function update(
 			}
 		}
 	}
-	for (const k of Object.keys(oAttrs)) {
+	for (const k of Object.keys(old)) {
 		if (!(k in attrs)) {
 			el.removeAttribute(k);
 		}
 	}
-	setAttrs(el, attrs);
 }
 
 export default function updateAttrs(
 	props: {[k: string]: any},
-	isValue: IsValue,
 	el: Element,
 	old: Attrs,
 	hasStyle: boolean,
 ): Attrs {
-	const attrs = getAttrs(props, hasStyle, isValue);
+	const attrs = getAttrs(props, hasStyle);
 	update(el, attrs, old);
+	setAttrs(el, attrs);
 	return attrs;
 }

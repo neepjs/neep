@@ -1,9 +1,10 @@
 import * as monitorableApi from 'monitorable';
 import { IRender } from './type';
 import { isProduction } from './constant';
+import EventEmitter from './EventEmitter';
+import NeepError, { assert } from './Error';
 
 import { Devtools } from '../../devtools/src/type';
-import { assert } from './Error';
 
 export let monitorable: typeof monitorableApi;
 
@@ -49,6 +50,13 @@ export function getRender(
 
 function addRender(render?: IRender): void {
 	if (!render) { return; }
+	if (render.install) {
+		render.install({
+			get isValue() { return isValue; },
+			EventEmitter,
+			Error: NeepError,
+		});
+	}
 	renders[render.type] = render;
 	if (nextFrameApi) { return; }
 	if (!renders.default) {

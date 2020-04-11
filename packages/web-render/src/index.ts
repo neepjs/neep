@@ -11,21 +11,23 @@ import {
 import update from './update';
 import nextFrame from './nextFrame';
 import createElement from './createElement';
+import install from './install';
 
 const render: IRender = {
+	install,
 	type: 'web',
 	nextFrame,
 	isNode(v): v is NativeNode {
 		return v instanceof Node;
 	},
-	mount({target, class: className, style, tag}, isValue, parent) {
+	mount({target, class: className, style, tag}, parent) {
 		if (!(
 			typeof tag === 'string' &&
 			/^[a-z][a-z0-9]*(?:\-[a-z0-9]+)?(?:\:[a-z0-9]+(?:\-[a-z0-9]+)?)?$/i.test(tag)
 		)) {
 			tag = 'div';
 		}
-		const container = render.create(tag, { class: className, style }, isValue);
+		const container = render.create(tag, { class: className, style });
 		if (typeof target === 'string') {
 			target = document.querySelector(target);
 		}
@@ -46,8 +48,8 @@ const render: IRender = {
 		if (container === node && removed) { return; }
 		(container as any as Element).remove();
 	},
-	drawContainer(container, node, {target, class: className, style, tag}, isValue, parent) {
-		render.update(container as NativeElement, { class: className, style }, isValue);
+	drawContainer(container, node, {target, class: className, style, tag}, parent) {
+		render.update(container as NativeElement, { class: className, style });
 		if (typeof target === 'string') {
 			target = document.querySelector(target);
 		}
@@ -85,8 +87,8 @@ const render: IRender = {
 	},
 	draw() {},
 
-	create(tag, props, isValue) {
-		return update(createElement(tag), props, isValue) as any;
+	create(tag, props) {
+		return update(createElement(tag), props) as any;
 	},
 	text(text: string): NativeText {
 		return document.createTextNode(text) as any;
@@ -105,8 +107,8 @@ const render: IRender = {
 	next(node: NativeNode): NativeNode | null {
 		return (node as any).nextSibling as NativeContainer | null;
 	},
-	update(node, props, isValue): void {
-		update(node as any, props, isValue);
+	update(node, props): void {
+		update(node as any, props);
 	},
 	insert(
 		parent: NativeContainer,

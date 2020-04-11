@@ -1,4 +1,4 @@
-import { IsValue } from '../type';
+import { isValue } from '../install';
 
 export type Style = string | Record<string, [string, 'important' | null]>;
 
@@ -77,7 +77,6 @@ function update(
 }
 export default function updateStyle(
 	props: {[k: string]: any},
-	isValue: IsValue,
 	css: CSSStyleDeclaration,
 	old?: Style,
 	hasStyle?: boolean,

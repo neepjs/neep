@@ -1,5 +1,8 @@
 import { Auxiliary, Tags } from './auxiliary';
 import * as symbols from './symbols';
+import { isValue } from './install';
+import EventEmitter from './EventEmitter';
+import NeepError from './Error';
 
 /** 全局钩子 */
 export interface Hook {
@@ -196,12 +199,19 @@ export interface MountProps {
 	target?: any;
 	[key: string]: any;
 }
+
+export interface IRenderAuxiliary {
+	isValue: typeof isValue;
+	EventEmitter: typeof EventEmitter;
+	Error: typeof NeepError;
+}
+
 export interface IRender {
 	type: string;
+	install?(auxiliary: IRenderAuxiliary): void;
 	nextFrame?(fn: () => void): void;
 	mount(
 		props: MountProps,
-		isValue: typeof import('monitorable').isValue,
 		parent?: IRender
 	):
 		[NativeContainer, NativeNode];
@@ -215,7 +225,6 @@ export interface IRender {
 		container: NativeContainer,
 		node: NativeNode,
 		props: MountProps,
-		isValue: typeof import('monitorable').isValue,
 		parent?: IRender,
 		/**
 		 * 当 parent 存在且与当前节点不同时，用于区分
@@ -227,12 +236,10 @@ export interface IRender {
 	create(
 		tag: string,
 		props: Record<string, any>,
-		isValue: typeof import('monitorable').isValue,
 	): NativeElement;
 	update(
 		node: NativeElement,
 		props: Record<string, any>,
-		isValue: typeof import('monitorable').isValue,
 	): void;
 	text(text: string): NativeText;
 	placeholder(): NativePlaceholder;

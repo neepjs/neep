@@ -1,34 +1,38 @@
-import EventEmitter from '../../../core/src/EventEmitter';
-import { IsValue } from '../type';
+import { isValue, EventEmitter } from '../install';
+import * as Neep from '@neep/core';
 
-export class Events extends EventEmitter {
-	__eventBind: Record<string, () => void> = Object.create(null);
+export interface Events extends Neep.EventEmitter {
+	__eventBind: Record<string, () => void>;
+}
+
+function createEventEmitter(): Events {
+	const events: Events = new EventEmitter as Events;
+	events.__eventBind = Object.create(null);
+	return events;
 }
 
 
-type ModelInfo = [string, string, (e: any) => any];
-function getElementModel(el: Element): ModelInfo | undefined {
+function *getElementModel(el: Element): Iterable<[string, string, (e: any) => any]> {
 	if (el instanceof HTMLInputElement) {
 		switch(el.type.toLowerCase()) {
 			case 'checkbox':
 			case 'radio':
-			return [
+			return yield [
 				'checked', 'change',
 				(e: any) => (e.currentTarget as HTMLInputElement).checked,
 			];
 		}
-		return [
+		return yield [
 			'value', 'input',
 			(e: any) => (e.currentTarget as HTMLInputElement).value,
 		];
 	}
 	if (el instanceof HTMLSelectElement) {
-		return [
+		return yield [
 			'value', 'select',
 			(e: any) => (e.currentTarget as HTMLSelectElement).value,
 		];
 	}
-	return ;
 }
 
 function getEventName(k: string): string {
@@ -36,14 +40,12 @@ function getEventName(k: string): string {
 	let n = k.substr(2);
 	if (n[0] === ':' || n[0] === '-') { return ''; }
 	return n;
-	
 }
 
 export default function updateEvent(
 	props: {[k: string]: any},
-	isValue: IsValue,
 	el: Element,
-	event = new Events(),
+	event = createEventEmitter(),
 ): Events {
 	event.updateInProps(props, addEvent => {
 		for (const k in props) {
@@ -53,12 +55,11 @@ export default function updateEvent(
 			if (!name) { continue; }
 			addEvent(name, f);
 		}
-		const modelInfo = getElementModel(el);
-		if (!modelInfo) { return; }
-		const [prop, name, t] = modelInfo;
-		const value = props[prop];
-		if (isValue(value)) {
-			addEvent(name, e => value(t(e)));
+		for (const [prop, name, t] of getElementModel(el)) {
+			const value = props[prop];
+			if (isValue(value)) {
+				addEvent(name, e => value(t(e)));
+			}
 		}
 	});
 

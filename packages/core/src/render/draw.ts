@@ -291,7 +291,6 @@ function updateItem(
 	iRender.update(
 		node as NativeElement,
 		source.props || {},
-		isValue,
 	);
 	setRef(ref, node);
 	if (!source.children.length && !tree.children.length) {
@@ -453,7 +452,7 @@ function createItem(
 			children: createAll(iRender, source.children),
 		});
 	}
-	const node = iRender.create(tag, source.props || {}, isValue);
+	const node = iRender.create(tag, source.props || {});
 	setRef(ref, node);
 	let children: (MountedNode | MountedNode[])[] = [];
 	if (source.children) {
