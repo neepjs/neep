@@ -1,7 +1,7 @@
 const xmlnsMap: Record<string, string> = {
 	svg: 'http://www.w3.org/2000/svg',
 	html: 'http://www.w3.org/1999/xhtml',
-	mathml: 'http://www.w3.org/1998/Math/MathML'
+	mathml: 'http://www.w3.org/1998/Math/MathML',
 };
 const SVGTags = new Set([
 	'altGlyph',
@@ -115,7 +115,8 @@ const MathMLTags = new Set([
 	'munder',
 	'munderover',
 	'semantics',
-])
+]);
+
 export default function createElement(tagname: string, namespace?: string) {
 	const res = /^([a-z][a-z0-9-]*):([a-z0-9-]+)$/i.exec(tagname);
 	const tag = res ? res[2] : tagname;

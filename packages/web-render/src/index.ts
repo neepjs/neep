@@ -47,7 +47,7 @@ const render: IRender = {
 		(container as any as Element).remove();
 	},
 	drawContainer(container, node, {target, class: className, style, tag}, isValue, parent) {
-		render.update(container as NativeElement, { class: className, style }, isValue)
+		render.update(container as NativeElement, { class: className, style }, isValue);
 		if (typeof target === 'string') {
 			target = document.querySelector(target);
 		}

@@ -12,6 +12,7 @@ import Entity from './Entity';
 import { getSlots, setSlots } from './slot';
 import { initContext } from '../helper/context';
 import { updateProps } from './props';
+import EventEmitter from '../EventEmitter';
 
 function execSimple(
 	nObject: Container | Entity,
@@ -20,10 +21,12 @@ function execSimple(
 	tag: Component,
 	children: any[],
 ) {
-	const { iRender } = nObject.container;
+	const { iRender } = nObject;
 	const slotMap = Object.create(null);
 	getSlots(iRender, children, slotMap);
 	const slots = setSlots(slotMap);
+	const event = new EventEmitter();
+	event.updateInProps(node.props);
 	const context: Context = initContext({
 		slots,
 		created: false,
@@ -32,6 +35,7 @@ function execSimple(
 		children: new Set<Exposed>(),
 		childNodes: children,
 		refresh(f) { nObject.refresh(f); },
+		emit: event.emit,
 	});
 	if (!isProduction) { getLabel(); }
 	const result = tag({...node.props}, context, auxiliary);

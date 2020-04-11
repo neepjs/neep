@@ -1,5 +1,14 @@
 import { isValue } from '../auxiliary';
-
+const disabledKey = new Set([
+	':', '@', '#', '*',
+	'!', '%', '^', '~',
+	'&', '=', '+', '.',
+	'(', ')', '[', ']', '{', '}', '<', '>',
+]);
+function filter(k: string | number | symbol) {
+	if (typeof k !== 'string') { return true; }
+	return !disabledKey.has(k[0]);
+}
 export function updateProps(
 	obj: any,
 	props: any,

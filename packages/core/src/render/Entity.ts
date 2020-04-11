@@ -1,5 +1,5 @@
 import { Component, NeepNode, Slots, Context, Delivered, NativeShadow } from '../type';
-import auxiliary, { createElement, Value } from '../auxiliary';
+import auxiliary from '../auxiliary';
 import { monitorable } from '../install';
 import { setCurrent } from '../helper/current';
 import convert, { destroy, TreeNode } from './convert';
@@ -10,6 +10,7 @@ import NeepObject from './Object';
 import { initContext } from '../helper/context';
 import { updateProps } from './props';
 import { typeSymbol } from '../symbols';
+import refresh from './refresh';
 
 function update(
 	nObject: Entity<any, any>,
@@ -17,14 +18,11 @@ function update(
 	children:any[],
 ) {
 	updateProps(nObject.props, props);
-
+	nObject.events.updateInProps(props);
 	const slots = Object.create(null);
-	const {
-		native,
-		iRender,
-	} = nObject;
+	const { native } = nObject;
 	const childNodes = getSlots(
-		iRender,
+		nObject.iRender,
 		children,
 		slots,
 		Boolean(native),
@@ -48,6 +46,7 @@ function createContext<
 		get delivered() { return nObject.parentDelivered; },
 		get children() { return nObject.children; },
 		get childNodes() { return nObject.childNodes; },
+		get emit() { return nObject.emit; },
 		refresh(f) { nObject.refresh(f); },
 	}, nObject.exposed);
 }
@@ -149,7 +148,7 @@ export default class Entity<
 		this.callHook('beforeCreate');
 		// 更新属性
 		this.childNodes = children;
-		update(this, props, children);
+		refresh(() => update(this, props, children));
 		// 获取渲染函数及初始渲染
 		const { render, nodes, stopRender } = initRender(this);
 		this._render = render;
@@ -164,7 +163,7 @@ export default class Entity<
 	_update(props: object, children: any[]): void {
 		if (this.destroyed) { return; }
 		this.childNodes = children;
-		update(this, props, children);
+		refresh(() => update(this, props, children));
 	}
 	_destroy() {
 		if (this._stopRender) {

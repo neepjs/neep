@@ -5,6 +5,7 @@ import {
 import { MountedNode } from '../../core/src/render/draw';
 import Container from '../../core/src/render/Container';
 import Entity from '../../core/src/render/Entity';
+import { Neep } from './install';
 export enum Type {
 	tag = 'tag',
 	placeholder = 'placeholder',
@@ -27,8 +28,7 @@ export interface VTreeNode {
 	label?: [string, string];
 	parent: number;
 	value?: string;
-	valueType?: 'string' | 'value' | 'function'
-	| 'native' | 'object' | 'date' | 'regex';
+	isNative?: boolean;
 }
 
 export function *getTree(
@@ -101,42 +101,13 @@ export function *getTree(
 	}
 	if (tag === Value) {
 		const treeValue = tree.value;
-		const type = typeof treeValue;
-		let valueType: VTreeNode['valueType'] = 'string';
-		let value = '';
-		if (type === 'string') {
-			value = treeValue;
-		} else if (treeValue === tree.node) {
-			valueType = 'native';
-		} else if (type === 'function') {
-			valueType ='function';
-		} else if (
-			type === 'bigint'
-			|| type === 'boolean'
-			|| type === 'number'
-			|| type === 'symbol'
-			|| type === 'undefined'
-			|| treeValue === null
-		) {
-			valueType ='value';
-			value = String(treeValue);
-		} else if (treeValue instanceof RegExp) {
-			valueType ='regex';
-			value = String(treeValue);
-		} else if (treeValue instanceof Date) {
-			valueType ='date';
-			value = treeValue.toISOString();
-		} else if (type === 'object') {
-			valueType = 'object';
-			value = String(treeValue);
-		}
 		return yield {
 			id, parent,
 			type: Type.special,
 			tag,
 			children: [],
-			valueType,
-			value,
+			isNative: treeValue === tree.node,
+			value: treeValue,
 			props,
 			key,
 			label,

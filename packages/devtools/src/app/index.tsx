@@ -9,6 +9,7 @@ import {
 	Deliver,
 } from '@neep/core';
 import { VTreeNode, Type } from '../tree';
+import { TextNode } from './Text';
 
 interface Options {
 	value?: boolean;
@@ -44,27 +45,6 @@ function getOptions({
 		deliver,
 	};
 }
-function createText(
-	valueType: VTreeNode['valueType'] = 'string',
-	value: string = '',
-): NeepNode {
-	switch(valueType) {
-		case 'string':
-			return <span>{value}</span>;
-		case 'native':
-			return <span style="font-weight: bold;">[Native]</span>;
-		case 'function':
-			return <span style="font-weight: bold;">[Function]</span>;
-		case 'date':
-			return <span style="font-weight: bold;">{value}</span>;
-		case 'regex':
-			return <span style="font-weight: bold;">{value}</span>;
-		case 'value':
-			return <span style="font-style: italic;">{value}</span>;
-		case 'object':
-			return <span style="font-style: italic;">{value}</span>;
-	}
-}
 function createTag(
 	name: any,
 	keys: {[key: number]: boolean},
@@ -92,7 +72,7 @@ function createTag(
 				cursor: pointer;
 				background: #DDD;;
 			"
-			onClick={() => keys[id] = !opened}
+			onclick={() => keys[id] = !opened}
 		>{opened ? '-' : '+'}</div> || undefined}
 		<div>
 			{'<'}{name}
@@ -107,7 +87,7 @@ function createTag(
 			{hasChildren ? '>' : ' />'}
 			{hasChildren && !opened && <span>
 				<span
-					onClick={() => keys[id] = true}
+					onclick={() => keys[id] = true}
 					style="cursor: pointer;"
 				>...</span>
 				{'</'}{name}{'>'}
@@ -146,7 +126,7 @@ function *getList(
 		key,
 		label,
 		value,
-		valueType,
+		isNative,
 	} = list;
 	if (type === Type.standard || type === Type.native) {
 		return yield createTag(
@@ -235,7 +215,7 @@ function *getList(
 	if (tag === Value) {
 		if (!options.tag) { return; }
 		if (!options.value) { return; }
-		return yield createText(valueType, value);
+		return yield <TextNode isNative={isNative} value={value} />;
 	}
 }
 export default create((props: any, {}, { encase }) => {

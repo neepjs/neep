@@ -17,6 +17,14 @@ export interface SlotFn {
 export interface Slots {
 	[name: string]: SlotFn | undefined;
 }
+export interface Emit<T extends Record<string, any[]> = Record<string, any[]>> {
+	<N extends keyof T>(name: N, ...p: T[N]): void;
+	readonly names: (keyof T)[];
+}
+export interface On<T extends Record<string, any[]> = Record<string, any[]>> {
+	<N extends keyof T>(name: N, listener: (...p: T[N]) => void): () => void;
+}
+
 export interface ContextConstructor {
 	(context: Context, exposed?: Exposed): void;
 }
@@ -61,6 +69,7 @@ export interface Context {
 	children: Set<Exposed>;
 	childNodes: any[];
 	refresh(fn?: () => void): void;
+	emit: Emit,
 }
 
 export interface Entity {
@@ -79,6 +88,8 @@ export interface Entity {
 	setHook<H extends Hooks>(id: H, hook: Hook):() => void;
 	setHook(id: string, hook: Hook): () => void;
 	readonly $_hooks: { [name: string]: Set<Hook>; }
+	on: On,
+	emit: Emit,
 	refresh(): void;
 	refresh<T>(f: () => T, async?: false): T;
 	refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
@@ -134,8 +145,6 @@ export interface NeepElement {
 	tag: Tag;
 	/** 属性 */
 	props?: { [key: string]: any; };
-	/** 事件 */
-	on?: { [key: string]: (event: Event) => void; };
 	/** 子节点 */
 	children: any[];
 	/** 引用绑定 */

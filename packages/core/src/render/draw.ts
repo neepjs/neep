@@ -440,7 +440,9 @@ function createItem(
 		});
 	}
 	if (tag === Tags.Value) {
-		return createValue(iRender, source, source.value);
+		let value = source.value;
+		if (isValue(value)) { value = value(); }
+		return createValue(iRender, source, value);
 	}
 	if (tag === Template || tag.substr(0, 5) === 'Neep:') {
 		// TODO: ref

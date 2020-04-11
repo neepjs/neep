@@ -10,6 +10,7 @@ import Container from './Container';
 import convert, { TreeNode } from './convert';
 import { wait } from './refresh';
 import { monitorable } from '../install';
+import EventEmitter from '../EventEmitter';
 
 function createExposed(obj: NeepObject): Exposed {
 	const cfg: { [K in Exclude<keyof Exposed, '$label'>]-?:
@@ -71,12 +72,24 @@ function createEntity(obj: NeepObject): ComponentEntity {
 			configurable: true,
 			value: obj.refresh.bind(obj),
 		},
+		on: {
+			configurable: true,
+			value: obj.on,
+		},
+		emit: {
+			configurable: true,
+			value: obj.emit,
+		},
 	};
 	const entity: ComponentEntity = Object.create(null, cfg);
 	return entity;
 }
 
 export default class NeepObject {
+	readonly events = new EventEmitter();
+	readonly emit = this.events.emit;
+	readonly on = this.events.on;
+	readonly eventCancelHandles = new Set<() => void>();
 	readonly iRender: IRender;
 	/** 接受到的呈递值 */
 	readonly parentDelivered: Delivered;

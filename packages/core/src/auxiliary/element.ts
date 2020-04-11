@@ -47,15 +47,8 @@ export function createElement(
 			return node;
 		}
 	}
-	node.on = {};
 	node.props = {};
 	for (let k in attrs) {
-		/** 事件 */
-		const onInfo = /^(::|@|on:)([a-zA-Z0-9].*)$/.exec(k);
-		if (onInfo) {
-			node.on[onInfo[2]] = attrs[k];
-			continue;
-		}
 		// TODO: data
 		const nCmd = /^n([:-])([a-zA-Z0-9]+(?:\.[a-zA-Z0-9]+)*)$/i.exec(k);
 		/** 普通属性 */
