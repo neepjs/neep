@@ -1,10 +1,10 @@
 /*!
- * Neep v0.1.0-alpha.6
+ * Neep v0.1.0-alpha.7
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
 import * as monitorableApi from 'monitorable';
-import { Value as Value$1, WatchCallback, isValue as isValue$1, value as value$1, computed as computed$1, encase as encase$1, recover as recover$1 } from 'monitorable';
+import { Value as Value$1, WatchCallback, value as value$1, computed as computed$1, isValue as isValue$1, encase as encase$1, recover as recover$1 } from 'monitorable';
 
 /**
  * Global constant
@@ -236,18 +236,46 @@ declare const isElementSymbol: unique symbol;
 declare const typeSymbol: unique symbol;
 declare const nameSymbol: unique symbol;
 declare const renderSymbol: unique symbol;
+declare const componentsSymbol: unique symbol;
+declare const configSymbol: unique symbol;
 
 declare const symbols_isElementSymbol: typeof isElementSymbol;
 declare const symbols_typeSymbol: typeof typeSymbol;
 declare const symbols_nameSymbol: typeof nameSymbol;
 declare const symbols_renderSymbol: typeof renderSymbol;
+declare const symbols_componentsSymbol: typeof componentsSymbol;
+declare const symbols_configSymbol: typeof configSymbol;
 declare namespace symbols {
   export {
     symbols_isElementSymbol as isElementSymbol,
     symbols_typeSymbol as typeSymbol,
     symbols_nameSymbol as nameSymbol,
     symbols_renderSymbol as renderSymbol,
+    symbols_componentsSymbol as componentsSymbol,
+    symbols_configSymbol as configSymbol,
   };
+}
+
+interface AddEvent<T extends Record<string, any[]>> {
+    <N extends keyof T>(entName: N, listener: (...p: T[N]) => void): void;
+}
+declare class EventEmitter<T extends Record<string, any[]> = Record<string, any[]>> {
+    static update<T extends Record<string, any[]>>(emitter: EventEmitter<T>, events: any): (() => void)[];
+    static updateInProps<T extends Record<string, any[]>>(emitter: EventEmitter<T>, props: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
+    private _names;
+    private readonly _cancelHandles;
+    readonly names: (keyof T)[];
+    readonly emit: Emit<T>;
+    readonly on: On<T>;
+    constructor();
+    updateHandles(newHandles: (() => void)[]): (() => void)[];
+    update(list: any): (() => void)[];
+    updateInProps(list: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
+}
+
+declare class NeepError extends Error {
+    readonly tag: string;
+    constructor(message: string, tag?: string);
 }
 
 /** 全局钩子 */
@@ -264,6 +292,13 @@ interface SlotFn {
 /** 槽列表 */
 interface Slots {
     [name: string]: SlotFn | undefined;
+}
+interface Emit<T extends Record<string, any[]> = Record<string, any[]>> {
+    <N extends keyof T>(name: N, ...p: T[N]): void;
+    readonly names: (keyof T)[];
+}
+interface On<T extends Record<string, any[]> = Record<string, any[]>> {
+    <N extends keyof T>(name: N, listener: (...p: T[N]) => void): () => void;
 }
 interface ContextConstructor {
     (context: Context, exposed?: Exposed): void;
@@ -302,6 +337,7 @@ interface Context {
     children: Set<Exposed>;
     childNodes: any[];
     refresh(fn?: () => void): void;
+    emit: Emit;
 }
 interface Entity {
     readonly exposed: Exposed;
@@ -313,6 +349,9 @@ interface Entity {
     readonly destroyed: boolean;
     readonly mounted: boolean;
     readonly unmounted: boolean;
+    readonly config: Record<string, any>;
+    readonly on: On;
+    readonly emit: Emit;
     callHook<H extends Hooks>(hook: H): void;
     callHook(hook: string): void;
     setHook<H extends Hooks>(id: H, hook: Hook): () => void;
@@ -338,6 +377,8 @@ interface Marks {
     /** 是否为原生组件 */
     [symbols.typeSymbol]?: 'native' | 'simple' | 'standard';
     [symbols.renderSymbol]?: Render;
+    [symbols.configSymbol]?: Record<string, any>;
+    [symbols.componentsSymbol]?: Record<string, Component>;
 }
 /** 构造函数 */
 interface Component<P extends object = object, R extends object = object> extends Marks {
@@ -354,10 +395,6 @@ interface NeepElement {
     /** 属性 */
     props?: {
         [key: string]: any;
-    };
-    /** 事件 */
-    on?: {
-        [key: string]: (event: Event) => void;
     };
     /** 子节点 */
     children: any[];
@@ -411,20 +448,26 @@ interface MountProps {
     target?: any;
     [key: string]: any;
 }
+interface IRenderAuxiliary {
+    isValue: typeof isValue;
+    EventEmitter: typeof EventEmitter;
+    Error: typeof NeepError;
+}
 interface IRender {
     type: string;
+    install?(auxiliary: IRenderAuxiliary): void;
     nextFrame?(fn: () => void): void;
-    mount(props: MountProps, isValue: typeof isValue$1, parent?: IRender): [NativeContainer, NativeNode];
+    mount(props: MountProps, parent?: IRender): [NativeContainer, NativeNode];
     unmount(container: NativeContainer, node: NativeNode, removed: boolean): any;
     draw(container: NativeContainer, node: NativeNode): void;
-    drawContainer(container: NativeContainer, node: NativeNode, props: MountProps, isValue: typeof isValue$1, parent?: IRender, 
+    drawContainer(container: NativeContainer, node: NativeNode, props: MountProps, parent?: IRender, 
     /**
      * 当 parent 存在且与当前节点不同时，用于区分
      */
     isSelf?: boolean): [NativeContainer, NativeNode];
     isNode(v: any): v is NativeNode;
-    create(tag: string, props: Record<string, any>, isValue: typeof isValue$1): NativeElement;
-    update(node: NativeElement, props: Record<string, any>, isValue: typeof isValue$1): void;
+    create(tag: string, props: Record<string, any>): NativeElement;
+    update(node: NativeElement, props: Record<string, any>): void;
     text(text: string): NativeText;
     placeholder(): NativePlaceholder;
     component?(): [NativeComponent, NativeShadow];
@@ -447,10 +490,7 @@ interface InstallOptions {
 }
 declare function install(apis: InstallOptions): void;
 
-declare class NeepError extends Error {
-    readonly tag: string;
-    constructor(message: string, tag?: string);
-}
+declare function register(name: string, component: Component): void;
 
 declare function refresh<T>(f: () => T, async?: false): T;
 declare function refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
@@ -483,6 +523,12 @@ declare function mNative<N extends Component<any, any>>(component: N): N;
 /** 标记独立的渲染函数 */
 declare function mRender(fn?: Marks[typeof renderSymbol]): Mark;
 declare function mRender<N extends Component<any, any>>(fn: Marks[typeof renderSymbol] | undefined, component: N): N;
+/** 标记组件类型 */
+declare function mConfig(name: string, config: any): Mark;
+declare function mConfig<N extends Component<any, any>>(name: string, config: any, component: N): N;
+/** 标记组件类型 */
+declare function mComponent(name: string, item: Component): Mark;
+declare function mComponent<N extends Component<any, any>>(name: string, item: Component, component: N): N;
 declare function create<P extends object>(c: Component<P, never>): Component<P, never>;
 declare function create<P extends object = object, R extends object = object>(c: Component<P, R>, r: Render<R>): Component<P, R>;
 declare function mark<N extends Component<any, any>>(component: N, ...marks: Mark[]): N;
@@ -492,4 +538,4 @@ declare function setHook(id: string, hook: Hook, entity?: Entity): () => void;
 declare function callHook<H extends Hooks>(id: H, exposed: Entity): void;
 declare function callHook(id: string, exposed: Entity): void;
 
-export { Auxiliary, Component, Container, Context, ContextConstructor, Deliver, Delivered, Entity, NeepError as Error, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, Ref, Render, RootExposed, ScopeSlot, Slot, SlotFn, SlotRender, Slots, Tag, Tags, Template, Value, addContextConstructor, callHook, checkCurrent, computed, create, createElement, current, defineAuxiliary, deliver, elementIteratorOptions, elements, encase, expose, hook, install, isElement, isElementSymbol, isProduction, isValue, label, mName, mNative, mRender, mSimple, mType, mark, mode, nameSymbol, recover, refresh, render, renderSymbol, setAuxiliary, setHook, setValue, typeSymbol, useValue, value, version, watch };
+export { Auxiliary, Component, Container, Context, ContextConstructor, Deliver, Delivered, Emit, Entity, NeepError as Error, EventEmitter, Exposed, Fragment, Hook, Hooks, IRender, IRenderAuxiliary, Mark, Marks, MountProps, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Ref, Render, RootExposed, ScopeSlot, Slot, SlotFn, SlotRender, Slots, Tag, Tags, Template, Value, addContextConstructor, callHook, checkCurrent, componentsSymbol, computed, configSymbol, create, createElement, current, defineAuxiliary, deliver, elementIteratorOptions, elements, encase, expose, hook, install, isElement, isElementSymbol, isProduction, isValue, label, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, mode, nameSymbol, recover, refresh, register, render, renderSymbol, setAuxiliary, setHook, setValue, typeSymbol, useValue, value, version, watch };

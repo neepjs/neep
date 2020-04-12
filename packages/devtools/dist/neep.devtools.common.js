@@ -1,5 +1,5 @@
 /*!
- * NeepDevtools v0.1.0-alpha.1
+ * NeepDevtools v0.1.0-alpha.2
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -96,38 +96,14 @@ function* getTree(tree, parent = 0) {
 
   if (tag === core.Value) {
     const treeValue = tree.value;
-    const type = typeof treeValue;
-    let valueType = 'string';
-    let value = '';
-
-    if (type === 'string') {
-      value = treeValue;
-    } else if (treeValue === tree.node) {
-      valueType = 'native';
-    } else if (type === 'function') {
-      valueType = 'function';
-    } else if (type === 'bigint' || type === 'boolean' || type === 'number' || type === 'symbol' || type === 'undefined' || treeValue === null) {
-      valueType = 'value';
-      value = String(treeValue);
-    } else if (treeValue instanceof RegExp) {
-      valueType = 'regex';
-      value = String(treeValue);
-    } else if (treeValue instanceof Date) {
-      valueType = 'date';
-      value = treeValue.toISOString();
-    } else if (type === 'object') {
-      valueType = 'object';
-      value = String(treeValue);
-    }
-
     return yield {
       id,
       parent,
       type: Type.special,
       tag,
       children: [],
-      valueType,
-      value,
+      isNative: treeValue === tree.node,
+      value: treeValue,
       props,
       key,
       label
@@ -144,6 +120,63 @@ function* getTree(tree, parent = 0) {
     key,
     label
   };
+}
+
+function getValue(value) {
+  const type = typeof value;
+
+  if (type === 'function') {
+    return core.createElement("span", {
+      style: "font-weight: bold;"
+    }, "[Function]");
+  }
+
+  if (type === 'string') {
+    return core.createElement("span", null, value);
+  }
+
+  if (type === 'bigint' || type === 'boolean' || type === 'number' || type === 'symbol' || type === 'undefined' || value === null) {
+    return core.createElement("span", {
+      style: "font-style: italic;"
+    }, String(value));
+  } else if (value instanceof RegExp) {
+    return core.createElement("span", {
+      style: "font-weight: bold;"
+    }, String(value));
+  } else if (value instanceof Date) {
+    return core.createElement("span", {
+      style: "font-weight: bold;"
+    }, value.toISOString());
+  } else if (type === 'object') {
+    return core.createElement("span", {
+      style: "font-style: italic;"
+    }, String(value));
+  }
+
+  return null;
+}
+function TextNode({
+  isNative,
+  value
+}) {
+  if (isNative) {
+    return core.createElement("span", {
+      style: "font-weight: bold;"
+    }, "[Native]");
+  }
+
+  const isValue = Neep.isValue(value);
+  const data = isValue ? value() : value;
+
+  if (!Neep.isValue(value)) {
+    return getValue(data);
+  }
+
+  return core.createElement("template", null, core.createElement("span", {
+    style: "font-weight: bold;"
+  }, "[Value:\xA0"), getValue(data), core.createElement("span", {
+    style: "font-weight: bold;"
+  }, "\xA0]"));
 }
 
 function getOptions({
@@ -170,43 +203,6 @@ function getOptions({
   };
 }
 
-function createText(valueType = 'string', value = '') {
-  switch (valueType) {
-    case 'string':
-      return core.createElement("span", null, value);
-
-    case 'native':
-      return core.createElement("span", {
-        style: "font-weight: bold;"
-      }, "[Native]");
-
-    case 'function':
-      return core.createElement("span", {
-        style: "font-weight: bold;"
-      }, "[Function]");
-
-    case 'date':
-      return core.createElement("span", {
-        style: "font-weight: bold;"
-      }, value);
-
-    case 'regex':
-      return core.createElement("span", {
-        style: "font-weight: bold;"
-      }, value);
-
-    case 'value':
-      return core.createElement("span", {
-        style: "font-style: italic;"
-      }, value);
-
-    case 'object':
-      return core.createElement("span", {
-        style: "font-style: italic;"
-      }, value);
-  }
-}
-
 function createTag(name, keys, id, key, labels, ...children) {
   const opened = keys[id];
   const hasChildren = Boolean(children.length);
@@ -215,9 +211,9 @@ function createTag(name, keys, id, key, labels, ...children) {
     style: " position: relative; min-height: 20px; font-size: 14px; line-height: 20px; "
   }, children.length && core.createElement("div", {
     style: " position: absolute; left: -20px; top: 0; width: 20px; height: 20px; text-align: center; cursor: pointer; background: #DDD;; ",
-    onClick: () => keys[id] = !opened
+    onclick: () => keys[id] = !opened
   }, opened ? '-' : '+') || undefined, core.createElement("div", null, '<', name, typeof key === 'string' ? ` key="${key}"` : typeof key === 'number' ? ` key=${key}` : typeof key === 'boolean' ? ` key=${key}` : typeof key === 'bigint' ? ` key=${key}` : typeof key === 'symbol' ? ` key=${String(key)}` : key === null ? ` key=${key}` : key !== undefined && ` key={${String(key)}}`, hasChildren ? '>' : ' />', hasChildren && !opened && core.createElement("span", null, core.createElement("span", {
-    onClick: () => keys[id] = true,
+    onclick: () => keys[id] = true,
     style: "cursor: pointer;"
   }, "..."), '</', name, '>'), hasChildren && labels.filter(Boolean).map(([v, color]) => core.createElement("span", {
     style: `color: ${color || '#000'}`
@@ -244,7 +240,7 @@ function* getList(list, keys, options, labels = []) {
     key,
     label,
     value,
-    valueType
+    isNative
   } = list;
 
   if (type === Type.standard || type === Type.native) {
@@ -336,7 +332,10 @@ function* getList(list, keys, options, labels = []) {
       return;
     }
 
-    return yield createText(valueType, value);
+    return yield core.createElement(TextNode, {
+      isNative: isNative,
+      value: value
+    });
   }
 }
 

@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.6
+ * Neep v0.1.0-alpha.7
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -7,14 +7,13 @@
   typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('monitorable')) :
   typeof define === 'function' && define.amd ? define(['exports', 'monitorable'], factory) :
   (global = global || self, factory(global.Neep = {}, global.Monitorable));
-}(this, (function (exports, monitorable$1) { 'use strict';
+}(this, function (exports, monitorable$1) { 'use strict';
 
   const version = 'undefined';
   const mode = 'development';
   const isProduction = mode === 'production';
 
   var Constant = /*#__PURE__*/Object.freeze({
-    __proto__: null,
     version: version,
     mode: mode,
     isProduction: isProduction
@@ -33,6 +32,206 @@
     }
 
     return obj;
+  }
+
+  function getEventName(k) {
+    if (k[0] === '@') {
+      return k.substr(1);
+    }
+
+    if (/^on[:-]/.test(k)) {
+      return k.substr(3);
+    }
+
+    return '';
+  }
+
+  class EventEmitter {
+    static update(emitter, events) {
+      if (!events) {
+        return [];
+      }
+
+      const newHandles = [];
+
+      if (events && typeof events === 'object') {
+        for (const n of Object.keys(events)) {
+          if (!n) {
+            continue;
+          }
+
+          const fn = events[n];
+
+          if (typeof fn !== 'function') {
+            continue;
+          }
+
+          newHandles.push(emitter.on(n, fn));
+        }
+      }
+
+      return newHandles;
+    }
+
+    static updateInProps(emitter, props, custom) {
+      if (!props) {
+        return [];
+      }
+
+      const newHandles = [];
+
+      function addEvent(entName, listener) {
+        newHandles.push(emitter.on(entName, listener));
+      }
+
+      for (const k of Object.keys(props)) {
+        const fn = props[k];
+
+        if (typeof fn !== 'function') {
+          continue;
+        }
+
+        const entName = getEventName(k);
+
+        if (!entName) {
+          continue;
+        }
+
+        addEvent(entName, fn);
+      }
+
+      const event = props['@'];
+
+      if (event && typeof event === 'object') {
+        for (const k of Object.keys(event)) {
+          const f = event[k];
+
+          if (typeof f !== 'function') {
+            continue;
+          }
+
+          addEvent(k, f);
+        }
+      }
+
+      if (typeof event === 'function') {
+        const {
+          names
+        } = event;
+
+        if (Array.isArray(names)) {
+          for (const n of names) {
+            if (!n) {
+              continue;
+            }
+
+            addEvent(n, (...p) => event(n, ...p));
+          }
+        }
+      }
+
+      if (typeof custom === 'function') {
+        custom(addEvent);
+      }
+
+      newHandles.push(...EventEmitter.update(emitter, props['@']));
+      return newHandles;
+    }
+
+    get names() {
+      return this._names;
+    }
+
+    constructor() {
+      _defineProperty(this, "_names", []);
+
+      _defineProperty(this, "_cancelHandles", new Set());
+
+      _defineProperty(this, "emit", void 0);
+
+      _defineProperty(this, "on", void 0);
+
+      const events = Object.create(null);
+      const names = this._names;
+
+      function emit(name, ...p) {
+        const event = events[name];
+
+        if (!event) {
+          return;
+        }
+
+        for (const fn of [...event]) {
+          fn(...p);
+        }
+      }
+
+      emit.names = names;
+      Reflect.defineProperty(emit, 'names', {
+        get: () => {
+          monitorable.markRead(emit, 'names');
+          return this._names;
+        },
+        configurable: true
+      });
+
+      const on = (name, listener) => {
+        const fn = monitorable.safeify(listener);
+        let event = events[name];
+
+        if (!event) {
+          event = new Set();
+          events[name] = event;
+          monitorable.markChange(emit, 'names');
+          this._names = [...this._names, name];
+        }
+
+        event.add(fn);
+        let removed = false;
+        return () => {
+          if (removed) {
+            return;
+          }
+
+          removed = true;
+          event.delete(fn);
+
+          if (event.size) {
+            return;
+          }
+
+          monitorable.markChange(emit, 'names');
+          this._names = this._names.filter(n => n !== name);
+        };
+      };
+
+      this.emit = emit;
+      this.on = on;
+    }
+
+    updateHandles(newHandles) {
+      const eventCancelHandles = this._cancelHandles;
+      const oldHandles = [...eventCancelHandles];
+      eventCancelHandles.clear();
+
+      for (const fn of oldHandles) {
+        fn();
+      }
+
+      newHandles.forEach(f => eventCancelHandles.add(f));
+      return newHandles;
+    }
+
+    update(list) {
+      const handles = EventEmitter.update(this, list);
+      return this.updateHandles(handles);
+    }
+
+    updateInProps(list, custom) {
+      const handles = EventEmitter.updateInProps(this, list, custom);
+      return this.updateHandles(handles);
+    }
+
   }
 
   class NeepError extends Error {
@@ -85,6 +284,17 @@
   function addRender(render) {
     if (!render) {
       return;
+    }
+
+    if (render.install) {
+      render.install({
+        get isValue() {
+          return exports.isValue;
+        },
+
+        EventEmitter,
+        Error: NeepError
+      });
     }
 
     renders[render.type] = render;
@@ -150,6 +360,11 @@
     }
   }
 
+  const components = Object.create(null);
+  function register(name, component) {
+    components[name] = component;
+  }
+
   const ScopeSlot = 'Neep:ScopeSlot';
   const SlotRender = 'Neep:SlotRender';
   const Slot = 'Neep:Slot';
@@ -160,7 +375,6 @@
   const Fragment = Template;
 
   var Tags = /*#__PURE__*/Object.freeze({
-    __proto__: null,
     ScopeSlot: ScopeSlot,
     SlotRender: SlotRender,
     Slot: Slot,
@@ -334,7 +548,6 @@
   }
 
   var Life = /*#__PURE__*/Object.freeze({
-    __proto__: null,
     watch: watch,
     useValue: useValue,
     hook: hook,
@@ -347,6 +560,8 @@
   const typeSymbol = Symbol.for('type');
   const nameSymbol = Symbol.for('name');
   const renderSymbol = Symbol.for('render');
+  const componentsSymbol = Symbol.for('components');
+  const configSymbol = Symbol.for('config');
 
   function isElement(v) {
     if (!v) {
@@ -414,17 +629,9 @@
       }
     }
 
-    node.on = {};
     node.props = {};
 
     for (let k in attrs) {
-      const onInfo = /^(::|@|on:)([a-zA-Z0-9].*)$/.exec(k);
-
-      if (onInfo) {
-        node.on[onInfo[2]] = attrs[k];
-        continue;
-      }
-
       const nCmd = /^n([:-])([a-zA-Z0-9]+(?:\.[a-zA-Z0-9]+)*)$/i.exec(k);
 
       if (!nCmd) {
@@ -492,7 +699,6 @@
   }
 
   var Element = /*#__PURE__*/Object.freeze({
-    __proto__: null,
     isElement: isElement,
     createElement: createElement,
     elements: elements
@@ -523,7 +729,6 @@
   }
 
   var Dev = /*#__PURE__*/Object.freeze({
-    __proto__: null,
     label: label$1
   });
 
@@ -592,6 +797,10 @@
         id
       };
     }
+
+    return { ...n,
+      id: 0
+    };
   }
   function recoveryMountedNode(node) {
     {
@@ -939,7 +1148,7 @@
     const {
       node
     } = tree;
-    iRender.update(node, source.props || {}, exports.isValue);
+    iRender.update(node, source.props || {});
     setRef(ref, node);
 
     if (!source.children.length && !tree.children.length) {
@@ -1074,7 +1283,13 @@
     }
 
     if (tag === Value) {
-      return createValue(iRender, source, source.value);
+      let value = source.value;
+
+      if (exports.isValue(value)) {
+        value = value();
+      }
+
+      return createValue(iRender, source, value);
     }
 
     if (tag === Template || tag.substr(0, 5) === 'Neep:') {
@@ -1085,7 +1300,7 @@
       });
     }
 
-    const node = iRender.create(tag, source.props || {}, exports.isValue);
+    const node = iRender.create(tag, source.props || {});
     setRef(ref, node);
     let children = [];
 
@@ -1268,13 +1483,19 @@
     return obj;
   }
 
-  function execSimple(nObject, delivered, node, tag, children) {
+  function getComponents(...components) {
+    return components.filter(Boolean);
+  }
+
+  function execSimple(nObject, delivered, node, tag, components, children) {
     const {
       iRender
-    } = nObject.container;
+    } = nObject;
     const slotMap = Object.create(null);
     getSlots(iRender, children, slotMap);
     const slots = setSlots(slotMap);
+    const event = new EventEmitter();
+    event.updateInProps(node.props);
     const context = initContext({
       slots,
       created: false,
@@ -1285,8 +1506,9 @@
 
       refresh(f) {
         nObject.refresh(f);
-      }
+      },
 
+      emit: event.emit
     });
 
     {
@@ -1301,8 +1523,9 @@
       label = getLabel();
     }
 
-    const nodes = exec(nObject, delivered, renderNode(iRender, result, context, tag[renderSymbol]), slots);
+    const nodes = exec(nObject, delivered, renderNode(iRender, result, context, tag[renderSymbol]), slots, getComponents(...components, tag[componentsSymbol]));
     return { ...node,
+      tag,
       children: Array.isArray(nodes) ? nodes : [nodes],
       label
     };
@@ -1331,20 +1554,48 @@
     };
   }
 
-  function exec(nObject, delivered, node, slots, native = false) {
+  function findComponent(tag, components$1) {
+    if (!tag) {
+      return null;
+    }
+
+    if (typeof tag !== 'string') {
+      return tag;
+    }
+
+    if (tag === 'template') {
+      return tag;
+    }
+
+    if (/^neep:.+/i.test(tag)) {
+      return tag;
+    }
+
+    for (const list of components$1) {
+      const component = list[tag];
+
+      if (component) {
+        return component;
+      }
+    }
+
+    return components[tag] || tag;
+  }
+
+  function exec(nObject, delivered, node, slots, components, native = false) {
     if (Array.isArray(node)) {
-      return node.map(n => exec(nObject, delivered, n, slots, native));
+      return node.map(n => exec(nObject, delivered, n, slots, components, native));
     }
 
     if (!isElement(node)) {
       return node;
     }
 
-    let {
-      tag,
+    const {
       inserted,
       args = [{}]
     } = node;
+    let tag = findComponent(node.tag, components);
 
     if (tag === Deliver) {
       const props = { ...node.props
@@ -1357,15 +1608,15 @@
       return { ...node,
         tag,
         $__neep__delivered: newDelivered,
-        children: node.children.map(n => exec(nObject, newDelivered, n, slots, native))
+        children: node.children.map(n => exec(nObject, newDelivered, n, slots, components, native))
       };
     }
 
-    const children = node.children.map(n => exec(nObject, delivered, n, slots, native));
+    const children = node.children.map(n => exec(nObject, delivered, n, slots, components, native));
 
     if (typeof tag === 'function') {
       if (tag[typeSymbol] === 'simple') {
-        return execSimple(nObject, delivered, node, tag, children);
+        return execSimple(nObject, delivered, node, tag, components, children);
       }
 
       return { ...node,
@@ -1386,7 +1637,9 @@
       };
     }
 
-    return execSlot(node, slots, children, args);
+    return execSlot({ ...node,
+      tag
+    }, slots, children, args);
   }
 
   function renderNode(iRender, node, context, render) {
@@ -1406,7 +1659,7 @@
       }];
     }
 
-    if (!iRender.isNode(node) && typeof node === 'object' && render) {
+    if (!iRender.isNode(node) && node && typeof node === 'object' && render) {
       node = render(node, context, auxiliary);
     }
 
@@ -1431,7 +1684,10 @@
   }
 
   function normalize(nObject, result) {
-    return exec(nObject, nObject.delivered, renderNode(nObject.iRender, result, nObject.context, nObject.component[renderSymbol]), nObject.context.slots, Boolean(nObject.native));
+    const {
+      component
+    } = nObject;
+    return exec(nObject, nObject.delivered, renderNode(nObject.iRender, result, nObject.context, component[renderSymbol]), nObject.context.slots, getComponents(component[componentsSymbol]), Boolean(nObject.native));
   }
 
   let delayedRefresh = 0;
@@ -1604,6 +1860,18 @@
       refresh: {
         configurable: true,
         value: obj.refresh.bind(obj)
+      },
+      on: {
+        configurable: true,
+        value: obj.on
+      },
+      emit: {
+        configurable: true,
+        value: obj.emit
+      },
+      config: {
+        configurable: true,
+        value: obj.config
       }
     };
     const entity = Object.create(null, cfg);
@@ -1612,7 +1880,19 @@
 
   class NeepObject {
     constructor(iRender, parent, delivered = (parent === null || parent === void 0 ? void 0 : parent.delivered) || Object.create(null), container) {
+      _defineProperty(this, "events", new EventEmitter());
+
+      _defineProperty(this, "emit", this.events.emit);
+
+      _defineProperty(this, "on", this.events.on);
+
+      _defineProperty(this, "eventCancelHandles", new Set());
+
       _defineProperty(this, "iRender", void 0);
+
+      _defineProperty(this, "components", Object.create(null));
+
+      _defineProperty(this, "config", Object.create(null));
 
       _defineProperty(this, "parentDelivered", void 0);
 
@@ -1816,12 +2096,10 @@
 
       this.__executed_mount = true;
       this.callHook('beforeMount');
-      const result = monitorable.exec(() => {
+      const result = monitorable.exec(c => c && this.requestDraw(), () => {
         this._mount();
 
         this.mounted = true;
-      }, c => c && this.requestDraw(), {
-        postpone: true
       });
       this._cancelDrawMonitor = result.stop;
       complete(() => this.callHook('mounted'));
@@ -1858,9 +2136,7 @@
 
       (_this$_cancelDrawMoni = this._cancelDrawMonitor) === null || _this$_cancelDrawMoni === void 0 ? void 0 : _this$_cancelDrawMoni.call(this);
       this.callHook('beforeUpdate');
-      const result = monitorable.exec(() => this._draw(), c => c && this.requestDraw(), {
-        postpone: true
-      });
+      const result = monitorable.exec(c => c && this.requestDraw(), () => this._draw());
       this._cancelDrawMonitor = result.stop;
       complete(() => this.callHook('updated'));
     }
@@ -1869,12 +2145,12 @@
 
   function update(nObject, props, children) {
     updateProps(nObject.props, props);
+    nObject.events.updateInProps(props);
     const slots = Object.create(null);
     const {
-      native,
-      iRender
+      native
     } = nObject;
-    const childNodes = getSlots(iRender, children, slots, Boolean(native));
+    const childNodes = getSlots(nObject.iRender, children, slots, Boolean(native));
     setSlots(slots, nObject.slots);
 
     if (!native) {
@@ -1914,6 +2190,10 @@
         return nObject.childNodes;
       },
 
+      get emit() {
+        return nObject.emit;
+      },
+
       refresh(f) {
         nObject.refresh(f);
       }
@@ -1931,13 +2211,12 @@
 
     const refresh = changed => changed && nObject.refresh();
 
-    const result = monitorable.exec(() => setCurrent(() => component(props, context, auxiliary), entity), refresh, {
-      resultOnly: true,
-      postpone: true
+    const result = monitorable.exec(refresh, () => setCurrent(() => component(props, context, auxiliary), entity), {
+      resultOnly: true
     });
 
     if (typeof result === 'function') {
-      const render = monitorable.createExecutable(() => normalize(nObject, result()), refresh);
+      const render = monitorable.createExecutable(refresh, () => normalize(nObject, result()));
       return {
         nodes: render(),
         render,
@@ -1945,13 +2224,10 @@
       };
     }
 
-    const render = monitorable.createExecutable(() => normalize(nObject, setCurrent(() => component(props, context, auxiliary), entity)), refresh, {
-      postpone: true
-    });
+    const render = monitorable.createExecutable(refresh, () => normalize(nObject, setCurrent(() => component(props, context, auxiliary), entity)));
     return {
-      nodes: monitorable.exec(() => normalize(nObject, result), refresh, {
-        resultOnly: true,
-        postpone: true
+      nodes: monitorable.exec(refresh, () => normalize(nObject, result), {
+        resultOnly: true
       }),
       render,
       stopRender: () => render.stop()
@@ -1985,6 +2261,8 @@
       _defineProperty(this, "parent", void 0);
 
       this.component = component;
+      Object.assign(this.config, component[configSymbol]);
+      Object.assign(this.components, component[componentsSymbol]);
       Reflect.defineProperty(this.exposed, '$component', {
         value: component,
         enumerable: true,
@@ -1997,7 +2275,7 @@
       this.context = context;
       this.callHook('beforeCreate');
       this.childNodes = children;
-      update(this, props, children);
+      refresh(() => update(this, props, children));
       const {
         render,
         nodes,
@@ -2020,7 +2298,7 @@
       }
 
       this.childNodes = children;
-      update(this, props, children);
+      refresh(() => update(this, props, children));
     }
 
     _destroy() {
@@ -2504,7 +2782,7 @@
       } = this;
       const content = draw(this.container.iRender, this._nodes);
       this.content = content;
-      const [container, node] = iRender.mount(props, exports.isValue, parent === null || parent === void 0 ? void 0 : parent.iRender);
+      const [container, node] = iRender.mount(props, parent === null || parent === void 0 ? void 0 : parent.iRender);
 
       for (const it of getNodes(content)) {
         iRender.insert(container, it);
@@ -2549,7 +2827,7 @@
       if (drawContainer) {
         var _this$parent;
 
-        this.iRender.drawContainer(this._container, this._node, this.props, exports.isValue, (_this$parent = this.parent) === null || _this$parent === void 0 ? void 0 : _this$parent.iRender);
+        this.iRender.drawContainer(this._container, this._node, this.props, (_this$parent = this.parent) === null || _this$parent === void 0 ? void 0 : _this$parent.iRender);
       }
 
       if (this.parent && this.parent.iRender !== this.iRender) {
@@ -2575,7 +2853,7 @@
       if (drawContainer) {
         var _this$parent2;
 
-        this.iRender.drawContainer(this._container, this._node, this.props, exports.isValue, (_this$parent2 = this.parent) === null || _this$parent2 === void 0 ? void 0 : _this$parent2.iRender, true);
+        this.iRender.drawContainer(this._container, this._node, this.props, (_this$parent2 = this.parent) === null || _this$parent2 === void 0 ? void 0 : _this$parent2.iRender, true);
       }
 
       if (drawChildren) {
@@ -2593,9 +2871,7 @@
       }
 
       this.callHook('beforeUpdate');
-      monitorable.exec(() => this._drawSelf(), c => c && this.markDraw(this), {
-        postpone: true
-      });
+      monitorable.exec(c => c && this.markDraw(this), () => this._drawSelf());
       complete(() => this.callHook('updated'));
     }
 
@@ -2750,6 +3026,20 @@
     };
   }
 
+  function MarkValue(symbol, key, value) {
+    return component => {
+      let obj = component[symbol];
+
+      if (!obj) {
+        obj = Object.create(null);
+        component[symbol] = obj;
+      }
+
+      obj[key] = value;
+      return component;
+    };
+  }
+
   function mName(name, component) {
     if (!component) {
       return Mark(nameSymbol, name);
@@ -2790,6 +3080,24 @@
     component[renderSymbol] = fn;
     return component;
   }
+  function mConfig(name, config, component) {
+    const mark = MarkValue(configSymbol, name, config);
+
+    if (!component) {
+      return mark;
+    }
+
+    return mark(component);
+  }
+  function mComponent(name, item, component) {
+    const mark = MarkValue(componentsSymbol, name, item);
+
+    if (!component) {
+      return mark;
+    }
+
+    return mark(component);
+  }
   function create(c, r) {
     if (typeof r === 'function') {
       c[renderSymbol] = r;
@@ -2812,6 +3120,7 @@
   exports.Container = Container;
   exports.Deliver = Deliver;
   exports.Error = NeepError;
+  exports.EventEmitter = EventEmitter;
   exports.Fragment = Fragment;
   exports.ScopeSlot = ScopeSlot;
   exports.Slot = Slot;
@@ -2822,6 +3131,8 @@
   exports.addContextConstructor = addContextConstructor;
   exports.callHook = callHook;
   exports.checkCurrent = checkCurrent;
+  exports.componentsSymbol = componentsSymbol;
+  exports.configSymbol = configSymbol;
   exports.create = create;
   exports.createElement = createElement;
   exports.defineAuxiliary = defineAuxiliary;
@@ -2834,6 +3145,8 @@
   exports.isElementSymbol = isElementSymbol;
   exports.isProduction = isProduction;
   exports.label = label$1;
+  exports.mComponent = mComponent;
+  exports.mConfig = mConfig;
   exports.mName = mName;
   exports.mNative = mNative;
   exports.mRender = mRender;
@@ -2843,6 +3156,7 @@
   exports.mode = mode;
   exports.nameSymbol = nameSymbol;
   exports.refresh = refresh;
+  exports.register = register;
   exports.render = render;
   exports.renderSymbol = renderSymbol;
   exports.setAuxiliary = setAuxiliary;
@@ -2855,5 +3169,5 @@
 
   Object.defineProperty(exports, '__esModule', { value: true });
 
-})));
+}));
 //# sourceMappingURL=neep.core.js.map

@@ -1,5 +1,5 @@
 /*!
- * NeepDevtools v0.1.0-alpha.1
+ * NeepDevtools v0.1.0-alpha.2
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -7,7 +7,7 @@
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('@neep/core')) :
 	typeof define === 'function' && define.amd ? define(['exports', '@neep/core'], factory) :
 	(global = global || self, factory(global.NeepDevtools = {}, global.Neep));
-}(this, (function (exports, Neep$1) { 'use strict';
+}(this, function (exports, Neep$1) { 'use strict';
 
 	let Type;
 
@@ -96,38 +96,14 @@
 
 	  if (tag === Neep$1.Value) {
 	    const treeValue = tree.value;
-	    const type = typeof treeValue;
-	    let valueType = 'string';
-	    let value = '';
-
-	    if (type === 'string') {
-	      value = treeValue;
-	    } else if (treeValue === tree.node) {
-	      valueType = 'native';
-	    } else if (type === 'function') {
-	      valueType = 'function';
-	    } else if (type === 'bigint' || type === 'boolean' || type === 'number' || type === 'symbol' || type === 'undefined' || treeValue === null) {
-	      valueType = 'value';
-	      value = String(treeValue);
-	    } else if (treeValue instanceof RegExp) {
-	      valueType = 'regex';
-	      value = String(treeValue);
-	    } else if (treeValue instanceof Date) {
-	      valueType = 'date';
-	      value = treeValue.toISOString();
-	    } else if (type === 'object') {
-	      valueType = 'object';
-	      value = String(treeValue);
-	    }
-
 	    return yield {
 	      id,
 	      parent,
 	      type: Type.special,
 	      tag,
 	      children: [],
-	      valueType,
-	      value,
+	      isNative: treeValue === tree.node,
+	      value: treeValue,
 	      props,
 	      key,
 	      label
@@ -144,6 +120,63 @@
 	    key,
 	    label
 	  };
+	}
+
+	function getValue(value) {
+	  const type = typeof value;
+
+	  if (type === 'function') {
+	    return Neep$1.createElement("span", {
+	      style: "font-weight: bold;"
+	    }, "[Function]");
+	  }
+
+	  if (type === 'string') {
+	    return Neep$1.createElement("span", null, value);
+	  }
+
+	  if (type === 'bigint' || type === 'boolean' || type === 'number' || type === 'symbol' || type === 'undefined' || value === null) {
+	    return Neep$1.createElement("span", {
+	      style: "font-style: italic;"
+	    }, String(value));
+	  } else if (value instanceof RegExp) {
+	    return Neep$1.createElement("span", {
+	      style: "font-weight: bold;"
+	    }, String(value));
+	  } else if (value instanceof Date) {
+	    return Neep$1.createElement("span", {
+	      style: "font-weight: bold;"
+	    }, value.toISOString());
+	  } else if (type === 'object') {
+	    return Neep$1.createElement("span", {
+	      style: "font-style: italic;"
+	    }, String(value));
+	  }
+
+	  return null;
+	}
+	function TextNode({
+	  isNative,
+	  value
+	}) {
+	  if (isNative) {
+	    return Neep$1.createElement("span", {
+	      style: "font-weight: bold;"
+	    }, "[Native]");
+	  }
+
+	  const isValue = Neep.isValue(value);
+	  const data = isValue ? value() : value;
+
+	  if (!Neep.isValue(value)) {
+	    return getValue(data);
+	  }
+
+	  return Neep$1.createElement("template", null, Neep$1.createElement("span", {
+	    style: "font-weight: bold;"
+	  }, "[Value:\xA0"), getValue(data), Neep$1.createElement("span", {
+	    style: "font-weight: bold;"
+	  }, "\xA0]"));
 	}
 
 	function getOptions({
@@ -170,43 +203,6 @@
 	  };
 	}
 
-	function createText(valueType = 'string', value = '') {
-	  switch (valueType) {
-	    case 'string':
-	      return Neep$1.createElement("span", null, value);
-
-	    case 'native':
-	      return Neep$1.createElement("span", {
-	        style: "font-weight: bold;"
-	      }, "[Native]");
-
-	    case 'function':
-	      return Neep$1.createElement("span", {
-	        style: "font-weight: bold;"
-	      }, "[Function]");
-
-	    case 'date':
-	      return Neep$1.createElement("span", {
-	        style: "font-weight: bold;"
-	      }, value);
-
-	    case 'regex':
-	      return Neep$1.createElement("span", {
-	        style: "font-weight: bold;"
-	      }, value);
-
-	    case 'value':
-	      return Neep$1.createElement("span", {
-	        style: "font-style: italic;"
-	      }, value);
-
-	    case 'object':
-	      return Neep$1.createElement("span", {
-	        style: "font-style: italic;"
-	      }, value);
-	  }
-	}
-
 	function createTag(name, keys, id, key, labels, ...children) {
 	  const opened = keys[id];
 	  const hasChildren = Boolean(children.length);
@@ -215,9 +211,9 @@
 	    style: " position: relative; min-height: 20px; font-size: 14px; line-height: 20px; "
 	  }, children.length && Neep$1.createElement("div", {
 	    style: " position: absolute; left: -20px; top: 0; width: 20px; height: 20px; text-align: center; cursor: pointer; background: #DDD;; ",
-	    onClick: () => keys[id] = !opened
+	    onclick: () => keys[id] = !opened
 	  }, opened ? '-' : '+') || undefined, Neep$1.createElement("div", null, '<', name, typeof key === 'string' ? ` key="${key}"` : typeof key === 'number' ? ` key=${key}` : typeof key === 'boolean' ? ` key=${key}` : typeof key === 'bigint' ? ` key=${key}` : typeof key === 'symbol' ? ` key=${String(key)}` : key === null ? ` key=${key}` : key !== undefined && ` key={${String(key)}}`, hasChildren ? '>' : ' />', hasChildren && !opened && Neep$1.createElement("span", null, Neep$1.createElement("span", {
-	    onClick: () => keys[id] = true,
+	    onclick: () => keys[id] = true,
 	    style: "cursor: pointer;"
 	  }, "..."), '</', name, '>'), hasChildren && labels.filter(Boolean).map(([v, color]) => Neep$1.createElement("span", {
 	    style: `color: ${color || '#000'}`
@@ -244,7 +240,7 @@
 	    key,
 	    label,
 	    value,
-	    valueType
+	    isNative
 	  } = list;
 
 	  if (type === Type.standard || type === Type.native) {
@@ -336,7 +332,10 @@
 	      return;
 	    }
 
-	    return yield createText(valueType, value);
+	    return yield Neep$1.createElement(TextNode, {
+	      isNative: isNative,
+	      value: value
+	    });
 	  }
 	}
 
@@ -409,5 +408,5 @@
 
 	Object.defineProperty(exports, '__esModule', { value: true });
 
-})));
+}));
 //# sourceMappingURL=neep.devtools.js.map

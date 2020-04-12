@@ -1,5 +1,5 @@
 /*!
- * NeepWebRender v0.1.0-alpha.6
+ * NeepWebRender v0.1.0-alpha.7
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -7,55 +7,15 @@
 	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory(require('@neep/core')) :
 	typeof define === 'function' && define.amd ? define(['@neep/core'], factory) :
 	(global = global || self, global.NeepWebRender = factory(global.Neep));
-}(this, (function (core) { 'use strict';
+}(this, function (core) { 'use strict';
 
-	function* recursive2iterable(list) {
-	  if (!Array.isArray(list)) {
-	    yield list;
-	    return;
-	  }
-
-	  for (const it of list) {
-	    yield* recursive2iterable(it);
-	  }
-	}
-
-	function getElementModel(el) {
-	  if (el instanceof HTMLInputElement) {
-	    switch (el.type.toLowerCase()) {
-	      case 'checkbox':
-	      case 'radio':
-	        return ['checked', 'change', e => e.currentTarget.checked];
-	    }
-
-	    return ['value', 'input', e => e.currentTarget.value];
-	  }
-
-	  if (el instanceof HTMLSelectElement) {
-	    return ['value', 'select', e => e.currentTarget.value];
-	  }
-
-	  return;
-	}
-	function setAttrs(el, attrs) {
-	  if (el instanceof HTMLInputElement && 'checked' in attrs) {
-	    switch (el.type.toLowerCase()) {
-	      case 'checkbox':
-	      case 'radio':
-	        if (attrs.checked !== null !== el.checked) {
-	          el.checked = attrs.checked !== null;
-	        }
-
-	    }
-	  }
-
-	  if ((el instanceof HTMLSelectElement || el instanceof HTMLInputElement) && 'value' in attrs) {
-	    const value = attrs.value || '';
-
-	    if (el.value !== value) {
-	      el.value = value;
-	    }
-	  }
+	let isValue;
+	let EventEmitter;
+	let Error;
+	function install(auxiliary) {
+	  isValue = auxiliary.isValue;
+	  EventEmitter = auxiliary.EventEmitter;
+	  Error = auxiliary.Error;
 	}
 
 	function getId(v) {
@@ -68,6 +28,31 @@
 	  }
 
 	  return undefined;
+	}
+
+	function updateId(props, el, old) {
+	  const id = getId(isValue(props.id) ? props.id() : props.id);
+
+	  if (id !== old) {
+	    if (typeof id === 'string') {
+	      el.id = props.id;
+	    } else {
+	      el.removeAttribute('id');
+	    }
+	  }
+
+	  return id;
+	}
+
+	function* recursive2iterable(list) {
+	  if (!Array.isArray(list)) {
+	    yield list;
+	    return;
+	  }
+
+	  for (const it of list) {
+	    yield* recursive2iterable(it);
+	  }
 	}
 
 	function getClass(list) {
@@ -100,6 +85,26 @@
 	  return set;
 	}
 
+	function update(el, classes, oClasses) {
+	  if (classes && oClasses) {
+	    const list = el.getAttribute('class') || '';
+	    const classList = new Set(list.split(' ').filter(Boolean));
+	    oClasses.forEach(c => classList.delete(c));
+	    classes.forEach(c => classList.add(c));
+	    el.setAttribute('class', [...classList].join(' '));
+	  } else if (classes) {
+	    el.setAttribute('class', [...classes].join(' '));
+	  } else if (oClasses) {
+	    el.removeAttribute('class');
+	  }
+	}
+
+	function updateClass(props, el, old) {
+	  const classes = getClass(isValue(props.class) ? props.class() : props.class);
+	  update(el, classes, old);
+	  return classes;
+	}
+
 	function getStyle(style) {
 	  if (typeof style === 'string') {
 	    return style;
@@ -130,129 +135,7 @@
 	  return css;
 	}
 
-	function stringify(data, isOn = false) {
-	  if (data === undefined || data === null) {
-	    return data;
-	  }
-
-	  if (isOn && typeof data === 'function') {
-	    return undefined;
-	  }
-
-	  if (typeof data === 'boolean') {
-	    return data ? '' : null;
-	  }
-
-	  if (typeof data !== 'object') {
-	    return String(data);
-	  }
-
-	  if (data instanceof Date) {
-	    return data.toISOString();
-	  }
-
-	  if (data instanceof RegExp) {
-	    return data.toString();
-	  }
-
-	  return JSON.stringify(data);
-	}
-
-	function getAttrs(props, hasStyle, isValue) {
-	  const attrs = Object.create(null);
-
-	  for (const k in props) {
-	    if (!/^[a-zA-Z0-9_-]/.test(k[0])) {
-	      continue;
-	    }
-
-	    const name = k.replace(/([A-Z])/g, '-$1').replace(/(\-)\-+/g, '$1').toLowerCase();
-
-	    switch (name) {
-	      case 'style':
-	        if (!hasStyle) {
-	          break;
-	        }
-
-	      case 'ref':
-	      case 'is':
-	      case 'id':
-	      case 'class':
-	        continue;
-	    }
-
-	    let data = props[k];
-
-	    if (isValue(data)) {
-	      data = data();
-	    }
-
-	    const value = stringify(data, name.substr(0, 2) === 'on');
-
-	    if (value !== undefined) {
-	      attrs[name] = value;
-	    }
-	  }
-
-	  return attrs;
-	}
-
-	function getEvent(props, isValue, modelInfo) {
-	  const evt = Object.create(null);
-
-	  function addEvt(name, f) {
-	    let set = evt[name];
-
-	    if (!set) {
-	      set = new Set();
-	      evt[name] = set;
-	    }
-
-	    set.add(f);
-	  }
-
-	  for (const k in props) {
-	    const f = props[k];
-
-	    if (typeof f !== 'function') {
-	      continue;
-	    }
-
-	    if (k[0] !== '@' && k.substr(0, 2) !== 'on') {
-	      continue;
-	    }
-
-	    const name = k.substr(k[0] === '@' ? 1 : 2).toLowerCase();
-	    addEvt(name, f);
-	  }
-
-	  if (modelInfo) {
-	    const [prop, name, t] = modelInfo;
-	    const value = props[prop];
-
-	    if (isValue(value)) {
-	      addEvt(name, e => value(t(e)));
-	    }
-	  }
-
-	  return evt;
-	}
-
-	function updateClass(el, classes, oClasses) {
-	  if (classes && oClasses) {
-	    const list = el.getAttribute('class') || '';
-	    const classList = new Set(list.split(' ').filter(Boolean));
-	    oClasses.forEach(c => classList.delete(c));
-	    classes.forEach(c => classList.add(c));
-	    el.setAttribute('class', [...classList].join(' '));
-	  } else if (classes) {
-	    el.setAttribute('class', [...classes].join(' '));
-	  } else if (oClasses) {
-	    el.removeAttribute('class');
-	  }
-	}
-
-	function updateStyle(css, style, oStyle) {
+	function update$1(css, style, oStyle) {
 	  if (!style) {
 	    if (!oStyle) {
 	      return;
@@ -305,11 +188,109 @@
 	  }
 	}
 
-	function updateAttrs(el, attrs, oAttrs) {
+	function updateStyle(props, css, old, hasStyle) {
+	  if (!hasStyle) {
+	    return undefined;
+	  }
+
+	  const style = getStyle(isValue(props.style) ? props.style() : props.style);
+	  update$1(css, style, old);
+	  return style;
+	}
+
+	function setAttrs(el, attrs) {
+	  if (el instanceof HTMLInputElement && 'checked' in attrs) {
+	    switch (el.type.toLowerCase()) {
+	      case 'checkbox':
+	      case 'radio':
+	        if (attrs.checked !== null !== el.checked) {
+	          el.checked = attrs.checked !== null;
+	        }
+
+	    }
+	  }
+
+	  if ((el instanceof HTMLSelectElement || el instanceof HTMLInputElement) && 'value' in attrs) {
+	    const value = attrs.value || '';
+
+	    if (el.value !== value) {
+	      el.value = value;
+	    }
+	  }
+	}
+
+	function stringify(data, isOn = false) {
+	  if (data === undefined || data === null) {
+	    return data;
+	  }
+
+	  if (isOn && typeof data === 'function') {
+	    return undefined;
+	  }
+
+	  if (typeof data === 'boolean') {
+	    return data ? '' : null;
+	  }
+
+	  if (typeof data !== 'object') {
+	    return String(data);
+	  }
+
+	  if (data instanceof Date) {
+	    return data.toISOString();
+	  }
+
+	  if (data instanceof RegExp) {
+	    return data.toString();
+	  }
+
+	  return JSON.stringify(data);
+	}
+
+	function getAttrs(props, hasStyle) {
+	  const attrs = Object.create(null);
+
+	  for (const k in props) {
+	    if (!/^[a-zA-Z:_][a-zA-Z0-9:_-]*$/.test(k)) {
+	      continue;
+	    }
+
+	    const name = k.toLowerCase();
+
+	    switch (name) {
+	      case 'style':
+	        if (!hasStyle) {
+	          break;
+	        }
+
+	      case 'ref':
+	      case 'is':
+	      case 'id':
+	      case 'class':
+	        continue;
+	    }
+
+	    let data = props[k];
+
+	    if (isValue(data)) {
+	      data = data();
+	    }
+
+	    const value = stringify(data, name.substr(0, 2) === 'on');
+
+	    if (value !== undefined) {
+	      attrs[name] = value;
+	    }
+	  }
+
+	  return attrs;
+	}
+
+	function update$2(el, attrs, old) {
 	  for (const k of Object.keys(attrs)) {
 	    const v = attrs[k];
 
-	    if (!(k in oAttrs) || oAttrs[k] !== v) {
+	    if (!(k in old) || old[k] !== v) {
 	      if (v === null) {
 	        el.removeAttribute(k);
 	      } else {
@@ -318,81 +299,127 @@
 	    }
 	  }
 
-	  for (const k of Object.keys(oAttrs)) {
+	  for (const k of Object.keys(old)) {
 	    if (!(k in attrs)) {
 	      el.removeAttribute(k);
 	    }
 	  }
-
-	  setAttrs(el, attrs);
 	}
 
-	function updateEvent(el, evt, oEvt) {
-	  for (const k of Object.keys(evt)) {
-	    const set = evt[k];
+	function updateAttrs(props, el, old, hasStyle) {
+	  const attrs = getAttrs(props, hasStyle);
+	  update$2(el, attrs, old);
+	  setAttrs(el, attrs);
+	  return attrs;
+	}
 
-	    if (k in oEvt) {
-	      const oSet = oEvt[k];
+	function createEventEmitter() {
+	  const events = new EventEmitter();
+	  events.__eventBind = Object.create(null);
+	  return events;
+	}
 
-	      for (const f of set) {
-	        if (!oSet.has(f)) {
-	          el.addEventListener(k, f);
-	        }
-	      }
-
-	      for (const f of oSet) {
-	        if (!set.has(f)) {
-	          el.removeEventListener(k, f);
-	        }
-	      }
-	    } else {
-	      for (const f of set) {
-	        el.addEventListener(k, f);
-	      }
+	function* getElementModel(el) {
+	  if (el instanceof HTMLInputElement) {
+	    switch (el.type.toLowerCase()) {
+	      case 'checkbox':
+	      case 'radio':
+	        return yield ['checked', 'change', e => e.currentTarget.checked];
 	    }
+
+	    return yield ['value', 'input', e => e.currentTarget.value];
 	  }
 
-	  for (const k of Object.keys(oEvt)) {
-	    if (k in evt) {
+	  if (el instanceof HTMLSelectElement) {
+	    return yield ['value', 'select', e => e.currentTarget.value];
+	  }
+	}
+
+	function getEventName(k) {
+	  if (k.substr(0, 2) !== 'on') {
+	    return '';
+	  }
+
+	  let n = k.substr(2);
+
+	  if (n[0] === ':' || n[0] === '-') {
+	    return '';
+	  }
+
+	  return n;
+	}
+
+	function updateEvent(props, el, event = createEventEmitter()) {
+	  event.updateInProps(props, addEvent => {
+	    for (const k in props) {
+	      const f = props[k];
+
+	      if (typeof f !== 'function') {
+	        continue;
+	      }
+
+	      const name = getEventName(k);
+
+	      if (!name) {
+	        continue;
+	      }
+
+	      addEvent(name, f);
+	    }
+
+	    for (const [prop, name, t] of getElementModel(el)) {
+	      const value = props[prop];
+
+	      if (isValue(value)) {
+	        addEvent(name, e => value(t(e)));
+	      }
+	    }
+	  });
+	  const names = new Set(event.names.map(String));
+	  const eventBind = event.__eventBind;
+
+	  for (const k of Object.keys(eventBind)) {
+	    if (names.has(k)) {
 	      continue;
 	    }
 
-	    for (const f of oEvt[k]) {
-	      el.removeEventListener(k, f);
-	    }
+	    eventBind[k]();
+	    delete eventBind[k];
 	  }
+
+	  const {
+	    emit
+	  } = event;
+
+	  for (const k of names) {
+	    if (k in eventBind) {
+	      continue;
+	    }
+
+	    const f = (...p) => emit(k, ...p);
+
+	    el.addEventListener(k, f);
+
+	    eventBind[k] = () => {
+	      el.removeEventListener(k, f);
+	    };
+	  }
+
+	  return event;
 	}
 
 	const PropsMap = new WeakMap();
-	function update(el, props, isValue) {
+	function update$3(el, props) {
 	  const css = el.style;
 	  const hasStyle = css instanceof CSSStyleDeclaration;
 	  const old = PropsMap.get(el) || {
-	    attrs: {},
-	    event: {}
+	    attrs: {}
 	  };
-	  const id = getId(isValue(props.id) ? props.id() : props.id);
-
-	  if (id !== old.id) {
-	    if (typeof id === 'string') {
-	      el.id = props.id;
-	    } else {
-	      el.removeAttribute('id');
-	    }
-	  }
-
-	  const classes = getClass(isValue(props.class) ? props.class() : props.class);
-	  updateClass(el, classes, old.classes);
-	  const style = hasStyle ? getStyle(isValue(props.style) ? props.style() : props.style) : undefined;
-
-	  if (hasStyle) {
-	    updateStyle(css, style, old.style);
-	  }
-
-	  const attrs = getAttrs(props, hasStyle, isValue);
-	  updateAttrs(el, attrs, old.attrs);
-	  const event = getEvent(props, isValue, getElementModel(el));
-	  updateEvent(el, event, old.event);
+	  const id = updateId(props, el, old.id);
+	  const classes = updateClass(props, el, old.classes);
+	  const style = updateStyle(props, css, old.style, hasStyle);
+	  const attrs = updateAttrs(props, el, old.attrs, hasStyle);
+	  const event = updateEvent(props, el, old.event);
 	  PropsMap.set(el, {
 	    id,
 	    classes,
@@ -443,6 +470,7 @@
 	}
 
 	const render = {
+	  install,
 	  type: 'web',
 	  nextFrame,
 
@@ -455,7 +483,7 @@
 	    class: className,
 	    style,
 	    tag
-	  }, isValue, parent) {
+	  }, parent) {
 	    if (!(typeof tag === 'string' && /^[a-z][a-z0-9]*(?:\-[a-z0-9]+)?(?:\:[a-z0-9]+(?:\-[a-z0-9]+)?)?$/i.test(tag))) {
 	      tag = 'div';
 	    }
@@ -463,7 +491,7 @@
 	    const container = render.create(tag, {
 	      class: className,
 	      style
-	    }, isValue);
+	    });
 
 	    if (typeof target === 'string') {
 	      target = document.querySelector(target);
@@ -500,11 +528,11 @@
 	    class: className,
 	    style,
 	    tag
-	  }, isValue, parent) {
+	  }, parent) {
 	    render.update(container, {
 	      class: className,
 	      style
-	    }, isValue);
+	    });
 
 	    if (typeof target === 'string') {
 	      target = document.querySelector(target);
@@ -554,8 +582,8 @@
 
 	  draw() {},
 
-	  create(tag, props, isValue) {
-	    return update(createElement(tag), props, isValue);
+	  create(tag, props) {
+	    return update$3(createElement(tag), props);
 	  },
 
 	  text(text) {
@@ -581,8 +609,8 @@
 	    return node.nextSibling;
 	  },
 
-	  update(node, props, isValue) {
-	    update(node, props, isValue);
+	  update(node, props) {
+	    update$3(node, props);
 	  },
 
 	  insert(parent, node, next = null) {
@@ -607,5 +635,5 @@
 
 	return render;
 
-})));
+}));
 //# sourceMappingURL=neep.web.render.js.map

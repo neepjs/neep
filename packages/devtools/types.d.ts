@@ -1,5 +1,5 @@
 /*!
- * NeepDevtools v0.1.0-alpha.1
+ * NeepDevtools v0.1.0-alpha.2
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
