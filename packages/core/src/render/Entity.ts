@@ -9,7 +9,7 @@ import { getSlots, setSlots } from './slot';
 import NeepObject from './Object';
 import { initContext } from '../helper/context';
 import { updateProps } from './props';
-import { typeSymbol } from '../symbols';
+import { typeSymbol, configSymbol, componentsSymbol } from '../symbols';
 import refresh from './refresh';
 
 function update(
@@ -129,6 +129,8 @@ export default class Entity<
 	) {
 		super(parent.iRender, parent, delivered, parent.container);
 		this.component = component;
+		Object.assign(this.config, component[configSymbol]);
+		Object.assign(this.components, component[componentsSymbol]);
 		Reflect.defineProperty(
 			this.exposed,
 			'$component',

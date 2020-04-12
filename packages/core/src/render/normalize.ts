@@ -2,23 +2,31 @@ import {
 	NeepElement, Exposed, Delivered,
 	Render, NeepNode, Slots, Context, IRender, Component,
 } from '../type';
-import { typeSymbol } from '../symbols';
+import { typeSymbol, componentsSymbol } from '../symbols';
 import { isProduction } from '../constant';
 import auxiliary, { isElement, Tags } from '../auxiliary';
 import { renderSymbol, isElementSymbol } from '../symbols';
 import { getLabel } from '../helper/label';
-import Container from './Container';
 import Entity from './Entity';
 import { getSlots, setSlots } from './slot';
 import { initContext } from '../helper/context';
 import { updateProps } from './props';
 import EventEmitter from '../EventEmitter';
+import { components as globalComponents } from '../register';
+
+
+function getComponents(
+	...components: (Record<string, Component> | undefined)[]
+) {
+	return components.filter(Boolean) as Record<string, Component>[];
+}
 
 function execSimple(
-	nObject: Container | Entity,
+	nObject: Entity,
 	delivered: Delivered,
 	node: NeepElement,
 	tag: Component,
+	components: Record<string, Component>[],
 	children: any[],
 ) {
 	const { iRender } = nObject;
@@ -46,10 +54,11 @@ function execSimple(
 		result,
 		context,
 		tag[renderSymbol],
-	), slots);
+	), slots, getComponents(...components, tag[componentsSymbol]));
 
 	return {
 		...node,
+		tag,
 		children: Array.isArray(nodes) ? nodes : [nodes],
 		label,
 	} as NeepElement;
@@ -82,20 +91,37 @@ function execSlot(
 	};
 }
 
+function findComponent(
+	tag: any,
+	components: Record<string, Component>[],
+): Component | string | null {
+	if (!tag) { return null; }
+	if (typeof tag !== 'string') { return tag; }
+	if (tag === 'template') { return tag; }
+	if (/^neep:.+/i.test(tag)) { return tag; }
+	for (const list of components) {
+		const component = list[tag];
+		if (component) { return component; }
+	}
+	return globalComponents[tag] || tag;
+}
+
 function exec(
-	nObject: Container | Entity,
+	nObject: Entity,
 	delivered: Delivered,
 	node: any,
 	slots: Slots,
+	components: Record<string, Component>[],
 	native = false,
 ): any {
 	if (Array.isArray(node)) {
 		return node.map(n =>
-			exec(nObject, delivered, n, slots, native)
+			exec(nObject, delivered, n, slots, components, native)
 		);
 	}
 	if (!isElement(node)) { return node; }
-	let { tag, inserted, args = [{}] } = node;
+	const { inserted, args = [{}] } = node;
+	let tag = findComponent(node.tag, components);
 	if (tag === Tags.Deliver) {
 		const props = { ...node.props };
 		delete props.ref;
@@ -112,17 +138,25 @@ function exec(
 				newDelivered,
 				n,
 				slots,
+				components,
 				native,
 			)),
 		};
 	}
 
 	const children = node.children
-		.map(n => exec(nObject, delivered, n, slots, native));
+		.map(n => exec(nObject, delivered, n, slots, components, native));
 
 	if (typeof tag === 'function') {
 		if (tag[typeSymbol] === 'simple') {
-			return execSimple(nObject, delivered, node, tag, children);
+			return execSimple(
+				nObject,
+				delivered,
+				node,
+				tag,
+				components,
+				children,
+			);
 		}
 		return { ...node, $__neep__delivered: delivered, children, tag };
 
@@ -133,7 +167,7 @@ function exec(
 	if (tag !== Tags.ScopeSlot || inserted) {
 		return { ...node, children, tag };
 	}
-	return execSlot(node, slots, children, args);
+	return execSlot({ ...node, tag }, slots, children, args);
 }
 
 
@@ -148,7 +182,9 @@ function renderNode<R extends object = object>(
 	if (node === undefined || node === null) {
 		return [{ [isElementSymbol]: true, tag: null, children: [] }];
 	}
-	if (!iRender.isNode(node) && typeof node === 'object' && render) {
+	if (!iRender.isNode(node)
+		&& node && typeof node === 'object' && render
+	) {
 		node = render(node, context, auxiliary);
 	}
 	if (isElement(node)) { return [node]; }
@@ -163,11 +199,11 @@ function renderNode<R extends object = object>(
 	}];
 }
 
-
 export default function normalize(
 	nObject: Entity,
 	result: any,
 ) {
+	const { component } = nObject;
 	return exec(
 		nObject,
 		nObject.delivered,
@@ -175,9 +211,10 @@ export default function normalize(
 			nObject.iRender,
 			result,
 			nObject.context,
-			nObject.component[renderSymbol],
+			component[renderSymbol],
 		),
 		nObject.context.slots,
+		getComponents(component[componentsSymbol]),
 		Boolean(nObject.native),
 	);
 }

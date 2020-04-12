@@ -2,7 +2,7 @@ import {
 	Exposed, Delivered,
 	Entity as ComponentEntity,
 	NativeComponent,
-	Hook, Hooks, NeepNode, IRender,
+	Hook, Hooks, NeepNode, IRender, Component,
 } from '../type';
 import { callHook, setHook } from '../hook';
 import { MountedNode } from './draw';
@@ -68,18 +68,10 @@ function createEntity(obj: NeepObject): ComponentEntity {
 				return setHook(id, hook, entity);
 			},
 		},
-		refresh: {
-			configurable: true,
-			value: obj.refresh.bind(obj),
-		},
-		on: {
-			configurable: true,
-			value: obj.on,
-		},
-		emit: {
-			configurable: true,
-			value: obj.emit,
-		},
+		refresh: { configurable: true, value: obj.refresh.bind(obj) },
+		on: { configurable: true, value: obj.on },
+		emit: { configurable: true, value: obj.emit },
+		config: { configurable: true, value: obj.config },
 	};
 	const entity: ComponentEntity = Object.create(null, cfg);
 	return entity;
@@ -91,6 +83,8 @@ export default class NeepObject {
 	readonly on = this.events.on;
 	readonly eventCancelHandles = new Set<() => void>();
 	readonly iRender: IRender;
+	readonly components: Record<string, Component> = Object.create(null);
+	readonly config: Record<string, any> = Object.create(null);
 	/** 接受到的呈递值 */
 	readonly parentDelivered: Delivered;
 	/** 向后代呈递的值 */

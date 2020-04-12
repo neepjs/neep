@@ -1,20 +1,34 @@
 import { Component, Render, Marks } from './type';
-import { nameSymbol, typeSymbol, renderSymbol } from './symbols';
+import { nameSymbol, typeSymbol, renderSymbol, componentsSymbol, configSymbol } from './symbols';
 
 /** 组件标记函数 */
 export interface Mark {
 	<N extends Component<any, any>>(component: N): N;
 }
 
-/**
- * 创建组件标记函数
- */
+/** 创建组件标记函数 */
 function Mark<S extends keyof Marks>(
 	symbol: S,
 	value: Component[S],
 ): Mark {
 	return component => {
 		component[symbol] = value as any;
+		return component;
+	};
+}
+/** 创建组件标记函数 */
+function MarkValue<S extends typeof componentsSymbol | typeof configSymbol>(
+	symbol: S,
+	key: keyof (NonNullable<Marks[typeof configSymbol]>),
+	value: NonNullable<Marks[typeof componentsSymbol]>[typeof key],
+): Mark {
+	return component => {
+		let obj = component[symbol] as any;
+		if (!obj) {
+			obj = Object.create(null);
+			component[symbol] = obj;
+		}
+		obj[key] = value;
 		return component;
 	};
 }
@@ -87,6 +101,35 @@ export function mRender<N extends Component<any, any>>(
 	if (!component) { return Mark(renderSymbol, fn); }
 	component[renderSymbol] = fn;
 	return component;
+}
+
+/** 标记组件类型 */
+export function mConfig(name: string, config: any): Mark;
+export function mConfig<N extends Component<any, any>>(
+	name: string, config: any,
+	component: N,
+): N;
+export function mConfig<N extends Component<any, any>>(
+	name: string, config: any,
+	component?: N,
+): Mark | N {
+	const mark = MarkValue(configSymbol, name, config);
+	if (!component) { return mark; }
+	return mark(component);
+}
+/** 标记组件类型 */
+export function mComponent(name: string, item: Component): Mark;
+export function mComponent<N extends Component<any, any>>(
+	name: string, item: Component,
+	component: N,
+): N;
+export function mComponent<N extends Component<any, any>>(
+	name: string, item: Component,
+	component?: N,
+): Mark | N {
+	const mark = MarkValue(componentsSymbol, name, item);
+	if (!component) { return mark; }
+	return mark(component);
 }
 
 export function create<P extends object>(

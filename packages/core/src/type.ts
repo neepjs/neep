@@ -85,14 +85,17 @@ export interface Entity {
 	readonly destroyed: boolean;
 	readonly mounted: boolean;
 	readonly unmounted: boolean;
+	readonly config: Record<string, any>;
+
+	readonly on: On;
+	readonly emit: Emit;
 
 	callHook<H extends Hooks>(hook: H): void;
 	callHook(hook: string): void;
 	setHook<H extends Hooks>(id: H, hook: Hook):() => void;
 	setHook(id: string, hook: Hook): () => void;
 	readonly $_hooks: { [name: string]: Set<Hook>; }
-	on: On,
-	emit: Emit,
+
 	refresh(): void;
 	refresh<T>(f: () => T, async?: false): T;
 	refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
@@ -120,6 +123,8 @@ export interface Marks {
 	/** 是否为原生组件 */
 	[symbols.typeSymbol]?: 'native' | 'simple' | 'standard';
 	[symbols.renderSymbol]?: Render;
+	[symbols.configSymbol]?: Record<string, any>;
+	[symbols.componentsSymbol]?: Record<string, Component>;
 }
 /** 构造函数 */
 export interface Component<
