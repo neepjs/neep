@@ -1,7 +1,5 @@
 import { create, mark, mName, mSimple, Deliver } from '@neep/core';
 
-import B from './B';
-
 const E = create((
 	props: {  a?: any, onset?: () => void },
 	{ childNodes, delivered },
@@ -10,9 +8,9 @@ const E = create((
 	label('{E}', '#F00');
 	return <Deliver a={delivered.a + 1}>
 		<div>E: {delivered.a}</div>
-		<B {...props} {...{'@set': props.onset}}>
+		<tb {...props} {...{'@set': props.onset}}>
 			{ childNodes }
-		</B>
+		</tb>
 	</Deliver>;
 });
 export default mark(E, mName('E'), mSimple);

@@ -1,4 +1,4 @@
-import { create, mark, mName, mSimple, Deliver } from '@neep/core';
+import { create, mark, mName, mSimple, Deliver, mComponent } from '@neep/core';
 
 import D from './D';
 
@@ -10,9 +10,9 @@ const C = create((
 	label('{C}', '#F00');
 	return <Deliver a={delivered.a + 1}>
 		<div>C: {delivered.a}</div>
-		<D {...props}>
+		<td {...props}>
 			{ childNodes }
-		</D>
+		</td>
 	</Deliver>;
 });
-export default mark(C, mName('C'), mSimple);
+export default mark(C, mName('C'), mSimple, mComponent('td', D));
