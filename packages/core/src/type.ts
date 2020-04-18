@@ -22,6 +22,7 @@ export interface Slots {
 }
 export interface Emit<T extends Record<string, any[]> = Record<string, any[]>> {
 	<N extends keyof T>(name: N, ...p: T[N]): void;
+	omit(...names: string[]): Emit;
 	readonly names: (keyof T)[];
 }
 export interface On<T extends Record<string, any[]> = Record<string, any[]>> {

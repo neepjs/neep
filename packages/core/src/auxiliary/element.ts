@@ -49,13 +49,7 @@ export function createElement(
 	}
 	node.props = {};
 	for (let k in attrs) {
-		// TODO: data
-		const nCmd = /^n([:-])([a-zA-Z0-9]+(?:\.[a-zA-Z0-9]+)*)$/i.exec(k);
-		/** 普通属性 */
-		if (!nCmd) {
-			node.props[k] = attrs[k];
-			continue;
-		}
+		node.props[k] = attrs[k];
 	}
 	return node;
 }

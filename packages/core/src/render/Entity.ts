@@ -17,7 +17,7 @@ function update(
 	props: any,
 	children:any[],
 ) {
-	updateProps(nObject.props, props);
+	updateProps(nObject.props, props, {}, false, true);
 	nObject.events.updateInProps(props);
 	const slots = Object.create(null);
 	const { native } = nObject;

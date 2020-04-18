@@ -1,13 +1,20 @@
 import {
 	ScopeSlot, Slot, SlotRender, Value, Template,
-	NeepElement, Node, Ref,
+	NeepElement, Node, Ref, Emit,
 } from './core';
 
 export * from './core';
 
+export interface EventSet {
+	[key: string]: (...p: T[N]) => void;
+}
 interface Attributes {
 	slot?: string;
 	ref?: Ref;
+	'@': Emit | EventSet,
+	'n:on': Emit | EventSet,
+	'n-on': Emit | EventSet,
+	
 }
 interface NativeAttributes extends Attributes {
 	id?: string;

@@ -7,15 +7,20 @@ const disabledKey = new Set([
 ]);
 function filter(k: string | number | symbol) {
 	if (typeof k !== 'string') { return true; }
-	return !disabledKey.has(k[0]);
+	if (disabledKey.has(k[0])) { return false; }
+	if (/^n[:-]/.test(k)) { return false; }
+	if (/^on[:-]/.test(k)) { return false; }
+	return true;
 }
 export function updateProps(
 	obj: any,
 	props: any,
 	oldProps: any = {},
 	define = false,
+	isProps = false,
 ) {
-	const newKeys = new Set(Reflect.ownKeys(props));
+	const keys = Reflect.ownKeys(props);
+	const newKeys = new Set(isProps ? keys.filter(filter) : keys);
 	for (const k of Reflect.ownKeys(obj)) {
 		if (!newKeys.has(k)) {
 			delete obj[k];

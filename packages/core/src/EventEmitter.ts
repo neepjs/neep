@@ -4,6 +4,7 @@ import { Emit, On } from './type';
 function getEventName(k: string): string {
 	if (k[0] === '@') { return k.substr(1); }
 	if (/^on[:-]/.test(k)) { return k.substr(3); }
+	if (/^n([:-])on(\1|:)/.test(k)) { return k.substr(5); }
 	return '';
 }
 interface AddEvent<T extends Record<string, any[]>> {
@@ -11,6 +12,29 @@ interface AddEvent<T extends Record<string, any[]>> {
 		entName: N,
 		listener: (...p: T[N]) => void,
 	): void
+}
+
+function addEventFromCollection(
+	addEvent:(entName: string, listener: (...p: any) => void) => void,
+	events: any,
+) {
+	if (!events) { return; }
+	if (typeof events === 'function') {
+		const { names } = events as Emit;
+		if (!Array.isArray(names)) { return; }
+		for (const n of names) {
+			if (!n) { continue; }
+			addEvent(n, (...p) => events(n, ...p));
+		}
+		return;
+	}
+	if (typeof events !== 'object') { return; }
+	for (const k of Object.keys(events)) {
+		const f = events[k];
+		if (typeof f !== 'function') { continue; }
+		addEvent(k, f);
+	}
+
 }
 
 export default class EventEmitter<
@@ -54,22 +78,9 @@ export default class EventEmitter<
 			if (!entName) { continue; }
 			addEvent(entName, fn);
 		}
-		const event = props['@'];
-		if (event && typeof event === 'object') {
-			for (const k of Object.keys(event)) {
-				const f = event[k];
-				if (typeof f !== 'function') { continue; }
-				addEvent(k, f);
-			}
-		} if (typeof event === 'function') {
-			const { names } = event as Emit;
-			if (Array.isArray(names)) {
-				for (const n of names) {
-					if (!n) { continue; }
-					addEvent(n, (...p) => event(n, ...p));
-				}
-			}
-		}
+		addEventFromCollection(addEvent, props['@']);
+		addEventFromCollection(addEvent, props['n:on']);
+		addEventFromCollection(addEvent, props['n-on']);
 		if (typeof custom === 'function') {
 			custom(addEvent);
 		}
@@ -87,28 +98,35 @@ export default class EventEmitter<
 	constructor() {
 		const events: Record<keyof T, Set<Function>> = Object.create(null);
 		const names = this._names;
-		function emit<N extends keyof T>(name: N, ...p: T[N]): void {
-			const event = events[name];
-			if (!event) { return; }
-			for (const fn of [...event]) { 
-				fn(...p);
+
+		function createEmit(
+			...omitNames: (string | number | symbol)[]
+		): Emit<T> {
+			function emit<N extends keyof T>(name: N, ...p: T[N]): void {
+				const event = events[name];
+				if (!event) { return; }
+				for (const fn of [...event]) { 
+					fn(...p);
+				}
 			}
-		}
-		emit.names = names;
-		Reflect.defineProperty(emit, 'names', {
-			get:() => {
-				monitorable.markRead(emit, 'names');
-				return this._names;
-			},
-			configurable: true,
-		});
+			emit.omit = (...names: string[]) =>
+				createEmit(...omitNames, ...names);
+			Reflect.defineProperty(emit, 'names', {
+				get:() => {
+					monitorable.markRead(createEmit, 'names');
+					return names.filter(t => !omitNames.includes(t));
+				},
+				configurable: true,
+			});
+			return emit as any as Emit<T>;
+		};
 		const on: On<T> = (name, listener) => {
 			const fn = monitorable.safeify(listener);
 			let event = events[name];
 			if (!event) {
 				event = new Set();
 				events[name] = event;
-				monitorable.markChange(emit, 'names');
+				monitorable.markChange(createEmit, 'names');
 				this._names = [...this._names, name];
 			}
 			event.add(fn);
@@ -118,11 +136,11 @@ export default class EventEmitter<
 				removed = true;
 				event.delete(fn);
 				if (event.size) { return; }
-				monitorable.markChange(emit, 'names');
+				monitorable.markChange(createEmit, 'names');
 				this._names = this._names.filter(n => n !== name);
 			};
 		};
-		this.emit = emit;
+		this.emit = createEmit();
 		this.on = on;
 	}
 	updateHandles(newHandles: (() => void)[]): (() => void)[] {
