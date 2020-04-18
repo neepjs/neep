@@ -65,10 +65,14 @@ function execSimple(
 }
 
 function execSlot(
+	nObject: Entity,
+	delivered: Delivered,
 	node: NeepElement,
 	slots: Slots,
+	components: Record<string, Component>[],
 	children: any[],
 	args: any[] = [{}],
+	native: boolean,
 ): NeepElement {
 	const slotName = node.props?.name || 'default';
 	const slot = slots[slotName];
@@ -86,8 +90,14 @@ function execSlot(
 		...node,
 		tag: Tags.ScopeSlot,
 		label,
-		children:
+		children: exec(
+			nObject,
+			delivered,
 			typeof render !== 'function' ? children : render(...args),
+			slots,
+			components,
+			native,
+		),
 	};
 }
 
@@ -155,7 +165,14 @@ function exec(
 				node,
 				tag,
 				components,
-				children,
+				exec(
+					nObject,
+					delivered,
+					children,
+					slots,
+					components,
+					native,
+				),
 			);
 		}
 		return { ...node, $__neep__delivered: delivered, children, tag };
@@ -167,7 +184,16 @@ function exec(
 	if (tag !== Tags.ScopeSlot || inserted) {
 		return { ...node, children, tag };
 	}
-	return execSlot({ ...node, tag }, slots, children, args);
+	return execSlot(
+		nObject,
+		delivered,
+		{ ...node, tag },
+		slots,
+		components,
+		children,
+		args,
+		native,
+	);
 }
 
 
