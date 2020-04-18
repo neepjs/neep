@@ -2,6 +2,7 @@ export { default as install } from './install';
 export { default as Error } from './Error';
 export { default as EventEmitter } from './EventEmitter';
 export { register } from './register';
+export * from './components';
 export * from './render';
 export * from './constant';
 export * from './auxiliary';

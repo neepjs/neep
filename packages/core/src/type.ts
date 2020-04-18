@@ -142,7 +142,7 @@ export interface Component<
 
 export type Tag = null | string
 	| typeof Tags[keyof typeof Tags]
-	| Component;
+	| Component<any, any>;
 
 export interface Ref {
 	(node: NativeNode | Exposed, isRemove?: boolean): void;

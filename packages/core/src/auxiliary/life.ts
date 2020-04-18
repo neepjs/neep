@@ -106,7 +106,7 @@ export function hook(
  * 配置 API
  **********************************/
 
-export function setValue<T>(
+function setValue<T>(
 	obj: any,
 	name: string | number | symbol,
 	value: T | Value<T> | (() => T),
