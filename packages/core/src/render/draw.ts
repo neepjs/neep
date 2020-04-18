@@ -455,7 +455,7 @@ function createItem(
 	const node = iRender.create(tag, source.props || {});
 	setRef(ref, node);
 	let children: (MountedNode | MountedNode[])[] = [];
-	if (source.children) {
+	if (source.children?.length) {
 		children = createAll(iRender, source.children);
 		for (const it of getNodes(children)) {
 			iRender.insert(node, it);
