@@ -46,6 +46,7 @@ function getAttrs(
 ) {
 	const attrs: Attrs = Object.create(null);
 	for (const k in props) {
+		if (/^(n|on|bind|slot)[:-]/.test(k)) { continue; }
 		if (!/^[a-zA-Z:_][a-zA-Z0-9:_-]*$/.test(k)) { continue; }
 		const name = k
 			.toLowerCase();
