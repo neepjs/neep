@@ -1,10 +1,53 @@
 /*!
- * Neep v0.1.0-alpha.7
+ * Neep v0.1.0-alpha.8
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
 import * as monitorableApi from 'monitorable';
 import { Value as Value$1, WatchCallback, value as value$1, computed as computed$1, isValue as isValue$1, encase as encase$1, recover as recover$1 } from 'monitorable';
+
+interface Attributes {
+	slot?: string;
+	ref?: Ref;
+	'@': Emit | EventSet,
+	'n:on': Emit | EventSet,
+	'n-on': Emit | EventSet,
+	
+}
+interface NativeAttributes extends Attributes {
+	id?: string;
+	class?: string;
+}
+interface ClassAttributes<T> extends Attributes {
+
+}
+
+interface SlotAttr {
+	name?: string;
+}
+interface ScopeSlotAttr {
+	name?: string;
+	render?(...params: any[]): NeepNode | NeepNode[];
+}
+interface SlotRenderAttr {
+
+}
+
+
+declare global {
+	namespace JSX {
+		interface IntrinsicAttributes extends NativeAttributes { }
+		interface IntrinsicClassAttributes<T> extends ClassAttributes<T> { }
+
+		interface IntrinsicElements {
+			[Slot]: SlotAttr & ScopeSlotAttr;
+			[SlotRender]: SlotRenderAttr;
+			[ScopeSlot]: ScopeSlotAttr;
+			slot: SlotAttr;
+			[k: string]: any;
+		}
+	}
+};
 
 /**
  * Global constant
@@ -120,10 +163,6 @@ declare function useValue<T>(fn?: () => T, name?: string): T | Value$1<any>;
  */
 declare function hook<H extends Hooks>(name: H, hook: () => void, initOnly?: boolean): undefined | (() => void);
 declare function hook(name: string, hook: () => void, initOnly?: boolean): undefined | (() => void);
-/**********************************
- * 配置 API
- **********************************/
-declare function setValue<T>(obj: any, name: string | number | symbol, value: T | Value$1<T> | (() => T), opt?: boolean | ((value: T) => void)): void;
 /**
  * 将 Value 导出
  * @param name 导出用的名称
@@ -178,7 +217,6 @@ declare function deliver<T>(name: string | number | symbol, getter: () => T, set
 declare const Life_watch: typeof watch;
 declare const Life_useValue: typeof useValue;
 declare const Life_hook: typeof hook;
-declare const Life_setValue: typeof setValue;
 declare const Life_expose: typeof expose;
 declare const Life_deliver: typeof deliver;
 declare namespace Life {
@@ -186,7 +224,6 @@ declare namespace Life {
     Life_watch as watch,
     Life_useValue as useValue,
     Life_hook as hook,
-    Life_setValue as setValue,
     Life_expose as expose,
     Life_deliver as deliver,
   };
@@ -295,7 +332,11 @@ interface Slots {
 }
 interface Emit<T extends Record<string, any[]> = Record<string, any[]>> {
     <N extends keyof T>(name: N, ...p: T[N]): void;
+    omit(...names: string[]): Emit;
     readonly names: (keyof T)[];
+}
+interface EventSet {
+    [key: string]: (...p: any[]) => void;
 }
 interface On<T extends Record<string, any[]> = Record<string, any[]>> {
     <N extends keyof T>(name: N, listener: (...p: T[N]) => void): () => void;
@@ -384,7 +425,7 @@ interface Marks {
 interface Component<P extends object = object, R extends object = object> extends Marks {
     (props: P, context: Context, auxiliary: Auxiliary): undefined | null | NeepNode | NeepNode[] | R | (() => undefined | null | NeepNode | NeepNode[] | R);
 }
-declare type Tag = null | string | typeof Tags[keyof typeof Tags] | Component;
+declare type Tag = null | string | typeof Tags[keyof typeof Tags] | Component<any, any>;
 interface Ref {
     (node: NativeNode | Exposed, isRemove?: boolean): void;
 }
@@ -492,6 +533,12 @@ declare function install(apis: InstallOptions): void;
 
 declare function register(name: string, component: Component): void;
 
+declare function lazy<P extends object = object, C extends Component<P, any> = Component<P, any>>(component: () => Promise<C | {
+    default: C;
+}>, Placeholder?: Component<{
+    loading: boolean;
+}, any>): Component<P>;
+
 declare function refresh<T>(f: () => T, async?: false): T;
 declare function refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
 declare function refresh<T>(f: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T;
@@ -538,4 +585,4 @@ declare function setHook(id: string, hook: Hook, entity?: Entity): () => void;
 declare function callHook<H extends Hooks>(id: H, exposed: Entity): void;
 declare function callHook(id: string, exposed: Entity): void;
 
-export { Auxiliary, Component, Container, Context, ContextConstructor, Deliver, Delivered, Emit, Entity, NeepError as Error, EventEmitter, Exposed, Fragment, Hook, Hooks, IRender, IRenderAuxiliary, Mark, Marks, MountProps, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Ref, Render, RootExposed, ScopeSlot, Slot, SlotFn, SlotRender, Slots, Tag, Tags, Template, Value, addContextConstructor, callHook, checkCurrent, componentsSymbol, computed, configSymbol, create, createElement, current, defineAuxiliary, deliver, elementIteratorOptions, elements, encase, expose, hook, install, isElement, isElementSymbol, isProduction, isValue, label, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, mode, nameSymbol, recover, refresh, register, render, renderSymbol, setAuxiliary, setHook, setValue, typeSymbol, useValue, value, version, watch };
+export { Auxiliary, Component, Container, Context, ContextConstructor, Deliver, Delivered, Emit, Entity, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, IRenderAuxiliary, Mark, Marks, MountProps, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Ref, Render, RootExposed, ScopeSlot, Slot, SlotFn, SlotRender, Slots, Tag, Tags, Template, Value, addContextConstructor, callHook, checkCurrent, componentsSymbol, computed, configSymbol, create, createElement, current, defineAuxiliary, deliver, elementIteratorOptions, elements, encase, expose, hook, install, isElement, isElementSymbol, isProduction, isValue, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, mode, nameSymbol, recover, refresh, register, render, renderSymbol, setAuxiliary, setHook, typeSymbol, useValue, value, version, watch };

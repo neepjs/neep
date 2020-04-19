@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.7
+ * Neep v0.1.0-alpha.8
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -41,7 +41,51 @@ function getEventName(k) {
     return k.substr(3);
   }
 
+  if (/^n([:-])on(\1|:)/.test(k)) {
+    return k.substr(5);
+  }
+
   return '';
+}
+
+function addEventFromCollection(addEvent, events) {
+  if (!events) {
+    return;
+  }
+
+  if (typeof events === 'function') {
+    const {
+      names
+    } = events;
+
+    if (!Array.isArray(names)) {
+      return;
+    }
+
+    for (const n of names) {
+      if (!n) {
+        continue;
+      }
+
+      addEvent(n, (...p) => events(n, ...p));
+    }
+
+    return;
+  }
+
+  if (typeof events !== 'object') {
+    return;
+  }
+
+  for (const k of Object.keys(events)) {
+    const f = events[k];
+
+    if (typeof f !== 'function') {
+      continue;
+    }
+
+    addEvent(k, f);
+  }
 }
 
 class EventEmitter {
@@ -98,35 +142,9 @@ class EventEmitter {
       addEvent(entName, fn);
     }
 
-    const event = props['@'];
-
-    if (event && typeof event === 'object') {
-      for (const k of Object.keys(event)) {
-        const f = event[k];
-
-        if (typeof f !== 'function') {
-          continue;
-        }
-
-        addEvent(k, f);
-      }
-    }
-
-    if (typeof event === 'function') {
-      const {
-        names
-      } = event;
-
-      if (Array.isArray(names)) {
-        for (const n of names) {
-          if (!n) {
-            continue;
-          }
-
-          addEvent(n, (...p) => event(n, ...p));
-        }
-      }
-    }
+    addEventFromCollection(addEvent, props['@']);
+    addEventFromCollection(addEvent, props['n:on']);
+    addEventFromCollection(addEvent, props['n-on']);
 
     if (typeof custom === 'function') {
       custom(addEvent);
@@ -152,26 +170,30 @@ class EventEmitter {
     const events = Object.create(null);
     const names = this._names;
 
-    function emit(name, ...p) {
-      const event = events[name];
+    function createEmit(...omitNames) {
+      function emit(name, ...p) {
+        const event = events[name];
 
-      if (!event) {
-        return;
+        if (!event) {
+          return;
+        }
+
+        for (const fn of [...event]) {
+          fn(...p);
+        }
       }
 
-      for (const fn of [...event]) {
-        fn(...p);
-      }
+      emit.omit = (...names) => createEmit(...omitNames, ...names);
+
+      Reflect.defineProperty(emit, 'names', {
+        get: () => {
+          monitorable.markRead(createEmit, 'names');
+          return names.filter(t => !omitNames.includes(t));
+        },
+        configurable: true
+      });
+      return emit;
     }
-
-    emit.names = names;
-    Reflect.defineProperty(emit, 'names', {
-      get: () => {
-        monitorable.markRead(emit, 'names');
-        return this._names;
-      },
-      configurable: true
-    });
 
     const on = (name, listener) => {
       const fn = monitorable.safeify(listener);
@@ -180,7 +202,7 @@ class EventEmitter {
       if (!event) {
         event = new Set();
         events[name] = event;
-        monitorable.markChange(emit, 'names');
+        monitorable.markChange(createEmit, 'names');
         this._names = [...this._names, name];
       }
 
@@ -198,12 +220,12 @@ class EventEmitter {
           return;
         }
 
-        monitorable.markChange(emit, 'names');
+        monitorable.markChange(createEmit, 'names');
         this._names = this._names.filter(n => n !== name);
       };
     };
 
-    this.emit = emit;
+    this.emit = createEmit();
     this.on = on;
   }
 
@@ -334,6 +356,167 @@ function install(apis) {
 const components = Object.create(null);
 function register(name, component) {
   components[name] = component;
+}
+
+const isElementSymbol = Symbol.for('isNeepElement');
+const typeSymbol = Symbol.for('type');
+const nameSymbol = Symbol.for('name');
+const renderSymbol = Symbol.for('render');
+const componentsSymbol = Symbol.for('components');
+const configSymbol = Symbol.for('config');
+
+function Mark(symbol, value) {
+  return component => {
+    component[symbol] = value;
+    return component;
+  };
+}
+
+function MarkValue(symbol, key, value) {
+  return component => {
+    let obj = component[symbol];
+
+    if (!obj) {
+      obj = Object.create(null);
+      component[symbol] = obj;
+    }
+
+    obj[key] = value;
+    return component;
+  };
+}
+
+function mName(name, component) {
+  if (!component) {
+    return Mark(nameSymbol, name);
+  }
+
+  component[nameSymbol] = name;
+  return component;
+}
+function mType(type, component) {
+  if (!component) {
+    return Mark(typeSymbol, type);
+  }
+
+  component[typeSymbol] = type;
+  return component;
+}
+function mSimple(component) {
+  if (!component) {
+    return Mark(typeSymbol, 'simple');
+  }
+
+  component[typeSymbol] = 'simple';
+  return component;
+}
+function mNative(component) {
+  if (!component) {
+    return Mark(typeSymbol, 'native');
+  }
+
+  component[typeSymbol] = 'native';
+  return component;
+}
+function mRender(fn, component) {
+  if (!component) {
+    return Mark(renderSymbol, fn);
+  }
+
+  component[renderSymbol] = fn;
+  return component;
+}
+function mConfig(name, config, component) {
+  const mark = MarkValue(configSymbol, name, config);
+
+  if (!component) {
+    return mark;
+  }
+
+  return mark(component);
+}
+function mComponent(name, item, component) {
+  const mark = MarkValue(componentsSymbol, name, item);
+
+  if (!component) {
+    return mark;
+  }
+
+  return mark(component);
+}
+function create(c, r) {
+  if (typeof r === 'function') {
+    c[renderSymbol] = r;
+  }
+
+  return c;
+}
+function mark(component, ...marks) {
+  for (const m of marks) {
+    m(component);
+  }
+
+  return component;
+}
+
+function lazy(component, Placeholder) {
+  const reslut = exports.value(0);
+  const Component = exports.value(undefined);
+
+  async function load() {
+    if (reslut()) {
+      return;
+    }
+
+    reslut(1);
+
+    try {
+      const c = await component();
+
+      if (typeof c === 'function') {
+        Component(c);
+        return;
+      }
+
+      if (!c) {
+        reslut(-1);
+        return;
+      }
+
+      if (typeof c.default === 'function') {
+        Component(c.default);
+        return;
+      }
+
+      reslut(-1);
+    } catch (_unused) {
+      reslut(-1);
+    }
+  }
+
+  function Lazy(props, {
+    childNodes
+  }, {
+    createElement
+  }) {
+    const com = Component();
+
+    if (com) {
+      return createElement(com, props, ...childNodes);
+    }
+
+    load();
+
+    if (!Placeholder) {
+      return null;
+    }
+
+    return createElement(Placeholder, {
+      loading: reslut() > 0
+    });
+  }
+
+  return mark(Lazy, mSimple, mName('Lazy'));
 }
 
 const ScopeSlot = 'Neep:ScopeSlot';
@@ -471,6 +654,7 @@ function hook(name, hook, initOnly) {
 
   return setHook(name, () => hook(), entity);
 }
+
 function setValue(obj, name, value, opt) {
   if (typeof name === 'string' && ['$', '_'].includes(name[0])) {
     return;
@@ -511,6 +695,7 @@ function setValue(obj, name, value, opt) {
     enumerable: true
   });
 }
+
 function expose(name, value, opt) {
   setValue(checkCurrent('expose', true).exposed, name, value, opt);
 }
@@ -522,17 +707,9 @@ var Life = /*#__PURE__*/Object.freeze({
   watch: watch,
   useValue: useValue,
   hook: hook,
-  setValue: setValue,
   expose: expose,
   deliver: deliver
 });
-
-const isElementSymbol = Symbol.for('isNeepElement');
-const typeSymbol = Symbol.for('type');
-const nameSymbol = Symbol.for('name');
-const renderSymbol = Symbol.for('render');
-const componentsSymbol = Symbol.for('components');
-const configSymbol = Symbol.for('config');
 
 function isElement(v) {
   if (!v) {
@@ -603,12 +780,7 @@ function createElement(tag, attrs, ...children) {
   node.props = {};
 
   for (let k in attrs) {
-    const nCmd = /^n([:-])([a-zA-Z0-9]+(?:\.[a-zA-Z0-9]+)*)$/i.exec(k);
-
-    if (!nCmd) {
-      node.props[k] = attrs[k];
-      continue;
-    }
+    node.props[k] = attrs[k];
   }
 
   return node;
@@ -1169,6 +1341,8 @@ function createList(iRender, source) {
 }
 
 function createItem(iRender, source) {
+  var _source$children;
+
   const {
     tag,
     ref,
@@ -1226,7 +1400,7 @@ function createItem(iRender, source) {
   setRef(ref, node);
   let children = [];
 
-  if (source.children) {
+  if ((_source$children = source.children) === null || _source$children === void 0 ? void 0 : _source$children.length) {
     children = createAll(iRender, source.children);
 
     for (const it of getNodes(children)) {
@@ -1354,8 +1528,31 @@ function setSlots(children, slots = Object.create(null)) {
   return slots;
 }
 
-function updateProps(obj, props, oldProps = {}, define = false) {
-  const newKeys = new Set(Reflect.ownKeys(props));
+const disabledKey = new Set([':', '@', '#', '*', '!', '%', '^', '~', '&', '=', '+', '.', '(', ')', '[', ']', '{', '}', '<', '>']);
+
+function filter(k) {
+  if (typeof k !== 'string') {
+    return true;
+  }
+
+  if (disabledKey.has(k[0])) {
+    return false;
+  }
+
+  if (/^n[:-]/.test(k)) {
+    return false;
+  }
+
+  if (/^on[:-]/.test(k)) {
+    return false;
+  }
+
+  return true;
+}
+
+function updateProps(obj, props, oldProps = {}, define = false, isProps = false) {
+  const keys = Reflect.ownKeys(props);
+  const newKeys = new Set(isProps ? keys.filter(filter) : keys);
 
   for (const k of Reflect.ownKeys(obj)) {
     if (!newKeys.has(k)) {
@@ -1445,7 +1642,7 @@ function execSimple(nObject, delivered, node, tag, components, children) {
   };
 }
 
-function execSlot(node, slots, children, args = [{}]) {
+function execSlot(nObject, delivered, node, slots, components, children, args = [{}], native) {
   var _node$props;
 
   const slotName = ((_node$props = node.props) === null || _node$props === void 0 ? void 0 : _node$props.name) || 'default';
@@ -1464,7 +1661,7 @@ function execSlot(node, slots, children, args = [{}]) {
   return { ...node,
     tag: ScopeSlot,
     label,
-    children: typeof render !== 'function' ? children : render(...args)
+    children: exec(nObject, delivered, typeof render !== 'function' ? children : render(...args), slots, components, native)
   };
 }
 
@@ -1530,7 +1727,7 @@ function exec(nObject, delivered, node, slots, components, native = false) {
 
   if (typeof tag === 'function') {
     if (tag[typeSymbol] === 'simple') {
-      return execSimple(nObject, delivered, node, tag, components, children);
+      return execSimple(nObject, delivered, node, tag, components, exec(nObject, delivered, children, slots, components, native));
     }
 
     return { ...node,
@@ -1551,9 +1748,9 @@ function exec(nObject, delivered, node, slots, components, native = false) {
     };
   }
 
-  return execSlot({ ...node,
+  return execSlot(nObject, delivered, { ...node,
     tag
-  }, slots, children, args);
+  }, slots, components, children, args, native);
 }
 
 function renderNode(iRender, node, context, render) {
@@ -2058,7 +2255,7 @@ class NeepObject {
 }
 
 function update(nObject, props, children) {
-  updateProps(nObject.props, props);
+  updateProps(nObject.props, props, {}, false, true);
   nObject.events.updateInProps(props);
   const slots = Object.create(null);
   const {
@@ -2929,100 +3126,6 @@ function render(e, p = {}) {
   return exposed;
 }
 
-function Mark(symbol, value) {
-  return component => {
-    component[symbol] = value;
-    return component;
-  };
-}
-
-function MarkValue(symbol, key, value) {
-  return component => {
-    let obj = component[symbol];
-
-    if (!obj) {
-      obj = Object.create(null);
-      component[symbol] = obj;
-    }
-
-    obj[key] = value;
-    return component;
-  };
-}
-
-function mName(name, component) {
-  if (!component) {
-    return Mark(nameSymbol, name);
-  }
-
-  component[nameSymbol] = name;
-  return component;
-}
-function mType(type, component) {
-  if (!component) {
-    return Mark(typeSymbol, type);
-  }
-
-  component[typeSymbol] = type;
-  return component;
-}
-function mSimple(component) {
-  if (!component) {
-    return Mark(typeSymbol, 'simple');
-  }
-
-  component[typeSymbol] = 'simple';
-  return component;
-}
-function mNative(component) {
-  if (!component) {
-    return Mark(typeSymbol, 'native');
-  }
-
-  component[typeSymbol] = 'native';
-  return component;
-}
-function mRender(fn, component) {
-  if (!component) {
-    return Mark(renderSymbol, fn);
-  }
-
-  component[renderSymbol] = fn;
-  return component;
-}
-function mConfig(name, config, component) {
-  const mark = MarkValue(configSymbol, name, config);
-
-  if (!component) {
-    return mark;
-  }
-
-  return mark(component);
-}
-function mComponent(name, item, component) {
-  const mark = MarkValue(componentsSymbol, name, item);
-
-  if (!component) {
-    return mark;
-  }
-
-  return mark(component);
-}
-function create(c, r) {
-  if (typeof r === 'function') {
-    c[renderSymbol] = r;
-  }
-
-  return c;
-}
-function mark(component, ...marks) {
-  for (const m of marks) {
-    m(component);
-  }
-
-  return component;
-}
-
 exports.Container = Container;
 exports.Deliver = Deliver;
 exports.Error = NeepError;
@@ -3051,6 +3154,7 @@ exports.isElement = isElement;
 exports.isElementSymbol = isElementSymbol;
 exports.isProduction = isProduction;
 exports.label = label;
+exports.lazy = lazy;
 exports.mComponent = mComponent;
 exports.mConfig = mConfig;
 exports.mName = mName;
@@ -3067,7 +3171,6 @@ exports.render = render;
 exports.renderSymbol = renderSymbol;
 exports.setAuxiliary = setAuxiliary;
 exports.setHook = setHook;
-exports.setValue = setValue;
 exports.typeSymbol = typeSymbol;
 exports.useValue = useValue;
 exports.version = version;
