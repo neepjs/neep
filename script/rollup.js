@@ -53,7 +53,7 @@ const input = `${ dir }/src/index.ts`;
 const browser = `${ dir }/src/browser.ts`;
 const external = ['monitorable', '@neep/core'];
 
-const typesOutput = `${ dir }/${isCore ? 'core' : 'types'}.d.ts`;
+const typesOutput = `${ dir }/types.d.ts`;
 let config;
 if (!isCore && !isRender) {
 	config = [

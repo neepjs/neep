@@ -1,3 +1,4 @@
+import './jsx.d.ts';
 import { Auxiliary, Tags } from './auxiliary';
 import * as symbols from './symbols';
 import { isValue } from './install';
@@ -24,6 +25,9 @@ export interface Emit<T extends Record<string, any[]> = Record<string, any[]>> {
 	<N extends keyof T>(name: N, ...p: T[N]): void;
 	omit(...names: string[]): Emit;
 	readonly names: (keyof T)[];
+}
+export interface EventSet {
+	[key: string]: (...p: any[]) => void;
 }
 export interface On<T extends Record<string, any[]> = Record<string, any[]>> {
 	<N extends keyof T>(name: N, listener: (...p: T[N]) => void): () => void;

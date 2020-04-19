@@ -10,7 +10,6 @@
     "neep"
   ],
   "files": [
-    "core.d.ts",
     "types.d.ts",
     "README.md",
     "LICENSE",

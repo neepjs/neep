@@ -1,13 +1,8 @@
 import {
-	ScopeSlot, Slot, SlotRender, Value, Template,
-	NeepElement, Node, Ref, Emit,
-} from './core';
+	ScopeSlot, Slot, SlotRender,
+	NeepNode, Ref, Emit, EventSet,
+} from '.';
 
-export * from './core';
-
-export interface EventSet {
-	[key: string]: (...p: T[N]) => void;
-}
 interface Attributes {
 	slot?: string;
 	ref?: Ref;
@@ -29,7 +24,7 @@ interface SlotAttr {
 }
 interface ScopeSlotAttr {
 	name?: string;
-	render?(...params: any[]): Node | Node[];
+	render?(...params: any[]): NeepNode | NeepNode[];
 }
 interface SlotRenderAttr {
 
