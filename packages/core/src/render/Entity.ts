@@ -1,6 +1,6 @@
 import { Component, NeepNode, Slots, Context, Delivered, NativeShadow } from '../type';
 import auxiliary from '../auxiliary';
-import { monitorable } from '../install';
+import { exec, createExecutable, valueify, encase } from '../install';
 import { setCurrent } from '../helper/current';
 import convert, { destroy, TreeNode } from './convert';
 import draw, { unmount, MountedNode, getNodes } from './draw';
@@ -48,6 +48,7 @@ function createContext<
 		get childNodes() { return nObject.childNodes; },
 		get emit() { return nObject.emit; },
 		refresh(f) { nObject.refresh(f); },
+		valueifyProp: valueify(nObject.props),
 	}, nObject.exposed);
 }
 
@@ -63,13 +64,13 @@ function initRender<R extends object = object>(
 	} = nObject;
 	const refresh = (changed: boolean) => changed && nObject.refresh();
 	// 初始化执行
-	const result = monitorable.exec(refresh, () => setCurrent(
+	const result = exec(refresh, () => setCurrent(
 		() => component(props, context, auxiliary),
 		entity,
 	), { resultOnly: true });
 	if (typeof result === 'function') {
 		// 响应式
-		const render = monitorable.createExecutable(
+		const render = createExecutable(
 			refresh,
 			() => normalize(nObject, (result as () => NeepNode)()),
 		);
@@ -80,7 +81,7 @@ function initRender<R extends object = object>(
 		};
 	}
 
-	const render = monitorable.createExecutable(
+	const render = createExecutable(
 		refresh,
 		() => normalize(nObject, setCurrent(
 			() => component(props, context, auxiliary),
@@ -88,7 +89,7 @@ function initRender<R extends object = object>(
 		)),
 	);
 	return {
-		nodes: monitorable.exec(
+		nodes: exec(
 			refresh,
 			() => normalize(nObject, result),
 			{ resultOnly: true },
@@ -106,9 +107,9 @@ export default class Entity<
 	/** 组件函数 */
 	readonly component: Component<P, R>;
 	/** 组件属性 */
-	readonly props: P = monitorable.encase(Object.create(null));
+	readonly props: P = encase(Object.create(null));
 	/** 组件槽 */
-	readonly slots: Slots = monitorable.encase(Object.create(null));
+	readonly slots: Slots = encase(Object.create(null));
 	/** 结果渲染函数 */
 	private readonly _stopRender:() => void;
 	/** 原生子代 */

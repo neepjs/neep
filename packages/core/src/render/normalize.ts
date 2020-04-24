@@ -4,7 +4,7 @@ import {
 } from '../type';
 import { typeSymbol, componentsSymbol } from '../symbols';
 import { isProduction } from '../constant';
-import auxiliary, { isElement, Tags } from '../auxiliary';
+import auxiliary, { isElement, Tags, valueify } from '../auxiliary';
 import { renderSymbol, isElementSymbol } from '../symbols';
 import { getLabel } from '../helper/label';
 import Entity from './Entity';
@@ -35,6 +35,7 @@ function execSimple(
 	const slots = setSlots(slotMap);
 	const event = new EventEmitter();
 	event.updateInProps(node.props);
+	const props = {...node.props};
 	const context: Context = initContext({
 		slots,
 		created: false,
@@ -44,9 +45,10 @@ function execSimple(
 		childNodes: children,
 		refresh(f) { nObject.refresh(f); },
 		emit: event.emit,
+		valueifyProp: valueify(props),
 	});
 	if (!isProduction) { getLabel(); }
-	const result = tag({...node.props}, context, auxiliary);
+	const result = tag(props, context, auxiliary);
 	let label: [string, string] | undefined;
 	if (!isProduction) { label = getLabel(); }
 	const nodes = exec(nObject, delivered, renderNode(

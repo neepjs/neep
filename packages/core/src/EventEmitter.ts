@@ -1,4 +1,4 @@
-import { monitorable } from './install';
+import { markRead, markChange } from './install';
 import { Emit, On } from './type';
 
 function getEventName(k: string): string {
@@ -88,10 +88,10 @@ export default class EventEmitter<
 		return newHandles;
 	}
 
-	private _names: (keyof T)[] = [];
+	private readonly _names = new Set<keyof T>();
 	private readonly _cancelHandles = new Set<() => void>();
 	get names(): (keyof T)[] {
-		return this._names;
+		return [...this._names];
 	}
 	readonly emit: Emit<T>;
 	readonly on: On<T>;
@@ -102,32 +102,42 @@ export default class EventEmitter<
 		function createEmit(
 			...omitNames: (string | number | symbol)[]
 		): Emit<T> {
-			function emit<N extends keyof T>(name: N, ...p: T[N]): void {
+			function emit<N extends keyof T>(name: N, ...p: T[N]): boolean {
 				const event = events[name];
-				if (!event) { return; }
+				if (!event) { return true; }
+				let res = true;
 				for (const fn of [...event]) { 
-					fn(...p);
+					res = fn(...p) && res;
 				}
+				return res;
 			}
 			emit.omit = (...names: string[]) =>
 				createEmit(...omitNames, ...names);
 			Reflect.defineProperty(emit, 'names', {
 				get:() => {
-					monitorable.markRead(createEmit, 'names');
-					return names.filter(t => !omitNames.includes(t));
+					markRead(createEmit, 'names');
+					return [...names]
+						.filter(t => !omitNames.includes(t));
 				},
 				configurable: true,
 			});
 			return emit as any as Emit<T>;
 		};
 		const on: On<T> = (name, listener) => {
-			const fn = monitorable.safeify(listener);
+			function fn(...p: Parameters<typeof listener>): boolean {
+				try {
+					return listener(...p) !== false;
+				} catch(e) {
+					console.error(e);
+					return false;
+				}
+			}
 			let event = events[name];
-			if (!event) {
+			if (!event?.size) {
 				event = new Set();
 				events[name] = event;
-				monitorable.markChange(createEmit, 'names');
-				this._names = [...this._names, name];
+				markChange(createEmit, 'names');
+				names.add(name);
 			}
 			event.add(fn);
 			let removed = false;
@@ -136,8 +146,8 @@ export default class EventEmitter<
 				removed = true;
 				event.delete(fn);
 				if (event.size) { return; }
-				monitorable.markChange(createEmit, 'names');
-				this._names = this._names.filter(n => n !== name);
+				markChange(createEmit, 'names');
+				names.delete(name);
 			};
 		};
 		this.emit = createEmit();

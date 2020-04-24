@@ -1,5 +1,5 @@
 import { Context, ContextConstructor, Exposed } from '../type';
-import { monitorable } from '../install';
+import { safeify } from '../install';
 
 const constructors: ContextConstructor[] = [];
 export function initContext(
@@ -14,5 +14,5 @@ export function initContext(
 export function addContextConstructor(
 	constructor: ContextConstructor
 ): void {
-	constructors.push(monitorable.safeify(constructor));
+	constructors.push(safeify(constructor));
 }

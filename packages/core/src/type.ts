@@ -4,6 +4,7 @@ import * as symbols from './symbols';
 import { isValue } from './install';
 import EventEmitter from './EventEmitter';
 import NeepError from './Error';
+import { ValueifyProp } from 'monitorable';
 
 /** 全局钩子 */
 export interface Hook {
@@ -22,7 +23,7 @@ export interface Slots {
 	[name: string]: SlotFn | undefined;
 }
 export interface Emit<T extends Record<string, any[]> = Record<string, any[]>> {
-	<N extends keyof T>(name: N, ...p: T[N]): void;
+	<N extends keyof T>(name: N, ...p: T[N]): boolean;
 	omit(...names: string[]): Emit;
 	readonly names: (keyof T)[];
 }
@@ -30,7 +31,7 @@ export interface EventSet {
 	[key: string]: (...p: any[]) => void;
 }
 export interface On<T extends Record<string, any[]> = Record<string, any[]>> {
-	<N extends keyof T>(name: N, listener: (...p: T[N]) => void): () => void;
+	<N extends keyof T>(name: N, listener: (...p: T[N]) => void | undefined | null | boolean): () => void;
 }
 
 export interface ContextConstructor {
@@ -65,7 +66,7 @@ export interface RootExposed extends Exposed {
 }
 
 /** 上下文环境 */
-export interface Context {
+export interface Context<P = any> {
 	/** 作用域槽 */
 	slots: Slots;
 	/** 是否已经完成初始化 */
@@ -78,6 +79,7 @@ export interface Context {
 	childNodes: any[];
 	refresh(fn?: () => void): void;
 	emit: Emit,
+	valueifyProp: ValueifyProp<P>,
 }
 
 export interface Entity {

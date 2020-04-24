@@ -9,7 +9,7 @@ import { MountedNode } from './draw';
 import Container from './Container';
 import convert, { TreeNode } from './convert';
 import { wait } from './refresh';
-import { monitorable } from '../install';
+import { exec } from '../install';
 import EventEmitter from '../EventEmitter';
 
 function createExposed(obj: NeepObject): Exposed {
@@ -236,7 +236,7 @@ export default class NeepObject {
 		if (this.__executed_mount) { return; }
 		this.__executed_mount = true;
 		this.callHook('beforeMount');
-		const result = monitorable.exec(
+		const result = exec(
 			c => c && this.requestDraw(),
 			() => {
 				this._mount();
@@ -262,7 +262,7 @@ export default class NeepObject {
 		if (this.__executed_destroy) { return; }
 		this._cancelDrawMonitor?.();
 		this.callHook('beforeUpdate');
-		const result = monitorable.exec(
+		const result = exec(
 			c => c && this.requestDraw(),
 			() => this._draw(),
 		);

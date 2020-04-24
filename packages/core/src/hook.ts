@@ -1,4 +1,4 @@
-import { monitorable } from './install';
+import { safeify } from './install';
 import { Hook, Hooks, Entity } from './type';
 const hooks: Record<string, Set<Hook>> = Object.create(null);
 
@@ -20,7 +20,7 @@ export function setHook(
 ):() => void {
 	let list = entity?.$_hooks || hooks;
 	if (!list) { return () => {}; }
-	hook = monitorable.safeify(hook);
+	hook = safeify(hook);
 	let set = list[id];
 	if (!set) {
 		set = new Set();

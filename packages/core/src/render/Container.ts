@@ -10,7 +10,7 @@ import { createMountedNode } from './id';
 import convert, { destroy } from './convert';
 import draw, { unmount, getNodes, MountedNode, setRefList } from './draw';
 import NeepObject, { setCompleteList, complete } from './Object';
-import { nextFrame, monitorable } from '../install';
+import { nextFrame, exec } from '../install';
 
 
 let awaitDraw = new Set<Container>();
@@ -167,7 +167,7 @@ export default class Container extends NeepObject {
 		if (!this.mounted) { return; }
 		if (this.destroyed) { return; }
 		this.callHook('beforeUpdate');
-		monitorable.exec(
+		exec(
 			c => c && this.markDraw(this),
 			() => this._drawSelf(),
 		);

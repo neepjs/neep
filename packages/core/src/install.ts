@@ -6,22 +6,31 @@ import NeepError, { assert } from './Error';
 
 import { Devtools } from '../../devtools/src/type';
 
-export let monitorable: typeof monitorableApi;
-
 export let value: typeof monitorableApi.value;
 export let computed: typeof monitorableApi.computed;
 export let isValue: typeof monitorableApi.isValue;
 export let encase: typeof monitorableApi.encase;
 export let recover: typeof monitorableApi.recover;
+export let valueify: typeof monitorableApi.valueify;
+export let markRead: typeof monitorableApi.markRead;
+export let markChange: typeof monitorableApi.markChange;
+export let safeify: typeof monitorableApi.safeify;
+export let exec: typeof monitorableApi.exec;
+export let createExecutable: typeof monitorableApi.createExecutable;
 
 function installMonitorable(api?: typeof monitorableApi) {
 	if (!api) { return; }
-	monitorable = api;
-	value = monitorable.value;
-	computed = monitorable.computed;
-	isValue = monitorable.isValue;
-	encase = monitorable.encase;
-	recover = monitorable.recover;
+	value = api.value;
+	computed = api.computed;
+	isValue = api.isValue;
+	encase = api.encase;
+	recover = api.recover;
+	valueify = api.valueify;
+	markRead = api.markRead;
+	markChange = api.markChange;
+	safeify = api.safeify;
+	exec = api.exec;
+	createExecutable = api.createExecutable;
 }
 
 export interface InstallOptions {
