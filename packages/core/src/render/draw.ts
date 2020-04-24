@@ -1,4 +1,4 @@
-import { Tags, Template, isValue } from '../auxiliary';
+import { isValue } from '../auxiliary';
 import { IRender, NativeNode, NativeElement, Exposed, Ref } from '../type';
 import { createMountedNode, recoveryMountedNode } from './id';
 import { TreeNode } from './convert';
@@ -238,7 +238,8 @@ function updateItem(
 		return replace(iRender, createItem(iRender, source), tree);
 	}
 	if (!tag) { return tree; }
-	if (typeof tag !== 'string' || tag === Tags.Container) {
+	const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
+	if (typeof tag !== 'string' || ltag === 'neep:container') {
 		if (!component) {
 			// TODO: ref
 			return createMountedNode({
@@ -260,7 +261,7 @@ function updateItem(
 			children: [],
 		}, tree.id);
 	}
-	if (tag === Tags.Value) {
+	if (ltag === 'neep:value') {
 		let value = source.value;
 		if (isValue(value)) { value = value(); }
 		if(tree.value === value) {
@@ -274,7 +275,7 @@ function updateItem(
 		}
 		return replace(iRender, createValue(iRender, source, value), tree);
 	}
-	if (tag === Template || tag.substr(0, 5) === 'Neep:') {
+	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
 		// TODO: ref
 		return createMountedNode({
 			...source,
@@ -420,7 +421,9 @@ function createItem(
 			children: [],
 		});
 	}
-	if (typeof tag !== 'string' || tag === Tags.Container) {
+
+	const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
+	if (typeof tag !== 'string' || ltag === 'neep:container') {
 		if (!component) {
 			// TODO: ref
 			return createMountedNode({
@@ -438,12 +441,12 @@ function createItem(
 			component, children: [],
 		});
 	}
-	if (tag === Tags.Value) {
+	if (ltag === 'neep:value') {
 		let value = source.value;
 		if (isValue(value)) { value = value(); }
 		return createValue(iRender, source, value);
 	}
-	if (tag === Template || tag.substr(0, 5) === 'Neep:') {
+	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
 		// TODO: ref
 		return createMountedNode({
 			...source,

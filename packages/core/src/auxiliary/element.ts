@@ -71,7 +71,7 @@ export function elements(
 	}
 	if (!isElement(node)) { return [node]; }
 	let { tag } = node;
-	if (!tag) { return []; }
+	if (!tag) { return [node]; }
 
 	if (([Tags.Template, Tags.ScopeSlot] as Tag[]).includes(tag)) {
 		return elements(node.children, opt);

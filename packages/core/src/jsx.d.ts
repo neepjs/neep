@@ -6,9 +6,9 @@ import {
 interface Attributes {
 	slot?: string;
 	ref?: Ref;
-	'@': Emit | EventSet,
-	'n:on': Emit | EventSet,
-	'n-on': Emit | EventSet,
+	'@'?: Emit | EventSet,
+	'n:on'?: Emit | EventSet,
+	'n-on'?: Emit | EventSet,
 	
 }
 interface NativeAttributes extends Attributes {

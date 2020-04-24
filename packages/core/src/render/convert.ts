@@ -1,6 +1,6 @@
 import { getRender } from '../install';
 import { NeepNode, NeepElement, Tag } from '../type';
-import { Tags, isElement, Value, Template } from '../auxiliary';
+import { isElement } from '../auxiliary';
 import { isElementSymbol, typeSymbol } from '../symbols';
 import { recursive2iterable } from './recursive';
 import Entity from './Entity';
@@ -30,7 +30,7 @@ function toElement(t: any): null | NeepElement {
 	}
 	return {
 		[isElementSymbol]: true,
-		tag: Value,
+		tag: 'Neep:Value',
 		key: t,
 		value: t,
 		children: [],
@@ -74,7 +74,8 @@ function createItem(
 			),
 		};
 	}
-	if (tag === Tags.Container) {
+	const ltag = tag.toLowerCase();
+	if (ltag === 'neep:container') {
 		const type = source?.props?.type;
 		const iRender = type ? getRender(type) : nObject.iRender;
 		return {
@@ -88,10 +89,10 @@ function createItem(
 			),
 		};
 	}
-	if (tag === Tags.Value) {
+	if (ltag === 'neep:value') {
 		return { ...source, children: [] };
 	}
-	if (tag === Template || tag.substr(0, 5) === 'Neep:') {
+	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
 		return {
 			...source,
 			children: convert(nObject, source.children),
@@ -182,7 +183,8 @@ function updateItem(
 		component.update(source.props || {}, source.children);
 		return { ...source, children: [], component };
 	}
-	if (tag === Tags.Container) {
+	const ltag = tag.toLowerCase();
+	if (ltag === 'neep:container') {
 		const { component } = tree;
 		if (!component) { return createItem(nObject, source); }
 		const type = source?.props?.type;
@@ -193,12 +195,12 @@ function updateItem(
 		component.update(source.props || {}, source.children);
 		return { ...source, children: [], component };
 	}
-	if (tag === Tags.Value) {
+	if (ltag === 'neep:value') {
 		return { ...source, children: [] };
 	}
-	if (tag === Template || tag.substr(0, 5) === 'Neep:') {
+	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
 		let delivered: any;
-		if (Tags.Deliver === tag) {
+		if (ltag === 'neep:deliver') {
 			const props = { ...source.props };
 			delete props.ref;
 			delete props.slot;
