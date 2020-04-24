@@ -36,10 +36,10 @@ const createOutput = (format, min) => ({
 		...name.split('-'),
 		format === 'esm' ? 'esm' : format === 'cjs' ? 'common' : '',
 		min && 'min',
-		'js',
+		format === 'mjs' ? 'mjs' : 'js',
 	].filter(Boolean).join('.'),
 	sourcemap: true,
-	format,
+	format: format === 'mjs' ? 'esm' : format,
 	name: GlobalName,
 	banner,
 	globals: {
@@ -55,34 +55,15 @@ const external = ['monitorable', '@neep/core'];
 
 const typesOutput = `${ dir }/types.d.ts`;
 let config;
-if (!isCore && !isRender) {
+if (isRender) {
 	config = [
-		{
-			input,
-			output: [ createOutput('cjs'), createOutput('esm') ],
-			external,
-			plugins: [ resolve(), babel(), replace() ],
-		},
 		{
 			input: browser,
-			output: [ createOutput('umd') ],
+			output: [ createOutput('cjs'), createOutput('mjs') ],
 			external,
-			plugins: [ resolve(), babel(), replace() ],
+			plugins: [ resolve(true), babel(), replace() ],
 		},
-		{
-			input,
-			output: { file: typesOutput, format: 'esm', banner },
-			plugins: [ dts() ],
-		},
-	];
-} else {
-	config = [
-		{
-			input,
-			output: [ createOutput('cjs') ],
-			external,
-			plugins: [ resolve(), babel(), replace() ],
-		},
+
 		{
 			input,
 			output: [ createOutput('esm') ],
@@ -107,12 +88,71 @@ if (!isCore && !isRender) {
 			external,
 			plugins: [ resolve(), babel(), replace(), terser() ],
 		},
+	];
+} else if (isCore) {
+	config = [
 		{
 			input,
-			output: { file: typesOutput, format: 'esm', banner },
-			plugins: [ dts() ],
+			output: [ createOutput('cjs'), createOutput('mjs') ],
+			external,
+			plugins: [ resolve(true), babel(), replace() ],
+		},
+
+		{
+			input,
+			output: [ createOutput('esm') ],
+			external,
+			plugins: [ resolve(), babel(), replace(true) ],
+		},
+		{
+			input,
+			output: [ createOutput('esm', true) ],
+			external,
+			plugins: [ resolve(), babel(), replace(), terser() ],
+		},
+
+		{
+			input: browser,
+			output: [ createOutput('umd') ],
+			external,
+			plugins: [ resolve(), babel(), replace(true) ],
+		},
+		{
+			input: browser,
+			output: [ createOutput('umd', true) ],
+			external,
+			plugins: [ resolve(), babel(), replace(), terser() ],
+		},
+	];
+} else {
+	config = [
+		{
+			input,
+			output: [ createOutput('cjs'), createOutput('mjs') ],
+			external,
+			plugins: [ resolve(true), babel(), replace() ],
+		},
+
+		{
+			input,
+			output: [ createOutput('esm') ],
+			external,
+			plugins: [ resolve(), babel(), replace() ],
+		},
+		{
+			input: browser,
+			output: [ createOutput('umd') ],
+			external,
+			plugins: [ resolve(), babel(), replace() ],
 		},
 	];
 }
 
-export default config;
+export default [
+	{
+		input,
+		output: { file: typesOutput, format: 'esm', banner },
+		plugins: [ dts() ],
+	},
+	...config,
+];

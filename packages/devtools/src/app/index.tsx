@@ -1,15 +1,7 @@
-import {
-	create,
-	createElement,
-	NeepNode,
-	Template,
-	ScopeSlot,
-	SlotRender,
-	Value,
-	Deliver,
-} from '@neep/core';
+import { NeepNode } from '@neep/core';
 import { VTreeNode, Type } from '../tree';
 import { TextNode } from './Text';
+import { createElement, encase } from '../install';
 
 interface Options {
 	value?: boolean;
@@ -176,7 +168,8 @@ function *getList(
 			...getList(children, keys, options)
 		);
 	}
-	if (tag === Deliver) {
+	const ltag = tag.toLowerCase();
+	if (ltag === 'neep:deliver') {
 		if (!options.deliver) {
 			return yield* getList(children, keys, options, [label, ...labels]);
 		}
@@ -186,7 +179,7 @@ function *getList(
 			...getList(children, keys, options)
 		);
 	}
-	if (tag === Template) {
+	if (ltag === 'template') {
 		if (!options.template) {
 			return yield* getList(children, keys, options, [label, ...labels]);
 		}
@@ -196,7 +189,7 @@ function *getList(
 			...getList(children, keys, options)
 		);
 	}
-	if (tag === ScopeSlot) {
+	if (ltag === 'neep:scopeslot' || ltag === 'neep:scope-slot') {
 		if (!options.scopeSlot) {
 			return yield* getList(children, keys, options, [label, ...labels]);
 		}
@@ -206,21 +199,21 @@ function *getList(
 			...getList(children, keys, options)
 		);
 	}
-	if (tag === SlotRender) {
+	if (ltag === 'neep:slotrender' || ltag === 'neep:slot-render') {
 		if (options.slotRender) {
 
 		}
 		return;
 	}
-	if (tag === Value) {
+	if (ltag === 'neep:value') {
 		if (!options.tag) { return; }
 		if (!options.value) { return; }
 		return yield <TextNode isNative={isNative} value={value} />;
 	}
 }
-export default create((props: any, {}, { encase }) => {
+export default (props: any) => {
 	const keys = encase<{[key: number]: boolean}>({});
 	return () => <div style="padding-left: 20px;">
 		{[...getList(props.tree, keys, getOptions(props))]}
 	</div>;
-});
+};

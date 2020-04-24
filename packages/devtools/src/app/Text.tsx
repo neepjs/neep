@@ -1,6 +1,5 @@
-import { createElement, NeepNode } from '@neep/core';
-import { Neep } from '../install';
-import { Template } from 'packages/core/core';
+import { NeepNode } from '@neep/core';
+import { isValue, createElement } from '../install';
 
 export function getValue(
 	value: any,
@@ -37,14 +36,12 @@ export function TextNode(
 	if (isNative) {
 		return <span style="font-weight: bold;">[Native]</span>;
 	}
-	const isValue = Neep.isValue(value);
-	const data = isValue ? value() : value;
-	if (!Neep.isValue(value)) {
-		return getValue(data);
+	if (!isValue(value)) {
+		return getValue(value);
 	}
 	return <template>
 		<span style="font-weight: bold;">[Value:&nbsp;</span>
-		{getValue(data)}
+		{getValue(value())}
 		<span style="font-weight: bold;">&nbsp;]</span>
 	</template>;
 }

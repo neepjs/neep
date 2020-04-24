@@ -1,11 +1,8 @@
-import {
-	Template, ScopeSlot, SlotRender, Value,
-	nameSymbol, typeSymbol, Deliver,
-} from '@neep/core';
+import { nameSymbol, typeSymbol } from '@neep/core';
 import { MountedNode } from '../../core/src/render/draw';
 import Container from '../../core/src/render/Container';
 import Entity from '../../core/src/render/Entity';
-import { Neep } from './install';
+
 export enum Type {
 	tag = 'tag',
 	placeholder = 'placeholder',
@@ -85,21 +82,8 @@ export function *getTree(
 			label,
 		};
 	}
-	if (
-		tag === Template || tag === Deliver
-		|| tag === ScopeSlot || tag === SlotRender
-	) {
-		return yield {
-			id, parent,
-			type: Type.special,
-			tag,
-			children: [...getTree(children)],
-			props,
-			key,
-			label,
-		};
-	}
-	if (tag === Value) {
+	const ltag = tag.toLowerCase();
+	if (ltag === 'neep:value') {
 		const treeValue = tree.value;
 		return yield {
 			id, parent,
@@ -108,6 +92,17 @@ export function *getTree(
 			children: [],
 			isNative: treeValue === tree.node,
 			value: treeValue,
+			props,
+			key,
+			label,
+		};
+	}
+	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
+		return yield {
+			id, parent,
+			type: Type.special,
+			tag,
+			children: [...getTree(children)],
 			props,
 			key,
 			label,

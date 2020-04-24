@@ -1,7 +1,10 @@
 
 import resolve from 'rollup-plugin-node-resolve';
-export default () => resolve({
-	extensions: [
-		'.mjs', '.js', '.jsx', '.json', '.ts', '.tsx',
+export default node => resolve({
+	extensions: node ? [
+		'.node.ts', '.node.tsx', '.node.js', '.node.json',
+		'.ts', '.tsx', '.mjs', '.js', '.jsx', '.json',
+	] : [
+		'.ts', '.tsx', '.mjs', '.js', '.jsx', '.json',
 	],
 });

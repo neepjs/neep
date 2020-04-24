@@ -1,4 +1,4 @@
-import { Neep } from '../install';
+import { render, createElement, setHook } from '../install';
 import { getTree } from '../tree';
 import App from '../app';
 import { Devtools } from '../type';
@@ -8,7 +8,7 @@ let creating = false;
 function create() {
 	creating = true;
 	try {
-		return Neep.render();
+		return render();
 	} finally {
 		creating = false;
 	}
@@ -21,7 +21,7 @@ const devtools: Devtools = {
 		const getData = () => {
 			if (!app) { app = create(); }
 			const tree = [...getTree(container.content)];
-			app.$update(Neep.createElement(App, {
+			app.$update(createElement(App, {
 				tree,
 				value: true,
 				tag: true,
@@ -33,8 +33,8 @@ const devtools: Devtools = {
 				// deliver: true,
 			}));
 		};
-		Neep.setHook('drawnAll', getData, container.entity);
-		Neep.setHook('mounted', () => {
+		setHook('drawnAll', getData, container.entity);
+		setHook('mounted', () => {
 			if (!app) { app = create(); }
 			getData();
 			app.$mount();
