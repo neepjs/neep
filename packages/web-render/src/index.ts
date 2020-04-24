@@ -34,7 +34,7 @@ const render: IRender = {
 		if (target instanceof Element) {
 			target.appendChild(container as any);
 			if (parent) {
-				return [container, parent.placeholder] as any;
+				return [container, parent.placeholder()] as any;
 			}
 			return [container, container];
 		}

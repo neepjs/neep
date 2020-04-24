@@ -1,7 +1,24 @@
-import {
-	recursive2iterable, RecursiveItem,
-} from '../../../core/src/render/recursive';
 import { isValue } from '../install';
+import { Value } from 'monitorable';
+
+export type RecursiveItem<T> = T | Array<RecursiveItem<T>> | Value<T>;
+
+export function *recursive2iterable<T>(
+	list: RecursiveItem<T>,
+): Iterable<T> {
+	if (isValue(list)) {
+		yield* recursive2iterable(list());
+		return;
+
+	}
+	if (!Array.isArray(list)) {
+		yield list;
+		return;
+	}
+	for (const it of list) {
+		yield* recursive2iterable(it);
+	}
+}
 
 export type Class = Set<string>;
 function getClass(
