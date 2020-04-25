@@ -1,15 +1,16 @@
 /*!
- * NeepWebRender v0.1.0-alpha.8
+ * NeepWebRender v0.1.0-alpha.9
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
 let isValue;
 let EventEmitter;
 let Error;
-function install(auxiliary) {
-  isValue = auxiliary.isValue;
-  EventEmitter = auxiliary.EventEmitter;
-  Error = auxiliary.Error;
+function installNeep(Neep) {
+  isValue = Neep.isValue;
+  EventEmitter = Neep.EventEmitter;
+  Error = Neep.Error;
+  return Neep.install;
 }
 
 function getId(v) {
@@ -39,6 +40,11 @@ function updateId(props, el, old) {
 }
 
 function* recursive2iterable(list) {
+  if (isValue(list)) {
+    yield* recursive2iterable(list());
+    return;
+  }
+
   if (!Array.isArray(list)) {
     yield list;
     return;
@@ -468,7 +474,6 @@ function createElement(tagname, namespace) {
 }
 
 const render = {
-  install,
   type: 'web',
   nextFrame,
 
@@ -499,7 +504,7 @@ const render = {
       target.appendChild(container);
 
       if (parent) {
-        return [container, parent.placeholder];
+        return [container, parent.placeholder()];
       }
 
       return [container, container];
@@ -627,5 +632,14 @@ const render = {
 
 };
 
-export default render;
-//# sourceMappingURL=neep.web.render.esm.js.map
+function install(Neep) {
+  installNeep(Neep)({
+    render
+  });
+}
+
+var index = { ...render,
+  install
+};
+
+export default index;

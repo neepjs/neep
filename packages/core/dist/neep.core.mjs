@@ -1,21 +1,40 @@
 /*!
- * Neep v0.1.0-alpha.8
+ * Neep v0.1.0-alpha.9
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
-'use strict';
-
-Object.defineProperty(exports, '__esModule', { value: true });
+import { markRead, markChange, value, safeify, isValue, computed, encase, recover, valueify, exec as exec$1, createExecutable } from 'monitorable';
+export { computed, encase, isValue, recover, value, valueify } from 'monitorable';
 
 const version = 'undefined';
-const mode = 'production';
-const isProduction = mode === 'production';
+const isProduction = process.env.NODE_ENV === 'production';
 
 var Constant = /*#__PURE__*/Object.freeze({
-  version: version,
-  mode: mode,
-  isProduction: isProduction
+	version: version,
+	isProduction: isProduction
 });
+
+const devtools = {
+  renderHook() {}
+
+};
+function installDevtools(tools) {
+  if (!tools) {
+    return;
+  }
+
+  if (typeof tools !== 'object') {
+    return;
+  }
+
+  const {
+    renderHook
+  } = tools;
+
+  if (typeof renderHook === 'function') {
+    devtools.renderHook = renderHook;
+  }
+}
 
 function _defineProperty(obj, key, value) {
   if (key in obj) {
@@ -30,6 +49,69 @@ function _defineProperty(obj, key, value) {
   }
 
   return obj;
+}
+
+class NeepError extends Error {
+  constructor(message, tag = '') {
+    super(tag ? `[${tag}] ${message}` : message);
+
+    _defineProperty(this, "tag", void 0);
+
+    this.tag = tag;
+  }
+
+}
+function assert(v, message, tag) {
+  if (v) {
+    return;
+  }
+
+  throw new NeepError(message, tag);
+}
+
+let nextFrameApi;
+function nextFrame(fn) {
+  assert(nextFrameApi, 'The basic renderer is not installed', 'install');
+  nextFrameApi(fn);
+}
+const renders = Object.create(null);
+function getRender(type = '') {
+  if (typeof type === 'object') {
+    return type;
+  }
+
+  return renders[type] || renders.default;
+}
+function installRender(render) {
+  if (!render) {
+    return;
+  }
+
+  renders[render.type] = render;
+
+  if (nextFrameApi) {
+    return;
+  }
+
+  if (!renders.default) {
+    renders.default = render;
+  }
+
+  if (!nextFrameApi && render.nextFrame) {
+    renders.default = render;
+    nextFrameApi = render.nextFrame;
+  }
+}
+
+function installMonitorable(api) {}
+
+function install(apis) {
+  installMonitorable(apis.monitorable);
+  installRender(apis.render);
+
+  if (!isProduction) {
+    installDevtools(apis.devtools);
+  }
 }
 
 function getEventName(k) {
@@ -155,11 +237,11 @@ class EventEmitter {
   }
 
   get names() {
-    return this._names;
+    return [...this._names];
   }
 
   constructor() {
-    _defineProperty(this, "_names", []);
+    _defineProperty(this, "_names", new Set());
 
     _defineProperty(this, "_cancelHandles", new Set());
 
@@ -175,20 +257,24 @@ class EventEmitter {
         const event = events[name];
 
         if (!event) {
-          return;
+          return true;
         }
 
+        let res = true;
+
         for (const fn of [...event]) {
-          fn(...p);
+          res = fn(...p) && res;
         }
+
+        return res;
       }
 
       emit.omit = (...names) => createEmit(...omitNames, ...names);
 
       Reflect.defineProperty(emit, 'names', {
         get: () => {
-          monitorable.markRead(createEmit, 'names');
-          return names.filter(t => !omitNames.includes(t));
+          markRead(createEmit, 'names');
+          return [...names].filter(t => !omitNames.includes(t));
         },
         configurable: true
       });
@@ -196,14 +282,24 @@ class EventEmitter {
     }
 
     const on = (name, listener) => {
-      const fn = monitorable.safeify(listener);
+      var _event;
+
+      function fn(...p) {
+        try {
+          return listener(...p) !== false;
+        } catch (e) {
+          console.error(e);
+          return false;
+        }
+      }
+
       let event = events[name];
 
-      if (!event) {
+      if (!((_event = event) === null || _event === void 0 ? void 0 : _event.size)) {
         event = new Set();
         events[name] = event;
-        monitorable.markChange(createEmit, 'names');
-        this._names = [...this._names, name];
+        markChange(createEmit, 'names');
+        names.add(name);
       }
 
       event.add(fn);
@@ -220,8 +316,8 @@ class EventEmitter {
           return;
         }
 
-        monitorable.markChange(createEmit, 'names');
-        this._names = this._names.filter(n => n !== name);
+        markChange(createEmit, 'names');
+        names.delete(name);
       };
     };
 
@@ -252,105 +348,6 @@ class EventEmitter {
     return this.updateHandles(handles);
   }
 
-}
-
-class NeepError extends Error {
-  constructor(message, tag = '') {
-    super(tag ? `[${tag}] ${message}` : message);
-
-    _defineProperty(this, "tag", void 0);
-
-    this.tag = tag;
-  }
-
-}
-function assert(v, message, tag) {
-  if (v) {
-    return;
-  }
-
-  throw new NeepError(message, tag);
-}
-
-let monitorable;
-
-function installMonitorable(api) {
-  if (!api) {
-    return;
-  }
-
-  monitorable = api;
-  exports.value = monitorable.value;
-  exports.computed = monitorable.computed;
-  exports.isValue = monitorable.isValue;
-  exports.encase = monitorable.encase;
-  exports.recover = monitorable.recover;
-}
-
-let nextFrameApi;
-function nextFrame(fn) {
-  assert(nextFrameApi, 'The basic renderer is not installed', 'install');
-  nextFrameApi(fn);
-}
-const renders = Object.create(null);
-function getRender(type = '') {
-  if (typeof type === 'object') {
-    return type;
-  }
-
-  return renders[type] || renders.default;
-}
-
-function addRender(render) {
-  if (!render) {
-    return;
-  }
-
-  if (render.install) {
-    render.install({
-      get isValue() {
-        return exports.isValue;
-      },
-
-      EventEmitter,
-      Error: NeepError
-    });
-  }
-
-  renders[render.type] = render;
-
-  if (nextFrameApi) {
-    return;
-  }
-
-  if (!renders.default) {
-    renders.default = render;
-  }
-
-  if (!nextFrameApi && render.nextFrame) {
-    renders.default = render;
-    nextFrameApi = render.nextFrame;
-  }
-}
-
-function installRender({
-  render,
-  renders
-}) {
-  addRender(render);
-
-  if (!Array.isArray(renders)) {
-    return;
-  }
-
-  for (const render of renders) {
-    addRender(render);
-  }
-}
-
-function install(apis) {
-  installMonitorable(apis.monitorable);
-  installRender(apis);
 }
 
 const components = Object.create(null);
@@ -460,8 +457,8 @@ function mark(component, ...marks) {
 }
 
 function lazy(component, Placeholder) {
-  const reslut = exports.value(0);
-  const Component = exports.value(undefined);
+  const reslut = value(0);
+  const Component = value(undefined);
 
   async function load() {
     if (reslut()) {
@@ -529,44 +526,45 @@ const Template = 'template';
 const Fragment = Template;
 
 var Tags = /*#__PURE__*/Object.freeze({
-  ScopeSlot: ScopeSlot,
-  SlotRender: SlotRender,
-  Slot: Slot,
-  Value: Value,
-  Container: Container,
-  Deliver: Deliver,
-  Template: Template,
-  Fragment: Fragment
+	ScopeSlot: ScopeSlot,
+	SlotRender: SlotRender,
+	Slot: Slot,
+	Value: Value,
+	Container: Container,
+	Deliver: Deliver,
+	Template: Template,
+	Fragment: Fragment
 });
 
+let current;
 function setCurrent(fn, entity) {
-  const oldEntity = exports.current;
-  exports.current = entity;
+  const oldEntity = current;
+  current = entity;
 
   try {
-    exports.current.$_valueIndex = 0;
+    current.$_valueIndex = 0;
     const ret = fn();
 
-    if (exports.current.$_valueIndex !== exports.current.$_values.length) {
+    if (current.$_valueIndex !== current.$_values.length) {
       throw new NeepError('Inconsistent number of useValue executions', 'life');
     }
 
     return ret;
   } finally {
-    exports.current = oldEntity;
+    current = oldEntity;
   }
 }
 function checkCurrent(name, initOnly = false) {
-  if (!exports.current) {
+  if (!current) {
     throw new NeepError(`Function \`${name}\` can only be called within a cycle.`, 'life');
   }
 
   if (!initOnly) {
-    return exports.current;
+    return current;
   }
 
-  if (!exports.current.created) {
-    return exports.current;
+  if (!current.created) {
+    return current;
   }
 
   throw new NeepError(`Function \`${name}\` can only be called at initialization time.`, 'life');
@@ -581,7 +579,7 @@ function initContext(context, exposed) {
   return context;
 }
 function addContextConstructor(constructor) {
-  constructors.push(monitorable.safeify(constructor));
+  constructors.push(safeify(constructor));
 }
 
 const hooks = Object.create(null);
@@ -592,7 +590,7 @@ function setHook(id, hook, entity) {
     return () => {};
   }
 
-  hook = monitorable.safeify(hook);
+  hook = safeify(hook);
   let set = list[id];
 
   if (!set) {
@@ -624,7 +622,7 @@ function watch(value, cb) {
     return () => {};
   }
 
-  const stop = exports.isValue(value) ? value.watch(cb) : exports.computed(value).watch((v, s) => cb(v(), s));
+  const stop = isValue(value) ? value.watch(cb) : computed(value).watch((v, s) => cb(v(), s));
   setHook('beforeDestroy', () => stop(), entity);
   return stop;
 }
@@ -635,7 +633,7 @@ function useValue(fn, name = 'useValue') {
 
   if (!entity.created) {
     values[index] = undefined;
-    const v = typeof fn === 'function' ? fn() : exports.value(undefined);
+    const v = typeof fn === 'function' ? fn() : value(undefined);
     return values[index] = v;
   }
 
@@ -660,7 +658,7 @@ function setValue(obj, name, value, opt) {
     return;
   }
 
-  if (exports.isValue(value) && opt) {
+  if (isValue(value) && opt) {
     Reflect.defineProperty(obj, name, {
       get() {
         return value();
@@ -704,11 +702,11 @@ function deliver(name, value, opt) {
 }
 
 var Life = /*#__PURE__*/Object.freeze({
-  watch: watch,
-  useValue: useValue,
-  hook: hook,
-  expose: expose,
-  deliver: deliver
+	watch: watch,
+	useValue: useValue,
+	hook: hook,
+	expose: expose,
+	deliver: deliver
 });
 
 function isElement(v) {
@@ -805,7 +803,7 @@ function elements(node, opt = {}) {
   } = node;
 
   if (!tag) {
-    return [];
+    return [node];
   }
 
   if ([Template, ScopeSlot].includes(tag)) {
@@ -842,16 +840,37 @@ function elements(node, opt = {}) {
 }
 
 var Element = /*#__PURE__*/Object.freeze({
-  isElement: isElement,
-  createElement: createElement,
-  elements: elements
+	isElement: isElement,
+	createElement: createElement,
+	elements: elements
 });
 
-function label(text, color = '') {
+let label;
+function setLabel(l) {
+  label = l;
+}
+function getLabel() {
+  const l = label;
+  label = undefined;
+  return l;
+}
+
+function label$1(text, color = '') {
+  if (!isProduction) {
+    if (!current) {
+      setLabel([text, color]);
+      return;
+    }
+
+    Reflect.defineProperty(current.exposed, '$label', {
+      value: [text, color],
+      configurable: true
+    });
+  }
 }
 
 var Dev = /*#__PURE__*/Object.freeze({
-  label: label
+	label: label$1
 });
 
 const auxiliary = { ...Tags,
@@ -861,23 +880,23 @@ const auxiliary = { ...Tags,
   ...Constant,
 
   get value() {
-    return exports.value;
+    return value;
   },
 
   get computed() {
-    return exports.computed;
+    return computed;
   },
 
   get isValue() {
-    return exports.isValue;
+    return isValue;
   },
 
   get encase() {
-    return exports.encase;
+    return encase;
   },
 
   get recover() {
-    return exports.recover;
+    return recover;
   }
 
 };
@@ -896,11 +915,38 @@ function defineAuxiliary(name, get) {
   });
 }
 
+let ids = 0;
+const Nodes = {};
+let IdMap;
+
+if (!isProduction) {
+  IdMap = new Map();
+}
+
 function createMountedNode(n, id) {
+  if (!isProduction) {
+    id = id || ++ids;
+    const {
+      node
+    } = n;
+
+    if (node && IdMap) {
+      IdMap.set(node, id);
+    }
+
+    return Nodes[id] = { ...n,
+      id
+    };
+  }
 
   return { ...n,
     id: 0
   };
+}
+function recoveryMountedNode(node) {
+  if (!isProduction) {
+    delete Nodes[node.id];
+  }
 }
 
 function* recursive2iterable(list) {
@@ -1018,6 +1064,7 @@ function unmount(iRender, tree) {
     node,
     ref
   } = tree;
+  recoveryMountedNode(tree);
 
   if (node) {
     setRef(ref, node, true);
@@ -1195,7 +1242,9 @@ function updateItem(iRender, source, tree) {
     return tree;
   }
 
-  if (typeof tag !== 'string' || tag === Container) {
+  const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
+
+  if (typeof tag !== 'string' || ltag === 'neep:container') {
     if (!component) {
       return createMountedNode({ ...source,
         node: undefined,
@@ -1212,10 +1261,10 @@ function updateItem(iRender, source, tree) {
     }, tree.id);
   }
 
-  if (tag === Value) {
+  if (ltag === 'neep:value') {
     let value = source.value;
 
-    if (exports.isValue(value)) {
+    if (isValue(value)) {
       value = value();
     }
 
@@ -1231,7 +1280,7 @@ function updateItem(iRender, source, tree) {
     return replace(iRender, createValue(iRender, source, value), tree);
   }
 
-  if (tag === Template || tag.substr(0, 5) === 'Neep:') {
+  if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
     return createMountedNode({ ...source,
       node: undefined,
       component: undefined,
@@ -1360,7 +1409,9 @@ function createItem(iRender, source) {
     });
   }
 
-  if (typeof tag !== 'string' || tag === Container) {
+  const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
+
+  if (typeof tag !== 'string' || ltag === 'neep:container') {
     if (!component) {
       return createMountedNode({ ...source,
         node: undefined,
@@ -1378,17 +1429,17 @@ function createItem(iRender, source) {
     });
   }
 
-  if (tag === Value) {
+  if (ltag === 'neep:value') {
     let value = source.value;
 
-    if (exports.isValue(value)) {
+    if (isValue(value)) {
       value = value();
     }
 
     return createValue(iRender, source, value);
   }
 
-  if (tag === Template || tag.substr(0, 5) === 'Neep:') {
+  if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
     return createMountedNode({ ...source,
       node: undefined,
       component: undefined,
@@ -1507,7 +1558,7 @@ function createSlots(name, list) {
     tag: ScopeSlot,
     children: renderSlots(list, ...props),
     inserted: true,
-    label:  undefined 
+    label: isProduction ? undefined : [`[${name}]`, '#00F']
   });
 
   slot.children = list;
@@ -1575,7 +1626,7 @@ function updateProps(obj, props, oldProps = {}, define = false, isProps = false)
       continue;
     }
 
-    if (exports.isValue(value)) {
+    if (isValue(value)) {
       Reflect.defineProperty(obj, k, {
         configurable: true,
         enumerable: true,
@@ -1615,6 +1666,8 @@ function execSimple(nObject, delivered, node, tag, components, children) {
   const slots = setSlots(slotMap);
   const event = new EventEmitter();
   event.updateInProps(node.props);
+  const props = { ...node.props
+  };
   const context = initContext({
     slots,
     created: false,
@@ -1627,12 +1680,20 @@ function execSimple(nObject, delivered, node, tag, components, children) {
       nObject.refresh(f);
     },
 
-    emit: event.emit
+    emit: event.emit,
+    valueifyProp: valueify(props)
   });
 
-  const result = tag({ ...node.props
-  }, context, auxiliary);
+  if (!isProduction) {
+    getLabel();
+  }
+
+  const result = tag(props, context, auxiliary);
   let label;
+
+  if (!isProduction) {
+    label = getLabel();
+  }
 
   const nodes = exec(nObject, delivered, renderNode(iRender, result, context, tag[renderSymbol]), slots, getComponents(...components, tag[componentsSymbol]));
   return { ...node,
@@ -1657,7 +1718,7 @@ function execSlot(nObject, delivered, node, slots, components, children, args = 
   const {
     render
   } = node;
-  const label =  undefined ;
+  const label = isProduction ? undefined : [`[${slotName}]`, '#00F'];
   return { ...node,
     tag: ScopeSlot,
     label,
@@ -2207,7 +2268,7 @@ class NeepObject {
 
     this.__executed_mount = true;
     this.callHook('beforeMount');
-    const result = monitorable.exec(c => c && this.requestDraw(), () => {
+    const result = exec$1(c => c && this.requestDraw(), () => {
       this._mount();
 
       this.mounted = true;
@@ -2247,7 +2308,7 @@ class NeepObject {
 
     (_this$_cancelDrawMoni = this._cancelDrawMonitor) === null || _this$_cancelDrawMoni === void 0 ? void 0 : _this$_cancelDrawMoni.call(this);
     this.callHook('beforeUpdate');
-    const result = monitorable.exec(c => c && this.requestDraw(), () => this._draw());
+    const result = exec$1(c => c && this.requestDraw(), () => this._draw());
     this._cancelDrawMonitor = result.stop;
     complete(() => this.callHook('updated'));
   }
@@ -2307,8 +2368,9 @@ function createContext(nObject) {
 
     refresh(f) {
       nObject.refresh(f);
-    }
+    },
 
+    valueifyProp: valueify(nObject.props)
   }, nObject.exposed);
 }
 
@@ -2322,12 +2384,12 @@ function initRender(nObject) {
 
   const refresh = changed => changed && nObject.refresh();
 
-  const result = monitorable.exec(refresh, () => setCurrent(() => component(props, context, auxiliary), entity), {
+  const result = exec$1(refresh, () => setCurrent(() => component(props, context, auxiliary), entity), {
     resultOnly: true
   });
 
   if (typeof result === 'function') {
-    const render = monitorable.createExecutable(refresh, () => normalize(nObject, result()));
+    const render = createExecutable(refresh, () => normalize(nObject, result()));
     return {
       nodes: render(),
       render,
@@ -2335,9 +2397,9 @@ function initRender(nObject) {
     };
   }
 
-  const render = monitorable.createExecutable(refresh, () => normalize(nObject, setCurrent(() => component(props, context, auxiliary), entity)));
+  const render = createExecutable(refresh, () => normalize(nObject, setCurrent(() => component(props, context, auxiliary), entity)));
   return {
-    nodes: monitorable.exec(refresh, () => normalize(nObject, result), {
+    nodes: exec$1(refresh, () => normalize(nObject, result), {
       resultOnly: true
     }),
     render,
@@ -2353,9 +2415,9 @@ class Entity extends NeepObject {
 
     _defineProperty(this, "component", void 0);
 
-    _defineProperty(this, "props", monitorable.encase(Object.create(null)));
+    _defineProperty(this, "props", encase(Object.create(null)));
 
-    _defineProperty(this, "slots", monitorable.encase(Object.create(null)));
+    _defineProperty(this, "slots", encase(Object.create(null)));
 
     _defineProperty(this, "_stopRender", void 0);
 
@@ -2497,7 +2559,7 @@ function toElement(t) {
 
   return {
     [isElementSymbol]: true,
-    tag: Value,
+    tag: 'Neep:Value',
     key: t,
     value: t,
     children: []
@@ -2552,7 +2614,9 @@ function createItem$1(nObject, source) {
     };
   }
 
-  if (tag === Container) {
+  const ltag = tag.toLowerCase();
+
+  if (ltag === 'neep:container') {
     var _source$props;
 
     const type = source === null || source === void 0 ? void 0 : (_source$props = source.props) === null || _source$props === void 0 ? void 0 : _source$props.type;
@@ -2563,13 +2627,13 @@ function createItem$1(nObject, source) {
     };
   }
 
-  if (tag === Value) {
+  if (ltag === 'neep:value') {
     return { ...source,
       children: []
     };
   }
 
-  if (tag === Template || tag.substr(0, 5) === 'Neep:') {
+  if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
     return { ...source,
       children: convert(nObject, source.children)
     };
@@ -2677,7 +2741,9 @@ function updateItem$1(nObject, source, tree) {
     };
   }
 
-  if (tag === Container) {
+  const ltag = tag.toLowerCase();
+
+  if (ltag === 'neep:container') {
     var _source$props2;
 
     const {
@@ -2702,16 +2768,16 @@ function updateItem$1(nObject, source, tree) {
     };
   }
 
-  if (tag === Value) {
+  if (ltag === 'neep:value') {
     return { ...source,
       children: []
     };
   }
 
-  if (tag === Template || tag.substr(0, 5) === 'Neep:') {
+  if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
     let delivered;
 
-    if (Deliver === tag) {
+    if (ltag === 'neep:deliver') {
       const props = { ...source.props
       };
       delete props.ref;
@@ -2982,7 +3048,7 @@ class Container$1 extends NeepObject {
     }
 
     this.callHook('beforeUpdate');
-    monitorable.exec(c => c && this.markDraw(this), () => this._drawSelf());
+    exec$1(c => c && this.markDraw(this), () => this._drawSelf());
     complete(() => this.callHook('updated'));
   }
 
@@ -3070,6 +3136,10 @@ function render(e, p = {}) {
   };
   const container = new Container$1(getRender(p.type), params, e === undefined ? [] : isElement(e) ? [e] : [createElement(e)]);
 
+  if (!isProduction) {
+    devtools.renderHook(container);
+  }
+
   const {
     exposed
   } = container;
@@ -3126,53 +3196,4 @@ function render(e, p = {}) {
   return exposed;
 }
 
-exports.Container = Container;
-exports.Deliver = Deliver;
-exports.Error = NeepError;
-exports.EventEmitter = EventEmitter;
-exports.Fragment = Fragment;
-exports.ScopeSlot = ScopeSlot;
-exports.Slot = Slot;
-exports.SlotRender = SlotRender;
-exports.Tags = Tags;
-exports.Template = Template;
-exports.Value = Value;
-exports.addContextConstructor = addContextConstructor;
-exports.callHook = callHook;
-exports.checkCurrent = checkCurrent;
-exports.componentsSymbol = componentsSymbol;
-exports.configSymbol = configSymbol;
-exports.create = create;
-exports.createElement = createElement;
-exports.defineAuxiliary = defineAuxiliary;
-exports.deliver = deliver;
-exports.elements = elements;
-exports.expose = expose;
-exports.hook = hook;
-exports.install = install;
-exports.isElement = isElement;
-exports.isElementSymbol = isElementSymbol;
-exports.isProduction = isProduction;
-exports.label = label;
-exports.lazy = lazy;
-exports.mComponent = mComponent;
-exports.mConfig = mConfig;
-exports.mName = mName;
-exports.mNative = mNative;
-exports.mRender = mRender;
-exports.mSimple = mSimple;
-exports.mType = mType;
-exports.mark = mark;
-exports.mode = mode;
-exports.nameSymbol = nameSymbol;
-exports.refresh = refresh;
-exports.register = register;
-exports.render = render;
-exports.renderSymbol = renderSymbol;
-exports.setAuxiliary = setAuxiliary;
-exports.setHook = setHook;
-exports.typeSymbol = typeSymbol;
-exports.useValue = useValue;
-exports.version = version;
-exports.watch = watch;
-//# sourceMappingURL=neep.core.common.js.map
+export { Container, Deliver, NeepError as Error, EventEmitter, Fragment, ScopeSlot, Slot, SlotRender, Tags, Template, Value, addContextConstructor, callHook, checkCurrent, componentsSymbol, configSymbol, create, createElement, current, defineAuxiliary, deliver, elements, expose, hook, install, isElement, isElementSymbol, isProduction, label$1 as label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, refresh, register, render, renderSymbol, setAuxiliary, setHook, typeSymbol, useValue, version, watch };

@@ -1,17 +1,18 @@
 /*!
- * Neep v0.1.0-alpha.8
+ * Neep v0.1.0-alpha.9
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
-import * as monitorableApi from 'monitorable';
-import { Value as Value$1, WatchCallback, value as value$1, computed as computed$1, isValue as isValue$1, encase as encase$1, recover as recover$1 } from 'monitorable';
+import * as _mp_rt1_monitorable__ from 'monitorable';
+import { value, computed, isValue, encase, recover, valueify, Value as Value$1, WatchCallback, ValueifyProp } from 'monitorable';
+export { computed, encase, isValue, recover, value, valueify } from 'monitorable';
 
 interface Attributes {
 	slot?: string;
 	ref?: Ref;
-	'@': Emit | EventSet,
-	'n:on': Emit | EventSet,
-	'n-on': Emit | EventSet,
+	'@'?: Emit | EventSet,
+	'n:on'?: Emit | EventSet,
+	'n-on'?: Emit | EventSet,
 	
 }
 interface NativeAttributes extends Attributes {
@@ -59,24 +60,16 @@ declare global {
 */
 declare const version: string;
 /**
- * Current mode
- * @enum production
- * @enum development
- */
-declare const mode: "production" | "development";
-/**
  * Is the current mode production mode
  * @description Support tree shaking
  */
 declare const isProduction: boolean;
 
 declare const Constant_version: typeof version;
-declare const Constant_mode: typeof mode;
 declare const Constant_isProduction: typeof isProduction;
 declare namespace Constant {
   export {
     Constant_version as version,
-    Constant_mode as mode,
     Constant_isProduction as isProduction,
   };
 }
@@ -118,6 +111,7 @@ declare const State_computed: typeof computed;
 declare const State_isValue: typeof isValue;
 declare const State_encase: typeof encase;
 declare const State_recover: typeof recover;
+declare const State_valueify: typeof valueify;
 declare namespace State {
   export {
     State_value as value,
@@ -125,6 +119,7 @@ declare namespace State {
     State_isValue as isValue,
     State_encase as encase,
     State_recover as recover,
+    State_valueify as valueify,
   };
 }
 
@@ -293,28 +288,6 @@ declare namespace symbols {
   };
 }
 
-interface AddEvent<T extends Record<string, any[]>> {
-    <N extends keyof T>(entName: N, listener: (...p: T[N]) => void): void;
-}
-declare class EventEmitter<T extends Record<string, any[]> = Record<string, any[]>> {
-    static update<T extends Record<string, any[]>>(emitter: EventEmitter<T>, events: any): (() => void)[];
-    static updateInProps<T extends Record<string, any[]>>(emitter: EventEmitter<T>, props: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
-    private _names;
-    private readonly _cancelHandles;
-    readonly names: (keyof T)[];
-    readonly emit: Emit<T>;
-    readonly on: On<T>;
-    constructor();
-    updateHandles(newHandles: (() => void)[]): (() => void)[];
-    update(list: any): (() => void)[];
-    updateInProps(list: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
-}
-
-declare class NeepError extends Error {
-    readonly tag: string;
-    constructor(message: string, tag?: string);
-}
-
 /** 全局钩子 */
 interface Hook {
     (nObject: Entity): void;
@@ -331,7 +304,7 @@ interface Slots {
     [name: string]: SlotFn | undefined;
 }
 interface Emit<T extends Record<string, any[]> = Record<string, any[]>> {
-    <N extends keyof T>(name: N, ...p: T[N]): void;
+    <N extends keyof T>(name: N, ...p: T[N]): boolean;
     omit(...names: string[]): Emit;
     readonly names: (keyof T)[];
 }
@@ -339,7 +312,7 @@ interface EventSet {
     [key: string]: (...p: any[]) => void;
 }
 interface On<T extends Record<string, any[]> = Record<string, any[]>> {
-    <N extends keyof T>(name: N, listener: (...p: T[N]) => void): () => void;
+    <N extends keyof T>(name: N, listener: (...p: T[N]) => void | undefined | null | boolean): () => void;
 }
 interface ContextConstructor {
     (context: Context, exposed?: Exposed): void;
@@ -366,7 +339,7 @@ interface RootExposed extends Exposed {
     $unmount(): void;
 }
 /** 上下文环境 */
-interface Context {
+interface Context<P = any> {
     /** 作用域槽 */
     slots: Slots;
     /** 是否已经完成初始化 */
@@ -379,6 +352,7 @@ interface Context {
     childNodes: any[];
     refresh(fn?: () => void): void;
     emit: Emit;
+    valueifyProp: ValueifyProp<P>;
 }
 interface Entity {
     readonly exposed: Exposed;
@@ -489,14 +463,8 @@ interface MountProps {
     target?: any;
     [key: string]: any;
 }
-interface IRenderAuxiliary {
-    isValue: typeof isValue;
-    EventEmitter: typeof EventEmitter;
-    Error: typeof NeepError;
-}
 interface IRender {
     type: string;
-    install?(auxiliary: IRenderAuxiliary): void;
     nextFrame?(fn: () => void): void;
     mount(props: MountProps, parent?: IRender): [NativeContainer, NativeNode];
     unmount(container: NativeContainer, node: NativeNode, removed: boolean): any;
@@ -518,18 +486,34 @@ interface IRender {
     remove(n: NativeNode): void;
 }
 
-declare let value: typeof value$1;
-declare let computed: typeof computed$1;
-declare let isValue: typeof isValue$1;
-declare let encase: typeof encase$1;
-declare let recover: typeof recover$1;
+interface AddEvent<T extends Record<string, any[]>> {
+    <N extends keyof T>(entName: N, listener: (...p: T[N]) => void): void;
+}
+declare class EventEmitter<T extends Record<string, any[]> = Record<string, any[]>> {
+    static update<T extends Record<string, any[]>>(emitter: EventEmitter<T>, events: any): (() => void)[];
+    static updateInProps<T extends Record<string, any[]>>(emitter: EventEmitter<T>, props: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
+    private readonly _names;
+    private readonly _cancelHandles;
+    readonly names: (keyof T)[];
+    readonly emit: Emit<T>;
+    readonly on: On<T>;
+    constructor();
+    updateHandles(newHandles: (() => void)[]): (() => void)[];
+    update(list: any): (() => void)[];
+    updateInProps(list: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
+}
+
 interface InstallOptions {
-    monitorable?: typeof monitorableApi;
+    monitorable?: typeof _mp_rt1_monitorable__;
     render?: IRender;
-    renders?: IRender[];
     devtools?: any;
 }
 declare function install(apis: InstallOptions): void;
+
+declare class NeepError extends Error {
+    readonly tag: string;
+    constructor(message: string, tag?: string);
+}
 
 declare function register(name: string, component: Component): void;
 
@@ -585,4 +569,4 @@ declare function setHook(id: string, hook: Hook, entity?: Entity): () => void;
 declare function callHook<H extends Hooks>(id: H, exposed: Entity): void;
 declare function callHook(id: string, exposed: Entity): void;
 
-export { Auxiliary, Component, Container, Context, ContextConstructor, Deliver, Delivered, Emit, Entity, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, IRenderAuxiliary, Mark, Marks, MountProps, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Ref, Render, RootExposed, ScopeSlot, Slot, SlotFn, SlotRender, Slots, Tag, Tags, Template, Value, addContextConstructor, callHook, checkCurrent, componentsSymbol, computed, configSymbol, create, createElement, current, defineAuxiliary, deliver, elementIteratorOptions, elements, encase, expose, hook, install, isElement, isElementSymbol, isProduction, isValue, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, mode, nameSymbol, recover, refresh, register, render, renderSymbol, setAuxiliary, setHook, typeSymbol, useValue, value, version, watch };
+export { Auxiliary, Component, Container, Context, ContextConstructor, Deliver, Delivered, Emit, Entity, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Ref, Render, RootExposed, ScopeSlot, Slot, SlotFn, SlotRender, Slots, Tag, Tags, Template, Value, addContextConstructor, callHook, checkCurrent, componentsSymbol, configSymbol, create, createElement, current, defineAuxiliary, deliver, elementIteratorOptions, elements, expose, hook, install, isElement, isElementSymbol, isProduction, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, refresh, register, render, renderSymbol, setAuxiliary, setHook, typeSymbol, useValue, version, watch };

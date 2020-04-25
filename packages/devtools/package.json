@@ -1,8 +1,8 @@
 {
   "name": "@neep/devtools",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.4",
   "main": "dist/neep.devtools.js",
-  "module": "dist/neep.devtools.esm.js",
+  "module": "dist/neep.devtools.mjs",
   "browser": "dist/neep.devtools.browser.js",
   "unpkg": "dist/neep.devtools.browser.js",
   "jsdelivr": "dist/neep.devtools.browser.js",
@@ -27,7 +27,7 @@
     "url": "https://github.com/neepjs/neep/issues"
   },
   "homepage": "https://github.com/neepjs/neep#readme",
-  "peerDependencies": {
-    "@neep/core": "^0.1.0-alpha.0"
+  "optionalDependencies": {
+    "@neep/core": "^0.1.0-alpha.9"
   }
 }

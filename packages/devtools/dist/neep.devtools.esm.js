@@ -1,9 +1,23 @@
 /*!
- * NeepDevtools v0.1.0-alpha.2
+ * NeepDevtools v0.1.0-alpha.4
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
-import { nameSymbol, typeSymbol, Template, Deliver, ScopeSlot, SlotRender, Value, createElement, create as create$1 } from '@neep/core';
+import { nameSymbol, typeSymbol } from '@neep/core';
+
+let render;
+let createElement;
+let setHook;
+let isValue;
+let encase;
+function install(Neep) {
+  render = Neep.render;
+  createElement = Neep.createElement;
+  setHook = Neep.setHook;
+  isValue = Neep.isValue;
+  encase = Neep.encase;
+  return Neep.install;
+}
 
 let Type;
 
@@ -77,20 +91,9 @@ function* getTree(tree, parent = 0) {
     };
   }
 
-  if (tag === Template || tag === Deliver || tag === ScopeSlot || tag === SlotRender) {
-    return yield {
-      id,
-      parent,
-      type: Type.special,
-      tag,
-      children: [...getTree(children)],
-      props,
-      key,
-      label
-    };
-  }
+  const ltag = tag.toLowerCase();
 
-  if (tag === Value) {
+  if (ltag === 'neep:value') {
     const treeValue = tree.value;
     return yield {
       id,
@@ -100,6 +103,19 @@ function* getTree(tree, parent = 0) {
       children: [],
       isNative: treeValue === tree.node,
       value: treeValue,
+      props,
+      key,
+      label
+    };
+  }
+
+  if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
+    return yield {
+      id,
+      parent,
+      type: Type.special,
+      tag,
+      children: [...getTree(children)],
       props,
       key,
       label
@@ -161,16 +177,13 @@ function TextNode({
     }, "[Native]");
   }
 
-  const isValue = Neep.isValue(value);
-  const data = isValue ? value() : value;
-
-  if (!Neep.isValue(value)) {
-    return getValue(data);
+  if (!isValue(value)) {
+    return getValue(value);
   }
 
   return createElement("template", null, createElement("span", {
     style: "font-weight: bold;"
-  }, "[Value:\xA0"), getValue(data), createElement("span", {
+  }, "[Value:\xA0"), getValue(value()), createElement("span", {
     style: "font-weight: bold;"
   }, "\xA0]"));
 }
@@ -283,7 +296,9 @@ function* getList(list, keys, options, labels = []) {
     }, "container"), keys, id, key, [label, ...labels], ...getList(children, keys, options));
   }
 
-  if (tag === Deliver) {
+  const ltag = tag.toLowerCase();
+
+  if (ltag === 'neep:deliver') {
     if (!options.deliver) {
       return yield* getList(children, keys, options, [label, ...labels]);
     }
@@ -293,7 +308,7 @@ function* getList(list, keys, options, labels = []) {
     }, "Deliver"), keys, id, key, [label, ...labels], ...getList(children, keys, options));
   }
 
-  if (tag === Template) {
+  if (ltag === 'template') {
     if (!options.template) {
       return yield* getList(children, keys, options, [label, ...labels]);
     }
@@ -303,7 +318,7 @@ function* getList(list, keys, options, labels = []) {
     }, "Template"), keys, id, key, [label, ...labels], ...getList(children, keys, options));
   }
 
-  if (tag === ScopeSlot) {
+  if (ltag === 'neep:scopeslot' || ltag === 'neep:scope-slot') {
     if (!options.scopeSlot) {
       return yield* getList(children, keys, options, [label, ...labels]);
     }
@@ -313,13 +328,13 @@ function* getList(list, keys, options, labels = []) {
     }, "ScopeSlot"), keys, id, key, [label, ...labels], ...getList(children, keys, options));
   }
 
-  if (tag === SlotRender) {
+  if (ltag === 'neep:slotrender' || ltag === 'neep:slot-render') {
     if (options.slotRender) ;
 
     return;
   }
 
-  if (tag === Value) {
+  if (ltag === 'neep:value') {
     if (!options.tag) {
       return;
     }
@@ -335,9 +350,7 @@ function* getList(list, keys, options, labels = []) {
   }
 }
 
-var App = create$1((props, {}, {
-  encase
-}) => {
+var App = (props => {
   const keys = encase({});
   return () => createElement("div", {
     style: "padding-left: 20px;"
@@ -350,7 +363,7 @@ function create() {
   creating = true;
 
   try {
-    return Neep.render();
+    return render();
   } finally {
     creating = false;
   }
@@ -370,15 +383,15 @@ const devtools = {
       }
 
       const tree = [...getTree(container.content)];
-      app.$update(Neep.createElement(App, {
+      app.$update(createElement(App, {
         tree,
         value: true,
         tag: true
       }));
     };
 
-    Neep.setHook('drawnAll', getData, container.entity);
-    Neep.setHook('mounted', () => {
+    setHook('drawnAll', getData, container.entity);
+    setHook('mounted', () => {
       if (!app) {
         app = create();
       }
@@ -390,13 +403,10 @@ const devtools = {
 
 };
 
-let Neep;
-function install(neep) {
-  neep.install({
+function install$1(Neep) {
+  install(Neep)({
     devtools
   });
-  Neep = neep;
 }
 
-export { install };
-//# sourceMappingURL=neep.devtools.esm.js.map
+export { install$1 as install };

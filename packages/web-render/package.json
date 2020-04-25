@@ -1,6 +1,6 @@
 {
   "name": "@neep/web-render",
-  "version": "0.1.0-alpha.8",
+  "version": "0.1.0-alpha.9",
   "main": "dist/neep.web.render.js",
   "module": "dist/neep.web.render.mjs",
   "browser": "dist/neep.web.render.browser.min.js",
@@ -29,6 +29,6 @@
   },
   "homepage": "https://github.com/neepjs/neep#readme",
   "optionalDependencies": {
-    "@neep/core": "^0.1.0-alpha.0"
+    "@neep/core": "^0.1.0-alpha.9"
   }
 }

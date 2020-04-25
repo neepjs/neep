@@ -97,7 +97,11 @@ if (isCore || isRender) {
 	config = [
 		{
 			input,
-			output: [ createOutput('cjs'), createOutput('umd') ],
+			output: [
+				createOutput('cjs'),
+				createOutput('mjs'),
+				createOutput('umd'),
+			],
 			external,
 			plugins: [ resolve(), babel(), replace(false) ],
 		},

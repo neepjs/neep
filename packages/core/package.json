@@ -1,6 +1,6 @@
 {
   "name": "@neep/core",
-  "version": "0.1.0-alpha.8",
+  "version": "0.1.0-alpha.9",
   "main": "dist/neep.core.js",
   "module": "dist/neep.core.mjs",
   "browser": "dist/neep.core.browser.min.js",
@@ -27,6 +27,6 @@
   },
   "homepage": "https://github.com/neepjs/neep#readme",
   "optionalDependencies": {
-    "monitorable": "^0.1.0-alpha.5"
+    "monitorable": "^0.1.0-alpha.7"
   }
 }
