@@ -1,6 +1,4 @@
-import devtools from '../devtools';
 import { install as NeepInstall } from '@neep/core';
-NeepInstall({ devtools });
 
 export {
 	render,
@@ -10,5 +8,6 @@ export {
 	encase,
 } from '@neep/core';
 
-export default function install(Neep: typeof import('@neep/core')) {
+export default function install() {
+	return NeepInstall;
 }

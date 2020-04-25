@@ -1,4 +1,4 @@
-import { render, createElement, setHook } from '../install';
+import { render, createElement, setHook } from '../install/neep';
 import { getTree } from '../tree';
 import App from '../app';
 import { Devtools } from '../type';

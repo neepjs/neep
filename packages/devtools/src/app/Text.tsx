@@ -1,5 +1,5 @@
 import { NeepNode } from '@neep/core';
-import { isValue, createElement } from '../install';
+import { isValue, createElement } from '../install/neep';
 
 export function getValue(
 	value: any,

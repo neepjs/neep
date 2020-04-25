@@ -1,7 +1,7 @@
 import { NeepNode } from '@neep/core';
 import { VTreeNode, Type } from '../tree';
 import { TextNode } from './Text';
-import { createElement, encase } from '../install';
+import { createElement, encase } from '../install/neep';
 
 interface Options {
 	value?: boolean;

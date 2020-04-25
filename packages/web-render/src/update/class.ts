@@ -1,4 +1,4 @@
-import { isValue } from '../install';
+import { isValue } from '../install/neep';
 import { Value } from 'monitorable';
 
 export type RecursiveItem<T> = T | Array<RecursiveItem<T>> | Value<T>;

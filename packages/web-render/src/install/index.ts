@@ -1,2 +1,1 @@
-export * from './neep';
-export { default } from './neep';
+export { default } from './install';

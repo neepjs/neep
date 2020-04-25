@@ -1,4 +1,4 @@
-import { isValue } from '../install';
+import { isValue } from '../install/neep';
 
 export type Attrs = Record<string, string | null>;
 

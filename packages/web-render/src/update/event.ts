@@ -1,7 +1,6 @@
-import { isValue, EventEmitter } from '../install';
-import * as Neep from '@neep/core';
+import { isValue, EventEmitter } from '../install/neep';
 
-export interface Events extends Neep.EventEmitter {
+export interface Events extends InstanceType<typeof EventEmitter> {
 	__eventBind: Record<string, () => void>;
 }
 
