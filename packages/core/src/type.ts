@@ -212,15 +212,9 @@ export interface MountProps {
 	[key: string]: any;
 }
 
-export interface IRenderAuxiliary {
-	isValue: typeof isValue;
-	EventEmitter: typeof EventEmitter;
-	Error: typeof NeepError;
-}
 
 export interface IRender {
 	type: string;
-	install?(auxiliary: IRenderAuxiliary): void;
 	nextFrame?(fn: () => void): void;
 	mount(
 		props: MountProps,

@@ -1,10 +1,11 @@
 {
   "name": "@neep/core",
   "version": "0.1.0-alpha.8",
-  "main": "dist/neep.core.common.js",
-  "module": "dist/neep.core.esm.js",
-  "unpkg": "dist/neep.core.js",
-  "jsdelivr": "dist/neep.core.js",
+  "main": "dist/neep.core.js",
+  "module": "dist/neep.core.mjs",
+  "browser": "dist/neep.core.browser.min.js",
+  "unpkg": "dist/neep.core.browser.js",
+  "jsdelivr": "dist/neep.core.browser.js",
   "typings": "./types",
   "keywords": [
     "neep"

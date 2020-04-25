@@ -1,9 +1,5 @@
 import { IRender } from '../type';
-import EventEmitter from '../EventEmitter';
-import NeepError, { assert } from '../Error';
-
-import { isValue } from './monitorable';
-import { InstallOptions } from '.';
+import { assert } from '../Error';
 
 let nextFrameApi: undefined | ((fn: () => void) => void);
 export function nextFrame(fn: () => void): void {
@@ -21,15 +17,8 @@ export function getRender(
 	return renders[type] || renders.default;
 }
 
-function addRender(render?: IRender): void {
+export default function installRender(render?: IRender): void {
 	if (!render) { return; }
-	if (render.install) {
-		render.install({
-			get isValue() { return isValue; },
-			EventEmitter,
-			Error: NeepError,
-		});
-	}
 	renders[render.type] = render;
 	if (nextFrameApi) { return; }
 	if (!renders.default) {
@@ -40,12 +29,4 @@ function addRender(render?: IRender): void {
 		nextFrameApi = render.nextFrame;
 	}
 
-}
-
-export default function installRender({ render, renders}: InstallOptions) {
-	addRender(render);
-	if (!Array.isArray(renders)) { return; }
-	for (const render of renders) {
-		addRender(render);
-	}
 }

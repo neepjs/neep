@@ -9,13 +9,7 @@
  */
 export const version = '__VERSION__' as string;
 /**
- * Current mode
- * @enum production
- * @enum development
- */
-export const mode = '__MODE__' as any as 'production' | 'development';
-/**
  * Is the current mode production mode
  * @description Support tree shaking
  */
-export const isProduction = mode === 'production';
+export const isProduction = process.env.NODE_ENV === 'production';

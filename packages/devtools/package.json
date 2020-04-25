@@ -1,10 +1,11 @@
 {
   "name": "@neep/devtools",
   "version": "0.1.0-alpha.2",
-  "main": "dist/neep.devtools.common.js",
+  "main": "dist/neep.devtools.js",
   "module": "dist/neep.devtools.esm.js",
-  "unpkg": "dist/neep.devtools.js",
-  "jsdelivr": "dist/neep.devtools.js",
+  "browser": "dist/neep.devtools.browser.js",
+  "unpkg": "dist/neep.devtools.browser.js",
+  "jsdelivr": "dist/neep.devtools.browser.js",
   "typings": "./types",
   "keywords": [
     "neep",

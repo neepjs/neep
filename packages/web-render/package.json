@@ -1,10 +1,11 @@
 {
   "name": "@neep/web-render",
   "version": "0.1.0-alpha.8",
-  "main": "dist/neep.web.render.common.js",
-  "module": "dist/neep.web.render.esm.js",
-  "unpkg": "dist/neep.web.render.js",
-  "jsdelivr": "dist/neep.web.render.js",
+  "main": "dist/neep.web.render.js",
+  "module": "dist/neep.web.render.mjs",
+  "browser": "dist/neep.web.render.browser.min.js",
+  "unpkg": "dist/neep.web.render.browser.js",
+  "jsdelivr": "dist/neep.web.render.browser.js",
   "typings": "./types",
   "keywords": [
     "neep",
