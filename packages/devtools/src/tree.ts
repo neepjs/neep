@@ -1,7 +1,4 @@
-import { nameSymbol, typeSymbol } from '@neep/core';
-import { MountedNode } from '../../core/src/render/draw';
-import Container from '../../core/src/render/Container';
-import Entity from '../../core/src/render/Entity';
+import { nameSymbol, typeSymbol, MountedNode, ComponentEntity, ContainerEntity } from '@neep/core';
 
 export enum Type {
 	tag = 'tag',
@@ -74,8 +71,8 @@ export function *getTree(
 			type: isNative ? Type.native : Type.standard,
 			tag: name,
 			children: [...getTree(
-				'content' in component ? (component as Container).content
-					: isNative ? (component as Entity).nativeTree : component.tree
+				'content' in component ? (component as ContainerEntity).content
+					: isNative ? (component as ComponentEntity).nativeTree : component.tree
 			)],
 			props,
 			key,

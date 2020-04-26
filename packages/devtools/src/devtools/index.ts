@@ -1,8 +1,7 @@
 import { render, createElement, setHook } from '../install/neep';
 import { getTree } from '../tree';
 import App from '../app';
-import { Devtools } from '../type';
-import { RootExposed } from '@neep/core';
+import { RootExposed, Devtools } from '@neep/core';
 
 let creating = false;
 function create() {

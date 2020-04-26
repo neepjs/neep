@@ -1,25 +1,13 @@
 import { getRender } from '../install';
-import { NeepNode, NeepElement, Tag } from '../type';
+import { NeepNode, NeepElement, Tag, TreeNode } from '../type';
 import { isElement } from '../auxiliary';
 import { isElementSymbol, typeSymbol } from '../symbols';
 import { recursive2iterable } from './recursive';
-import Entity from './Entity';
-import NeepObject from './Object';
-import Container from './Container';
+import EntityObject from './EntityObject';
+import ComponentEntity from './ComponentEntity';
+import ContainerEntity from './ContainerEntity';
 import { updateProps } from './props';
 
-export interface TreeNode
-	extends Omit<
-		NeepElement,
-		'children' | 'tag' | typeof isElementSymbol
-	>
-{
-	/** 标签名 */
-	tag: Tag;
-	children: (this | this[])[];
-	mounted?: boolean;
-	component?: NeepObject;
-}
 /** 强制转换为 NeepElement */
 function toElement(t: any): null | NeepElement {
 	if (t === false || t === null || t === undefined) {
@@ -49,7 +37,7 @@ export function destroy(
 }
 
 function createItem(
-	nObject: NeepObject,
+	nObject: EntityObject,
 	source: NeepNode,
 ): TreeNode {
 	if (!source) { return { tag: null, children: [] }; }
@@ -65,7 +53,7 @@ function createItem(
 		}
 		return {
 			...source, children: [],
-			component: new Entity(
+			component: new ComponentEntity(
 				tag,
 				source.props || {},
 				source.children,
@@ -80,7 +68,7 @@ function createItem(
 		const iRender = type ? getRender(type) : nObject.iRender;
 		return {
 			...source, children: [],
-			component: new Container(
+			component: new ContainerEntity(
 				iRender,
 				source.props || {},
 				source.children,
@@ -108,7 +96,7 @@ function createItem(
  * @param tree 已有树
  */
 function updateList(
-	nObject: NeepObject,
+	nObject: EntityObject,
 	source: any[],
 	tree: TreeNode | TreeNode[],
 ): TreeNode[] {
@@ -138,7 +126,7 @@ function updateList(
  * @param nObject Neep 对象
  */
 function updateItem(
-	nObject: NeepObject,
+	nObject: EntityObject,
 	source: NeepNode,
 	tree?: TreeNode | TreeNode[],
 ): TreeNode {
@@ -230,7 +218,7 @@ function updateItem(
 
 
 function createAll(
-	nObject: NeepObject,
+	nObject: EntityObject,
 	source: any[],
 ): (TreeNode | TreeNode[])[] {
 	if (!source.length) { return []; }
@@ -243,7 +231,7 @@ function createAll(
 	});
 }
 function *updateAll(
-	nObject: NeepObject,
+	nObject: EntityObject,
 	source: any[],
 	tree: (TreeNode | TreeNode[])[],
 ): Iterable<TreeNode | TreeNode[]> {
@@ -286,7 +274,7 @@ function *updateAll(
  * @param tree 已有树
  */
 function convert(
-	nObject: NeepObject,
+	nObject: EntityObject,
 	source: any,
 	tree?: (TreeNode | TreeNode[])[],
 ): (TreeNode | TreeNode[])[] {

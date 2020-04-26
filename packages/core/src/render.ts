@@ -3,18 +3,19 @@ import {
 	NeepElement,
 	Component,
 	RootExposed,
-} from '../type';
-import { isElement, createElement } from '../auxiliary';
-import { isProduction } from '../constant';
-import { devtools, getRender } from '../install';
-import Container from './Container';
+} from './type';
+import { isElement, createElement } from './auxiliary';
+import { isProduction } from './constant';
+import { devtools, getRender } from './install';
+import { ContainerEntity } from './entity';
 
-export function render(
+
+export default function render(
 	e?: NeepElement | Component,
 	p: MountProps = {},
 ): RootExposed {
 	let params = {...p};
-	const container =  new Container(
+	const container =  new ContainerEntity(
 		getRender(p.type),
 		params,
 		e === undefined ? [] : isElement(e) ? [e] : [createElement(e)],
@@ -58,4 +59,3 @@ export function render(
 	}
 	return exposed as any as RootExposed;
 }
-export { default as refresh } from './refresh';

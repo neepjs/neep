@@ -1,19 +1,19 @@
-import { Component, NeepNode, Slots, Context, Delivered, NativeShadow } from '../type';
+import { Component, NeepNode, Slots, Context, Delivered, NativeShadow, TreeNode, MountedNode } from '../type';
 import auxiliary from '../auxiliary';
 import { exec, createExecutable, valueify, encase } from '../install';
 import { setCurrent } from '../helper/current';
-import convert, { destroy, TreeNode } from './convert';
-import draw, { unmount, MountedNode, getNodes } from './draw';
+import convert, { destroy } from './convert';
+import draw, { unmount, getNodes } from './draw';
 import normalize from './normalize';
 import { getSlots, setSlots } from './slot';
-import NeepObject from './Object';
+import EntityObject from './EntityObject';
 import { initContext } from '../helper/context';
 import { updateProps } from './props';
 import { typeSymbol, configSymbol, componentsSymbol } from '../symbols';
-import refresh from './refresh';
+import { refresh } from '../helper';
 
 function update(
-	nObject: Entity<any, any>,
+	nObject: ComponentEntity<any, any>,
 	props: any,
 	children:any[],
 ) {
@@ -38,7 +38,7 @@ function update(
 function createContext<
 	P extends object = object,
 	R extends object = object
->(nObject: Entity<P, R>): Context {
+>(nObject: ComponentEntity<P, R>): Context {
 	return initContext({
 		slots: nObject.slots,
 		get created() { return nObject.created; },
@@ -54,7 +54,7 @@ function createContext<
 
 /** 初始化渲染 */
 function initRender<R extends object = object>(
-	nObject: Entity<any, R>
+	nObject: ComponentEntity<any, R>
 ): { render(): any, nodes: any, stopRender(): void } {
 	const {
 		component,
@@ -100,10 +100,10 @@ function initRender<R extends object = object>(
 }
 
 
-export default class Entity<
+export default class ComponentEntity<
 	P extends object = object,
 	R extends object = object
-> extends NeepObject {
+> extends EntityObject {
 	/** 组件函数 */
 	readonly component: Component<P, R>;
 	/** 组件属性 */
@@ -119,13 +119,13 @@ export default class Entity<
 	private readonly _shadow: NativeShadow | undefined;
 	/** 组件上下文 */
 	readonly context: Context;
-	readonly parent: NeepObject;
+	readonly parent: EntityObject;
 	/** 结果渲染函数 */
 	constructor(
 		component: Component<P, R>,
 		props: object,
 		children: any[],
-		parent: NeepObject,
+		parent: EntityObject,
 		delivered?: Delivered,
 	) {
 		super(parent.iRender, parent, delivered, parent.container);

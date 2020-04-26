@@ -1,10 +1,16 @@
 import './jsx.d.ts';
 import { Auxiliary, Tags } from './auxiliary';
 import * as symbols from './symbols';
-import { isValue } from './install';
-import EventEmitter from './EventEmitter';
-import NeepError from './Error';
 import { ValueifyProp } from 'monitorable';
+
+import * as entity from './entity';
+export type EntityObject = InstanceType<typeof entity.EntityObject>;
+export type ComponentEntity = InstanceType<typeof entity.ComponentEntity>;
+export type ContainerEntity = InstanceType<typeof entity.ContainerEntity>;
+
+export interface Devtools {
+	renderHook(container: ContainerEntity): void;
+}
 
 /** 全局钩子 */
 export interface Hook {
@@ -180,6 +186,29 @@ export interface NeepElement {
 	label?: [string, string];
 	$__neep__delivered?: Delivered;
 }
+
+export interface TreeNode
+	extends Omit<
+		NeepElement,
+		'children' | 'tag' | typeof symbols.isElementSymbol
+	>
+{
+	/** 标签名 */
+	tag: Tag;
+	children: (this | this[])[];
+	mounted?: boolean;
+	component?: EntityObject;
+}
+
+/**
+ * @description node / component / children 至少一个有效
+ */
+export interface MountedNode extends TreeNode {
+	id: number;
+	parent?: this;
+	node: undefined | NativeNode;
+}
+
 
 declare const NativeElementSymbol: unique symbol;
 declare const NativeTextSymbol: unique symbol;

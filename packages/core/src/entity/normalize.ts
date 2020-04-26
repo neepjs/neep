@@ -7,7 +7,7 @@ import { isProduction } from '../constant';
 import auxiliary, { isElement, Tags, valueify } from '../auxiliary';
 import { renderSymbol, isElementSymbol } from '../symbols';
 import { getLabel } from '../helper/label';
-import Entity from './Entity';
+import ComponentEntity from './ComponentEntity';
 import { getSlots, setSlots } from './slot';
 import { initContext } from '../helper/context';
 import { updateProps } from './props';
@@ -22,7 +22,7 @@ function getComponents(
 }
 
 function execSimple(
-	nObject: Entity,
+	nObject: ComponentEntity,
 	delivered: Delivered,
 	node: NeepElement,
 	tag: Component,
@@ -67,7 +67,7 @@ function execSimple(
 }
 
 function execSlot(
-	nObject: Entity,
+	nObject: ComponentEntity,
 	delivered: Delivered,
 	node: NeepElement,
 	slots: Slots,
@@ -119,7 +119,7 @@ function findComponent(
 }
 
 function exec(
-	nObject: Entity,
+	nObject: ComponentEntity,
 	delivered: Delivered,
 	node: any,
 	slots: Slots,
@@ -228,7 +228,7 @@ function renderNode<R extends object = object>(
 }
 
 export default function normalize(
-	nObject: Entity,
+	nObject: ComponentEntity,
 	result: any,
 ) {
 	const { component } = nObject;

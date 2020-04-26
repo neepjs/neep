@@ -1,5 +1,5 @@
 import * as monitorableApi from 'monitorable';
-import { IRender } from '../type';
+import { IRender, Devtools } from '../type';
 import { isProduction } from '../constant';
 import installDevtools from './devtools';
 import installRender from './render';
@@ -14,7 +14,7 @@ export * from './monitorable';
 export interface InstallOptions {
 	monitorable?: typeof monitorableApi;
 	render?: IRender;
-	devtools?: any;
+	devtools?: Devtools;
 }
 
 

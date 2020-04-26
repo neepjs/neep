@@ -1,8 +1,8 @@
-import NeepObject from './Object';
+import { EntityObject } from '../entity';
 
 let delayedRefresh = 0;
-const objectSet = new Set<NeepObject>();
-export function wait(obj: NeepObject) {
+const objectSet = new Set<EntityObject>();
+export function wait(obj: EntityObject) {
 	if (delayedRefresh <= 0) { return false; }
 	objectSet.add(obj);
 	return true;

@@ -1,18 +1,17 @@
 import {
 	Exposed, Delivered,
-	Entity as ComponentEntity,
+	Entity as Entity,
 	NativeComponent,
-	Hook, Hooks, NeepNode, IRender, Component,
+	Hook, Hooks, NeepNode, IRender, Component, MountedNode, TreeNode,
 } from '../type';
 import { callHook, setHook } from '../hook';
-import { MountedNode } from './draw';
-import Container from './Container';
-import convert, { TreeNode } from './convert';
-import { wait } from './refresh';
+import ContainerEntity from './ContainerEntity';
+import convert from './convert';
+import { wait } from '../helper/refresh';
 import { exec } from '../install';
 import EventEmitter from '../EventEmitter';
 
-function createExposed(obj: NeepObject): Exposed {
+function createExposed(obj: EntityObject): Exposed {
 	const cfg: { [K in Exclude<keyof Exposed, '$label'>]-?:
 		{ configurable: true, value: Exposed[K] }
 		| { configurable: true, get(): Exposed[K] }
@@ -41,10 +40,10 @@ export function complete(it: () => void) {
 	}
 }
 
-function createEntity(obj: NeepObject): ComponentEntity {
-	const cfg: { [K in keyof ComponentEntity]-?:
-		{ configurable: true, value: ComponentEntity[K], writable?: boolean }
-		| { configurable: true, get(): ComponentEntity[K] }
+function createEntity(obj: EntityObject): Entity {
+	const cfg: { [K in keyof Entity]-?:
+		{ configurable: true, value: Entity[K], writable?: boolean }
+		| { configurable: true, get(): Entity[K] }
 	} = {
 		exposed: { configurable: true, get: () => obj.exposed },
 		delivered: { configurable: true, get: () => obj.delivered },
@@ -73,11 +72,11 @@ function createEntity(obj: NeepObject): ComponentEntity {
 		emit: { configurable: true, value: obj.emit },
 		config: { configurable: true, value: obj.config },
 	};
-	const entity: ComponentEntity = Object.create(null, cfg);
+	const entity: Entity = Object.create(null, cfg);
 	return entity;
 }
 
-export default class NeepObject {
+export default class EntityObject {
 	readonly events = new EventEmitter();
 	readonly emit = this.events.emit;
 	readonly on = this.events.on;
@@ -92,9 +91,9 @@ export default class NeepObject {
 	/** 组件暴露值 */
 	readonly exposed: Exposed = createExposed(this);
 	/** 组件实体 */
-	readonly entity: ComponentEntity = createEntity(this);
+	readonly entity: Entity = createEntity(this);
 	/** 父组件 */
-	parent?: NeepObject;
+	parent?: EntityObject;
 	/** 原生组件 */
 	native: NativeComponent | undefined;
 	/** 状态 */
@@ -106,12 +105,12 @@ export default class NeepObject {
 	readonly children: Set<Exposed> = new Set();
 	/** The subtree mounted on the parent node */
 	tree: (MountedNode | MountedNode[])[] = [];
-	readonly container: Container;
+	readonly container: ContainerEntity;
 	constructor(
 		iRender: IRender,
-		parent?: NeepObject,
+		parent?: EntityObject,
 		delivered: Delivered = parent?.delivered || Object.create(null),
-		container?: Container,
+		container?: ContainerEntity,
 	) {
 		this.iRender = iRender;
 		this.parentDelivered = delivered;
@@ -119,7 +118,7 @@ export default class NeepObject {
 		if (parent) {
 			this.parent = parent;
 		}
-		this.container = container || this as any as Container;
+		this.container = container || this as any as ContainerEntity;
 	}
 	/** 结果渲染函数 */
 	protected _render: () => NeepNode[] = () => [];
@@ -261,12 +260,12 @@ export default class NeepObject {
 	draw() {
 		if (this.__executed_destroy) { return; }
 		this._cancelDrawMonitor?.();
-		this.callHook('beforeUpdate');
+		this.callHook('beforeDraw');
 		const result = exec(
 			c => c && this.requestDraw(),
 			() => this._draw(),
 		);
 		this._cancelDrawMonitor = result.stop;
-		complete(() => this.callHook('updated'));
+		complete(() => this.callHook('drawn'));
 	}
 }

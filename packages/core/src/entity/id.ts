@@ -1,6 +1,5 @@
-import { NativeNode } from '../type';
+import { NativeNode, MountedNode } from '../type';
 import { isProduction } from '../constant';
-import { MountedNode } from './draw';
 
 let ids = 0;
 const Nodes: {[key: number]: MountedNode} = {};

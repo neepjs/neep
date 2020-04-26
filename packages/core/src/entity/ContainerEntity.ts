@@ -4,18 +4,19 @@ import {
 	NativeNode,
 	NativeContainer,
 	Delivered,
+	MountedNode,
 } from '../type';
 import { Tags } from '../auxiliary';
 import { createMountedNode } from './id';
 import convert, { destroy } from './convert';
-import draw, { unmount, getNodes, MountedNode, setRefList } from './draw';
-import NeepObject, { setCompleteList, complete } from './Object';
+import draw, { unmount, getNodes, setRefList } from './draw';
+import EntityObject, { setCompleteList, complete } from './EntityObject';
 import { nextFrame, exec } from '../install';
 
 
-let awaitDraw = new Set<Container>();
+let awaitDraw = new Set<ContainerEntity>();
 let requested = false;
-function markDraw(c: Container) {
+function markDraw(c: ContainerEntity) {
 	awaitDraw.add(c);
 	if (requested) { return; }
 	requested = true;
@@ -27,18 +28,18 @@ function markDraw(c: Container) {
 	});
 }
 
-export default class Container extends NeepObject {
+export default class ContainerEntity extends EntityObject {
 	props: MountProps;
 	/** 组件树结构 */
 	content: (MountedNode | MountedNode[])[] = [];
 	_node: NativeNode | null = null;
 	_container: NativeContainer | null = null;
-	readonly rootContainer: Container = this;
+	readonly rootContainer: ContainerEntity = this;
 	constructor(
 		iRender: IRender,
 		props: MountProps,
 		children: any[],
-		parent?: NeepObject,
+		parent?: EntityObject,
 		delivered?: Delivered,
 	) {
 		super(iRender, parent, delivered);
@@ -166,20 +167,20 @@ export default class Container extends NeepObject {
 	drawSelf() {
 		if (!this.mounted) { return; }
 		if (this.destroyed) { return; }
-		this.callHook('beforeUpdate');
+		this.callHook('beforeDraw');
 		exec(
 			c => c && this.markDraw(this),
 			() => this._drawSelf(),
 		);
-		complete(() => this.callHook('updated'));
+		complete(() => this.callHook('drawn'));
 	}
 	/** 等待重画的项目 */
-	private _awaitDraw = new Set<NeepObject>();
+	private _awaitDraw = new Set<EntityObject>();
 	/** 自身是否需要重绘 */
 	private _needDraw = false;
 	/** 标记需要绘制的元素 */
 	markDraw(
-		nObject: NeepObject,
+		nObject: EntityObject,
 		remove = false,
 	) {
 		if (this.parent?.iRender === this.iRender) {
@@ -216,9 +217,9 @@ export default class Container extends NeepObject {
 		this.iRender.draw(container, node);
 		complete(() => this.callHook('drawn'));
 	}
-	private _containers = new Set<Container>();
+	private _containers = new Set<ContainerEntity>();
 	markDrawContainer(
-		container: Container,
+		container: ContainerEntity,
 		remove = false,
 	) {
 		if (remove) {

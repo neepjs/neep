@@ -1,16 +1,6 @@
 import { isValue } from '../auxiliary';
-import { IRender, NativeNode, NativeElement, Exposed, Ref } from '../type';
+import { IRender, NativeNode, NativeElement, Exposed, Ref, MountedNode, TreeNode } from '../type';
 import { createMountedNode, recoveryMountedNode } from './id';
-import { TreeNode } from './convert';
-
-/**
- * @description node / component / children 至少一个有效
- */
-export interface MountedNode extends TreeNode {
-	id: number;
-	parent?: this;
-	node: undefined | NativeNode;
-}
 
 let refList: (() => void)[] | undefined;
 export function setRefList(list?: (() => void)[]) {
