@@ -55,71 +55,45 @@ const input = `${ dir }/src/index.ts`;
 const external = ['monitorable', '@neep/core'];
 
 const typesOutput = `${ dir }/types.d.ts`;
-let config;
-if (isCore || isRender) {
-	config = [
-		{
-			input,
-			output: [ createOutput('cjs'), createOutput('mjs') ],
-			external,
-			plugins: [ resolve(), babel(), replace() ],
-		},
-
-		{
-			input,
-			output: [ createOutput('umd') ],
-			external,
-			plugins: [ resolve(), babel(), replace(false) ],
-		},
-
-		{
-			input,
-			output: [ createOutput('umd', true) ],
-			external,
-			plugins: [ resolve(), babel(), replace(true), terser() ],
-		},
-
-
-		{
-			input,
-			output: [ createOutput('esm') ],
-			external,
-			plugins: [ resolve(true), babel(), replace(false) ],
-		},
-		{
-			input,
-			output: [ createOutput('esm', true) ],
-			external,
-			plugins: [ resolve(true), babel(), replace(true), terser() ],
-		},
-	];
-} else {
-	config = [
-		{
-			input,
-			output: [
-				createOutput('cjs'),
-				createOutput('mjs'),
-				createOutput('umd'),
-			],
-			external,
-			plugins: [ resolve(), babel(), replace(false) ],
-		},
-
-		{
-			input,
-			output: [ createOutput('esm') ],
-			external,
-			plugins: [ resolve(true), babel(), replace(false) ],
-		},
-	];
-}
 
 export default [
+	{
+		input,
+		output: [ createOutput('cjs'), createOutput('mjs') ],
+		external,
+		plugins: [ resolve(), babel(), replace() ],
+	},
+
+	{
+		input,
+		output: [ createOutput('umd') ],
+		external,
+		plugins: [ resolve(), babel(), replace(false) ],
+	},
+	{
+		input,
+		output: [ createOutput('umd', true) ],
+		external,
+		plugins: [ resolve(), babel(), replace(true), terser() ],
+	},
+
+
+	{
+		input,
+		output: [ createOutput('esm') ],
+		external,
+		plugins: [ resolve(true), babel(), replace(false) ],
+	},
+	{
+		input,
+		output: [ createOutput('esm', true) ],
+		external,
+		plugins: [ resolve(true), babel(), replace(true), terser() ],
+	},
+
 	{
 		input,
 		output: { file: typesOutput, format: 'esm', banner },
 		plugins: [ dts() ],
 	},
-	...config,
 ];

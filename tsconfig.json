@@ -8,8 +8,7 @@
     "baseUrl": ".",
     "paths": {
       "@neep/core": ["packages/core/src"],
-      "@neep/web-render": ["packages/web-render/src"],
-      "@neep/devtools": ["packages/devtools/src"]
+      "@neep/web-render": ["packages/web-render/src"]
     },
     "sourceMap": true,
     "skipLibCheck": true,

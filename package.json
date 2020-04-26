@@ -4,10 +4,9 @@
   "main": "dist/neep.common.js",
   "module": "dist/neep.esm.js",
   "scripts": {
-    "build": "npm run build:core && npm run build:web-render && npm run build:devtools",
+    "build": "npm run build:core && npm run build:web-render",
     "build:core": "rollup -c script/rollup.js",
     "build:web-render": "NAME=web-render rollup -c script/rollup.js",
-    "build:devtools": "NAME=devtools rollup -c script/rollup.js",
     "test": "rollup -c script/test.rollup.js --watch",
     "lint": "eslint --ext .ts src",
     "lint-fix": "eslint --fix --ext .ts src"

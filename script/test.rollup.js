@@ -19,7 +19,6 @@ export default {
 				'monitorable': '../../monitorable.js/src/index.ts',
 				'@neep/core': './packages/core/src/index.ts',
 				'@neep/web-render': './packages/web-render/src/index.ts',
-				'@neep/devtools': './packages/devtools/src/index.ts',
 			},
 		}),
 		resolve(),
