@@ -45,7 +45,6 @@ function execSimple(
 		childNodes: children,
 		refresh(f) { nObject.refresh(f); },
 		emit: event.emit,
-		valueifyProp: valueify(props),
 	});
 	if (!isProduction) { getLabel(); }
 	const result = tag(props, context, auxiliary);
@@ -139,15 +138,17 @@ function exec(
 		delete props.ref;
 		delete props.slot;
 		delete props.key;
-		const newDelivered = Object.create(delivered);
-		updateProps(newDelivered, props || {}, {}, true);
 		return {
 			...node,
 			tag,
-			$__neep__delivered: newDelivered,
 			children: node.children.map(n => exec(
 				nObject,
-				newDelivered,
+				updateProps(
+					Object.create(delivered),
+					props || {},
+					{},
+					true,
+				),
 				n,
 				slots,
 				components,
@@ -177,7 +178,7 @@ function exec(
 				),
 			);
 		}
-		return { ...node, $__neep__delivered: delivered, children, tag };
+		return { ...node, children, tag };
 
 	}
 	if (tag === Tags.Slot) {

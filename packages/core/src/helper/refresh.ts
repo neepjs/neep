@@ -1,4 +1,4 @@
-import { EntityObject } from '../entity';
+import EntityObject from '../entity/EntityObject';
 
 let delayedRefresh = 0;
 const objectSet = new Set<EntityObject>();

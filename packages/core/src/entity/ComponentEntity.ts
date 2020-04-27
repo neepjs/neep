@@ -48,7 +48,6 @@ function createContext<
 		get childNodes() { return nObject.childNodes; },
 		get emit() { return nObject.emit; },
 		refresh(f) { nObject.refresh(f); },
-		valueifyProp: valueify(nObject.props),
 	}, nObject.exposed);
 }
 

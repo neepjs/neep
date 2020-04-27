@@ -1,12 +1,10 @@
 import './jsx.d.ts';
 import { Auxiliary, Tags } from './auxiliary';
 import * as symbols from './symbols';
-import { ValueifyProp } from 'monitorable';
 
-import * as entity from './entity';
-export type EntityObject = InstanceType<typeof entity.EntityObject>;
-export type ComponentEntity = InstanceType<typeof entity.ComponentEntity>;
-export type ContainerEntity = InstanceType<typeof entity.ContainerEntity>;
+export type EntityObject = InstanceType<typeof import('./entity/EntityObject').default>;
+export type ComponentEntity = InstanceType<typeof import('./entity/ComponentEntity').default>;
+export type ContainerEntity = InstanceType<typeof import('./entity/ContainerEntity').default>;
 
 export interface Devtools {
 	renderHook(container: ContainerEntity): void;
@@ -85,7 +83,6 @@ export interface Context<P = any> {
 	childNodes: any[];
 	refresh(fn?: () => void): void;
 	emit: Emit,
-	valueifyProp: ValueifyProp<P>,
 }
 
 export interface Entity {
@@ -184,7 +181,6 @@ export interface NeepElement {
 	inserted?: boolean;
 	/** 标注 */
 	label?: [string, string];
-	$__neep__delivered?: Delivered;
 }
 
 export interface TreeNode
@@ -196,6 +192,7 @@ export interface TreeNode
 	/** 标签名 */
 	tag: Tag;
 	children: (this | this[])[];
+	delivered?: Delivered;
 	mounted?: boolean;
 	component?: EntityObject;
 }

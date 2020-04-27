@@ -1,5 +1,5 @@
 import { getRender } from '../install';
-import { NeepNode, NeepElement, Tag, TreeNode } from '../type';
+import { NeepNode, NeepElement, TreeNode, Delivered } from '../type';
 import { isElement } from '../auxiliary';
 import { isElementSymbol, typeSymbol } from '../symbols';
 import { recursive2iterable } from './recursive';
@@ -38,6 +38,7 @@ export function destroy(
 
 function createItem(
 	nObject: EntityObject,
+	delivered: Delivered,
 	source: NeepNode,
 ): TreeNode {
 	if (!source) { return { tag: null, children: [] }; }
@@ -47,7 +48,7 @@ function createItem(
 		if (tag[typeSymbol] === 'simple') {
 			return {
 				...source,
-				children: convert(nObject, source.children),
+				children: createAll(nObject, delivered, source.children),
 				component: undefined,
 			};
 		}
@@ -58,7 +59,7 @@ function createItem(
 				source.props || {},
 				source.children,
 				nObject,
-				source.$__neep__delivered,
+				delivered,
 			),
 		};
 	}
@@ -73,20 +74,38 @@ function createItem(
 				source.props || {},
 				source.children,
 				nObject,
-				source.$__neep__delivered,
+				delivered,
 			),
 		};
 	}
 	if (ltag === 'neep:value') {
 		return { ...source, children: [] };
 	}
+	if (ltag === 'neep:deliver') {
+		const props = { ...source.props };
+		delete props.ref;
+		delete props.slot;
+		delete props.key;
+		const newDelivered = updateProps(
+			Object.create(delivered),
+			props,
+			{},
+			true,
+		);
+		return {
+			...source,
+			delivered: newDelivered,
+			children: createAll(nObject, newDelivered, source.children),
+		};
+	}
+	
 	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
 		return {
 			...source,
-			children: convert(nObject, source.children),
+			children: createAll(nObject, delivered, source.children),
 		};
 	}
-	return {...source, children: convert(nObject, source.children) };
+	return {...source, children: createAll(nObject, delivered, source.children) };
 }
 
 /**
@@ -97,6 +116,7 @@ function createItem(
  */
 function updateList(
 	nObject: EntityObject,
+	delivered: Delivered,
 	source: any[],
 	tree: TreeNode | TreeNode[],
 ): TreeNode[] {
@@ -109,10 +129,10 @@ function updateList(
 			it.tag === node.tag && it.key === node.key
 		);
 		if (index >= 0) {
-			newList.push(updateItem(nObject, node, tree[index]));
+			newList.push(updateItem(nObject, delivered, node, tree[index]));
 			tree.splice(index, 1);
 		} else {
-			newList.push(createItem(nObject, node));
+			newList.push(createItem(nObject, delivered, node));
 		}
 	}
 	destroy(tree);
@@ -127,22 +147,23 @@ function updateList(
  */
 function updateItem(
 	nObject: EntityObject,
+	delivered: Delivered,
 	source: NeepNode,
 	tree?: TreeNode | TreeNode[],
 ): TreeNode {
 	if (!tree) {
-		return createItem(nObject, source);
+		return createItem(nObject, delivered, source);
 	}
 	if (!source) {
 		destroy(tree);
 		return { tag: null, children: [] };
 	}
 	if (Array.isArray(tree)) {
-		if (!tree.length) { return createItem(nObject, source); }
+		if (!tree.length) { return createItem(nObject, delivered, source); }
 		const index = tree.findIndex(it => it.tag === source.tag);
 		if (index < 0) {
 			destroy(tree);
-			return createItem(nObject, source);
+			return createItem(nObject, delivered, source);
 		}
 		const all = tree;
 		[tree] = tree.splice(index, 1);
@@ -151,34 +172,35 @@ function updateItem(
 	const { tag } = source;
 	if (tag !== tree.tag) {
 		destroy(tree);
-		return createItem(nObject, source);
+		return createItem(nObject, delivered, source);
 	}
 	if (!tag) { return { tag: null, children: [] }; }
 	if (typeof tag !== 'string') {
 		if (tag[typeSymbol] === 'simple') {
 			return {
 				...source,
-				children: convert(
+				children: [...updateAll(
 					nObject,
+					delivered,
 					source.children,
 					tree.children,
-				),
+				)],
 				component: undefined,
 			};
 		}
 		const { component } = tree;
-		if (!component) { return createItem(nObject, source); }
+		if (!component) { return createItem(nObject, delivered, source); }
 		component.update(source.props || {}, source.children);
 		return { ...source, children: [], component };
 	}
 	const ltag = tag.toLowerCase();
 	if (ltag === 'neep:container') {
 		const { component } = tree;
-		if (!component) { return createItem(nObject, source); }
+		if (!component) { return createItem(nObject, delivered, source); }
 		const type = source?.props?.type;
 		const iRender = type ? getRender(type) : nObject.iRender;
 		if (iRender !== component.iRender) {
-			return createItem(nObject, source);
+			return createItem(nObject, delivered, source);
 		}
 		component.update(source.props || {}, source.children);
 		return { ...source, children: [], component };
@@ -186,63 +208,81 @@ function updateItem(
 	if (ltag === 'neep:value') {
 		return { ...source, children: [] };
 	}
-	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
-		let delivered: any;
-		if (ltag === 'neep:deliver') {
-			const props = { ...source.props };
-			delete props.ref;
-			delete props.slot;
-			delete props.key;
-			delivered = updateProps(
-				tree.$__neep__delivered,
-				props,
-				tree.props,
-				true,
-			);
-		}
+	if (ltag === 'neep:deliver') {
+		const props = { ...source.props };
+		delete props.ref;
+		delete props.slot;
+		delete props.key;
+		const newDelivered = updateProps(
+			tree.delivered || Object.create(delivered),
+			props,
+			tree.props,
+			true,
+		);
 		return {
 			...source,
-			$__neep__delivered: delivered,
-			children: convert(
+			delivered: newDelivered,
+			children: [...updateAll(
 				nObject,
+				delivered,
 				source.children,
 				tree.children,
-			),
+			)],
+		};
+	}
+	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
+		return {
+			...source,
+			children: [...updateAll(
+				nObject,
+				delivered,
+				source.children,
+				tree.children,
+			)],
 		};
 	}
 	return {
 		...source,
-		children: convert(nObject, source.children, tree.children),
+		children: [...updateAll(nObject,
+			delivered,
+			source.children,
+			tree.children
+		)],
 	};
 }
 
 
 function createAll(
 	nObject: EntityObject,
-	source: any[],
+	delivered: Delivered,
+	source: any,
 ): (TreeNode | TreeNode[])[] {
+	if (!Array.isArray(source)) { source = [source]; }
 	if (!source.length) { return []; }
 	return (source as any[]).map(item => {
 		if (!Array.isArray(item)) {
-			return createItem(nObject, toElement(item));
+			return createItem(nObject, delivered, toElement(item));
 		}
 		return [...recursive2iterable(item)]
-			.map(it => createItem(nObject, toElement(it)));
+			.map(it => createItem(nObject, delivered, toElement(it)));
 	});
 }
 function *updateAll(
 	nObject: EntityObject,
-	source: any[],
+	delivered: Delivered,
+	source: any,
 	tree: (TreeNode | TreeNode[])[],
 ): Iterable<TreeNode | TreeNode[]> {
+	if (!Array.isArray(source)) { source = [source]; }
+
 	let index = 0;
 	let length = Math.min(source.length, source.length);
 	for (; index < length; index++) {
 		const src = source[index];
 		if (Array.isArray(src)) {
-			yield updateList(nObject, src, tree[index]);
+			yield updateList(nObject, delivered, src, tree[index]);
 		} else {
-			yield updateItem(nObject, toElement(src), tree[index]);
+			yield updateItem(nObject, delivered, toElement(src), tree[index]);
 		}
 	}
 	length = Math.max(source.length, source.length);
@@ -258,9 +298,9 @@ function *updateAll(
 			const src = toElement(source[index]);
 			if (Array.isArray(src)) {
 				yield [...recursive2iterable(src)]
-					.map(it => createItem(nObject, it));
+					.map(it => createItem(nObject, delivered, it));
 			} else {
-				yield createItem(nObject, src);
+				yield createItem(nObject, delivered, src);
 			}
 		}
 	}
@@ -278,11 +318,10 @@ function convert(
 	source: any,
 	tree?: (TreeNode | TreeNode[])[],
 ): (TreeNode | TreeNode[])[] {
-	if (!Array.isArray(source)) { source = [source]; }
 	if (!tree) {
-		return createAll(nObject, source);
+		return createAll(nObject, nObject.delivered, source);
 	}
-	return [...updateAll(nObject, source, tree)];
+	return [...updateAll(nObject, nObject.delivered, source, tree)];
 }
 
 

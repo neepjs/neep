@@ -7,7 +7,7 @@ import {
 import { isElement, createElement } from './auxiliary';
 import { isProduction } from './constant';
 import { devtools, getRender } from './install';
-import { ContainerEntity } from './entity';
+import ContainerEntity from './entity/ContainerEntity';
 
 
 export default function render(
