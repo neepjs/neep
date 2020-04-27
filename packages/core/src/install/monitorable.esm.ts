@@ -7,8 +7,9 @@ export let valueify: typeof import('monitorable').valueify;
 export let markRead: typeof import('monitorable').markRead;
 export let markChange: typeof import('monitorable').markChange;
 export let safeify: typeof import('monitorable').safeify;
+export let asValue: typeof import('monitorable').asValue;
 export let exec: typeof import('monitorable').exec;
-export let createExecutable: typeof import('monitorable').createExecutable;
+export let monitor: typeof import('monitorable').monitor;
 
 export default function installMonitorable(
 	api?: typeof import('monitorable'),
@@ -23,6 +24,7 @@ export default function installMonitorable(
 	markRead = api.markRead;
 	markChange = api.markChange;
 	safeify = api.safeify;
+	asValue = api.asValue;
 	exec = api.exec;
-	createExecutable = api.createExecutable;
+	monitor = api.monitor;
 }

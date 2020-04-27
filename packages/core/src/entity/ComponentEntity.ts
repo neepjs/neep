@@ -1,6 +1,6 @@
 import { Component, NeepNode, Slots, Context, Delivered, NativeShadow, TreeNode, MountedNode } from '../type';
 import auxiliary from '../auxiliary';
-import { exec, createExecutable, valueify, encase } from '../install';
+import { exec, monitor, encase } from '../install';
 import { setCurrent } from '../helper/current';
 import convert, { destroy } from './convert';
 import draw, { unmount, getNodes } from './draw';
@@ -69,7 +69,7 @@ function initRender<R extends object = object>(
 	), { resultOnly: true });
 	if (typeof result === 'function') {
 		// 响应式
-		const render = createExecutable(
+		const render = monitor(
 			refresh,
 			() => normalize(nObject, (result as () => NeepNode)()),
 		);
@@ -80,7 +80,7 @@ function initRender<R extends object = object>(
 		};
 	}
 
-	const render = createExecutable(
+	const render = monitor(
 		refresh,
 		() => normalize(nObject, setCurrent(
 			() => component(props, context, auxiliary),
