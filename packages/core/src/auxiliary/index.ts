@@ -34,6 +34,8 @@ const auxiliary: Auxiliary = {
 	get isValue() { return State.isValue; },
 	get encase() { return State.encase; },
 	get recover() { return State.recover; },
+	get valueify() { return State.valueify; },
+	get asValue() { return State.asValue; },
 };
 
 export function setAuxiliary<T>(

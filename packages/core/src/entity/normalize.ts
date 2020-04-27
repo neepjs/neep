@@ -28,7 +28,7 @@ function execSimple(
 	tag: Component,
 	components: Record<string, Component>[],
 	children: any[],
-) {
+): NeepElement {
 	const { iRender } = nObject;
 	const slotMap = Object.create(null);
 	getSlots(iRender, children, slotMap);
@@ -50,19 +50,28 @@ function execSimple(
 	const result = tag(props, context, auxiliary);
 	let label: [string, string] | undefined;
 	if (!isProduction) { label = getLabel(); }
-	const nodes = exec(nObject, delivered, renderNode(
-		iRender,
-		result,
-		context,
-		tag[renderSymbol],
-	), slots, getComponents(...components, tag[componentsSymbol]));
+	const nodes = exec(
+		nObject,
+		delivered,
+		renderNode(
+			iRender,
+			result,
+			context,
+			tag[renderSymbol],
+		),
+		slots,
+		getComponents(...components, tag[componentsSymbol]),
+		false,
+	) as NeepNode[];
 
 	return {
 		...node,
+		// tag: 'Neep:Simple',
 		tag,
+		// component: tag,
 		children: Array.isArray(nodes) ? nodes : [nodes],
 		label,
-	} as NeepElement;
+	};
 }
 
 function execSlot(
@@ -117,20 +126,14 @@ function findComponent(
 	return globalComponents[tag] || tag;
 }
 
-function exec(
+function getElement(
 	nObject: ComponentEntity,
 	delivered: Delivered,
-	node: any,
+	node: NeepElement,
 	slots: Slots,
 	components: Record<string, Component>[],
-	native = false,
-): any {
-	if (Array.isArray(node)) {
-		return node.map(n =>
-			exec(nObject, delivered, n, slots, components, native)
-		);
-	}
-	if (!isElement(node)) { return node; }
+	native: boolean,
+): NeepElement {
 	const { inserted, args = [{}] } = node;
 	let tag = findComponent(node.tag, components);
 	if (tag === Tags.Deliver) {
@@ -197,6 +200,30 @@ function exec(
 		args,
 		native,
 	);
+
+}
+function exec(
+	nObject: ComponentEntity,
+	delivered: Delivered,
+	node: any,
+	slots: Slots,
+	components: Record<string, Component>[],
+	native: boolean,
+): any {
+	if (Array.isArray(node)) {
+		return node.map(n =>
+			exec(nObject, delivered, n, slots, components, native)
+		);
+	}
+	if (!isElement(node)) { return node; }
+	return getElement(
+		nObject, 
+		delivered,
+		node,
+		slots,
+		components,
+		native,
+	);
 }
 
 
@@ -209,7 +236,7 @@ function renderNode<R extends object = object>(
 	if (Array.isArray(node)) { return node; }
 	if (isElement(node)) { return [node]; }
 	if (node === undefined || node === null) {
-		return [{ [isElementSymbol]: true, tag: null, children: [] }];
+		return [{ [isElementSymbol]: true, tag: null, key: undefined, children: [] }];
 	}
 	if (!iRender.isNode(node)
 		&& node && typeof node === 'object' && render
@@ -218,10 +245,11 @@ function renderNode<R extends object = object>(
 	}
 	if (isElement(node)) { return [node]; }
 	if (node === undefined || node === null) {
-		return [{ [isElementSymbol]: true, tag: null, children: [] }];
+		return [{ [isElementSymbol]: true, tag: null, key: undefined, children: [] }];
 	}
 	return [{
 		[isElementSymbol]: true,
+		key: undefined,
 		tag: Tags.Value,
 		value: node,
 		children: [],

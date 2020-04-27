@@ -41,9 +41,9 @@ function createItem(
 	delivered: Delivered,
 	source: NeepNode,
 ): TreeNode {
-	if (!source) { return { tag: null, children: [] }; }
+	if (!source) { return { tag: null, key: undefined, children: [] }; }
 	const { tag } = source;
-	if (!tag) { return { tag: null, children: [] }; }
+	if (!tag) { return { tag: null, key: undefined, children: [] }; }
 	if (typeof tag !== 'string') {
 		if (tag[typeSymbol] === 'simple') {
 			return {
@@ -156,7 +156,7 @@ function updateItem(
 	}
 	if (!source) {
 		destroy(tree);
-		return { tag: null, children: [] };
+		return { tag: null, key: undefined, children: [] };
 	}
 	if (Array.isArray(tree)) {
 		if (!tree.length) { return createItem(nObject, delivered, source); }
@@ -174,7 +174,7 @@ function updateItem(
 		destroy(tree);
 		return createItem(nObject, delivered, source);
 	}
-	if (!tag) { return { tag: null, children: [] }; }
+	if (!tag) { return { tag: null, key: undefined, children: [] }; }
 	if (typeof tag !== 'string') {
 		if (tag[typeSymbol] === 'simple') {
 			return {

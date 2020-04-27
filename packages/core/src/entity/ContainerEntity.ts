@@ -90,6 +90,7 @@ export default class ContainerEntity extends EntityObject {
 		}
 		this.tree = [createMountedNode({
 			tag: Tags.Value,
+			key: undefined,
 			component: undefined,
 			node,
 			value: node,

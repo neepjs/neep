@@ -170,7 +170,7 @@ export interface NeepElement {
 	/** 插槽 */
 	slot?: string;
 	/** 列表对比 key */
-	key?: any;
+	key: any;
 	/** Value 类型值 */
 	value?: any;
 	/** Slot 相关的渲染函数 */
@@ -186,11 +186,9 @@ export interface NeepElement {
 export interface TreeNode
 	extends Omit<
 		NeepElement,
-		'children' | 'tag' | typeof symbols.isElementSymbol
+		'children' | typeof symbols.isElementSymbol
 	>
 {
-	/** 标签名 */
-	tag: Tag;
 	children: (this | this[])[];
 	delivered?: Delivered;
 	mounted?: boolean;
