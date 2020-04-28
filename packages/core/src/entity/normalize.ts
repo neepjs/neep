@@ -29,6 +29,7 @@ function execSimple(
 	components: Record<string, Component>[],
 	children: any[],
 ): NeepElement {
+	if (node.execed) { return node; }
 	const { iRender } = nObject;
 	const slotMap = Object.create(null);
 	getSlots(iRender, children, slotMap);
@@ -66,9 +67,8 @@ function execSimple(
 
 	return {
 		...node,
-		// tag: 'Neep:Simple',
 		tag,
-		// component: tag,
+		execed: true,
 		children: Array.isArray(nodes) ? nodes : [nodes],
 		label,
 	};

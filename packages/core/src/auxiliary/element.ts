@@ -80,7 +80,7 @@ export function elements(
 	}
 	if (typeof tag !== 'function') { return [node]; }
 	if (tag[typeSymbol] !== 'simple') { return [node]; }
-	const { simple } = opt;
+	const { simple = true } = opt;
 	if (!simple) { return [node]; }
 	if (Array.isArray(simple)) {
 		if (simple.includes(tag)) { return [node]; }

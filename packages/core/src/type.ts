@@ -161,6 +161,7 @@ export interface NeepElement {
 	[symbols.isElementSymbol]: true,
 	/** 标签名 */
 	tag: Tag;
+	execed?: boolean;
 	/** 属性 */
 	props?: { [key: string]: any; };
 	/** 子节点 */
