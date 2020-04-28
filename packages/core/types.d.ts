@@ -1,11 +1,160 @@
 /*!
- * Neep v0.1.0-alpha.9
+ * Neep v0.1.0-alpha.10
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
 import * as _mp_rt1_monitorable__ from 'monitorable';
-import { value, computed, isValue, encase, recover, valueify, Value as Value$1, WatchCallback, ValueifyProp } from 'monitorable';
-export { computed, encase, isValue, recover, value, valueify } from 'monitorable';
+import { value, computed, isValue, encase, recover, valueify, asValue, Value as Value$1, WatchCallback } from 'monitorable';
+export { asValue, computed, encase, isValue, recover, value, valueify } from 'monitorable';
+
+interface AddEvent<T extends Record<string, any[]>> {
+    <N extends keyof T>(entName: N, listener: (...p: T[N]) => void): void;
+}
+declare class EventEmitter<T extends Record<string, any[]> = Record<string, any[]>> {
+    static update<T extends Record<string, any[]>>(emitter: EventEmitter<T>, events: any): (() => void)[];
+    static updateInProps<T extends Record<string, any[]>>(emitter: EventEmitter<T>, props: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
+    private readonly _names;
+    private readonly _cancelHandles;
+    readonly names: (keyof T)[];
+    readonly emit: Emit<T>;
+    readonly on: On<T>;
+    constructor();
+    updateHandles(newHandles: (() => void)[]): (() => void)[];
+    update(list: any): (() => void)[];
+    updateInProps(list: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
+}
+
+declare class EntityObject {
+    readonly events: EventEmitter<Record<string, any[]>>;
+    readonly emit: Emit<Record<string, any[]>>;
+    readonly on: On<Record<string, any[]>>;
+    readonly eventCancelHandles: Set<() => void>;
+    readonly iRender: IRender;
+    readonly components: Record<string, Component>;
+    readonly config: Record<string, any>;
+    /** 接受到的呈递值 */
+    readonly parentDelivered: Delivered;
+    /** 向后代呈递的值 */
+    readonly delivered: Delivered;
+    /** 组件暴露值 */
+    readonly exposed: Exposed;
+    /** 组件实体 */
+    readonly entity: Entity;
+    /** 父组件 */
+    parent?: EntityObject;
+    /** 原生组件 */
+    native: NativeComponent | undefined;
+    /** 状态 */
+    created: boolean;
+    destroyed: boolean;
+    mounted: boolean;
+    unmounted: boolean;
+    /**  子组件的暴露值 */
+    readonly children: Set<Exposed>;
+    /** The subtree mounted on the parent node */
+    tree: (MountedNode | MountedNode[])[];
+    readonly container: ContainerEntity;
+    constructor(iRender: IRender, parent?: EntityObject, delivered?: Delivered, container?: ContainerEntity);
+    /** 结果渲染函数 */
+    protected _render: () => NeepNode[];
+    readonly canRefresh: boolean;
+    protected readonly needRefresh: boolean;
+    /** 是否需要继续刷新 */
+    protected _needRefresh: boolean;
+    private _delayedRefresh;
+    /** 是否为刷新中 */
+    private _refreshing;
+    /** 渲染结果 */
+    protected _nodes: (TreeNode | TreeNode[])[];
+    protected requestDraw(): void;
+    asyncRefresh<T>(f: () => PromiseLike<T> | T): Promise<T>;
+    refresh(): void;
+    refresh<T>(f: () => T, async?: false): T;
+    refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
+    refresh<T>(f: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T;
+    refresh<T>(f?: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T | undefined;
+    callHook<H extends Hooks>(id: H): void;
+    callHook(id: string): void;
+    childNodes: any[];
+    /** 更新属性及子代 */
+    protected _update(props: object, children: any[]): void;
+    /** 更新属性及子代 */
+    update(props: object, children: any[]): void;
+    private __executed_destroy;
+    private __executed_mount;
+    private __executed_mounted;
+    protected _destroy(): void;
+    destroy(): void;
+    protected _mount(): void;
+    mount(): void;
+    protected _unmount(): void;
+    unmount(): void;
+    _draw(): void;
+    _cancelDrawMonitor?: () => void;
+    draw(): void;
+}
+
+declare class ContainerEntity extends EntityObject {
+    props: MountProps;
+    /** 组件树结构 */
+    content: (MountedNode | MountedNode[])[];
+    _node: NativeNode | null;
+    _container: NativeContainer | null;
+    readonly rootContainer: ContainerEntity;
+    constructor(iRender: IRender, props: MountProps, children: any[], parent?: EntityObject, delivered?: Delivered);
+    _drawChildren: boolean;
+    _drawContainer: boolean;
+    setChildren(children: any[]): void;
+    setProps(props: MountProps): void;
+    /** 更新属性及子代 */
+    update(props: MountProps, children: any[]): void;
+    requestDraw(): void;
+    _mount(): void;
+    _destroy(): void;
+    _unmount(): void;
+    _draw(): void;
+    _drawSelf(): void;
+    drawSelf(): void;
+    /** 等待重画的项目 */
+    private _awaitDraw;
+    /** 自身是否需要重绘 */
+    private _needDraw;
+    /** 标记需要绘制的元素 */
+    markDraw(nObject: EntityObject, remove?: boolean): void;
+    drawContainer(): void;
+    private _containers;
+    markDrawContainer(container: ContainerEntity, remove?: boolean): void;
+    drawAll(): void;
+}
+
+declare class ComponentEntity<P extends object = object, R extends object = object> extends EntityObject {
+    /** 组件函数 */
+    readonly component: Component<P, R>;
+    /** 组件属性 */
+    readonly props: P;
+    /** 组件槽 */
+    readonly slots: Slots;
+    /** 结果渲染函数 */
+    private readonly _stopRender;
+    /** 原生子代 */
+    nativeNodes: (TreeNode | TreeNode[])[] | undefined;
+    shadowTree: (MountedNode | MountedNode[])[];
+    nativeTree: (MountedNode | MountedNode[])[];
+    private readonly _shadow;
+    /** 组件上下文 */
+    readonly context: Context;
+    readonly parent: EntityObject;
+    /** 结果渲染函数 */
+    constructor(component: Component<P, R>, props: object, children: any[], parent: EntityObject, delivered?: Delivered);
+    /** 更新属性及子代 */
+    _update(props: object, children: any[]): void;
+    _destroy(): void;
+    /** 刷新 */
+    requestDraw(): void;
+    _draw(): void;
+    _mount(): void;
+    _unmount(): void;
+}
 
 interface Attributes {
 	slot?: string;
@@ -112,6 +261,7 @@ declare const State_isValue: typeof isValue;
 declare const State_encase: typeof encase;
 declare const State_recover: typeof recover;
 declare const State_valueify: typeof valueify;
+declare const State_asValue: typeof asValue;
 declare namespace State {
   export {
     State_value as value,
@@ -120,6 +270,7 @@ declare namespace State {
     State_encase as encase,
     State_recover as recover,
     State_valueify as valueify,
+    State_asValue as asValue,
   };
 }
 
@@ -288,6 +439,12 @@ declare namespace symbols {
   };
 }
 
+declare type EntityObject$1 = InstanceType<typeof EntityObject>;
+declare type ComponentEntity$1 = InstanceType<typeof ComponentEntity>;
+declare type ContainerEntity$1 = InstanceType<typeof ContainerEntity>;
+interface Devtools {
+    renderHook(container: ContainerEntity$1): void;
+}
 /** 全局钩子 */
 interface Hook {
     (nObject: Entity): void;
@@ -352,7 +509,6 @@ interface Context<P = any> {
     childNodes: any[];
     refresh(fn?: () => void): void;
     emit: Emit;
-    valueifyProp: ValueifyProp<P>;
 }
 interface Entity {
     readonly exposed: Exposed;
@@ -407,6 +563,7 @@ interface NeepElement {
     [symbols.isElementSymbol]: true;
     /** 标签名 */
     tag: Tag;
+    execed?: boolean;
     /** 属性 */
     props?: {
         [key: string]: any;
@@ -418,7 +575,7 @@ interface NeepElement {
     /** 插槽 */
     slot?: string;
     /** 列表对比 key */
-    key?: any;
+    key: any;
     /** Value 类型值 */
     value?: any;
     /** Slot 相关的渲染函数 */
@@ -429,7 +586,20 @@ interface NeepElement {
     inserted?: boolean;
     /** 标注 */
     label?: [string, string];
-    $__neep__delivered?: Delivered;
+}
+interface TreeNode extends Omit<NeepElement, 'children' | typeof isElementSymbol> {
+    children: (this | this[])[];
+    delivered?: Delivered;
+    mounted?: boolean;
+    component?: EntityObject$1;
+}
+/**
+ * @description node / component / children 至少一个有效
+ */
+interface MountedNode extends TreeNode {
+    id: number;
+    parent?: this;
+    node: undefined | NativeNode;
 }
 declare const NativeElementSymbol: unique symbol;
 declare const NativeTextSymbol: unique symbol;
@@ -486,27 +656,10 @@ interface IRender {
     remove(n: NativeNode): void;
 }
 
-interface AddEvent<T extends Record<string, any[]>> {
-    <N extends keyof T>(entName: N, listener: (...p: T[N]) => void): void;
-}
-declare class EventEmitter<T extends Record<string, any[]> = Record<string, any[]>> {
-    static update<T extends Record<string, any[]>>(emitter: EventEmitter<T>, events: any): (() => void)[];
-    static updateInProps<T extends Record<string, any[]>>(emitter: EventEmitter<T>, props: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
-    private readonly _names;
-    private readonly _cancelHandles;
-    readonly names: (keyof T)[];
-    readonly emit: Emit<T>;
-    readonly on: On<T>;
-    constructor();
-    updateHandles(newHandles: (() => void)[]): (() => void)[];
-    update(list: any): (() => void)[];
-    updateInProps(list: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
-}
-
 interface InstallOptions {
     monitorable?: typeof _mp_rt1_monitorable__;
     render?: IRender;
-    devtools?: any;
+    devtools?: Devtools;
 }
 declare function install(apis: InstallOptions): void;
 
@@ -514,6 +667,8 @@ declare class NeepError extends Error {
     readonly tag: string;
     constructor(message: string, tag?: string);
 }
+
+declare function render(e?: NeepElement | Component, p?: MountProps): RootExposed;
 
 declare function register(name: string, component: Component): void;
 
@@ -523,17 +678,15 @@ declare function lazy<P extends object = object, C extends Component<P, any> = C
     loading: boolean;
 }, any>): Component<P>;
 
-declare function refresh<T>(f: () => T, async?: false): T;
-declare function refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
-declare function refresh<T>(f: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T;
-
-declare function render(e?: NeepElement | Component, p?: MountProps): RootExposed;
-
 /** 当前正在执行的对象 */
 declare let current: Entity | undefined;
 declare function checkCurrent(name: string, initOnly?: boolean): Entity;
 
 declare function addContextConstructor(constructor: ContextConstructor): void;
+
+declare function refresh<T>(f: () => T, async?: false): T;
+declare function refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
+declare function refresh<T>(f: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T;
 
 /** 组件标记函数 */
 interface Mark {
@@ -569,4 +722,4 @@ declare function setHook(id: string, hook: Hook, entity?: Entity): () => void;
 declare function callHook<H extends Hooks>(id: H, exposed: Entity): void;
 declare function callHook(id: string, exposed: Entity): void;
 
-export { Auxiliary, Component, Container, Context, ContextConstructor, Deliver, Delivered, Emit, Entity, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Ref, Render, RootExposed, ScopeSlot, Slot, SlotFn, SlotRender, Slots, Tag, Tags, Template, Value, addContextConstructor, callHook, checkCurrent, componentsSymbol, configSymbol, create, createElement, current, defineAuxiliary, deliver, elementIteratorOptions, elements, expose, hook, install, isElement, isElementSymbol, isProduction, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, refresh, register, render, renderSymbol, setAuxiliary, setHook, typeSymbol, useValue, version, watch };
+export { Auxiliary, Component, ComponentEntity$1 as ComponentEntity, Container, ContainerEntity$1 as ContainerEntity, Context, ContextConstructor, Deliver, Delivered, Devtools, Emit, Entity, EntityObject$1 as EntityObject, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, MountedNode, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Ref, Render, RootExposed, ScopeSlot, Slot, SlotFn, SlotRender, Slots, Tag, Tags, Template, TreeNode, Value, addContextConstructor, callHook, checkCurrent, componentsSymbol, configSymbol, create, createElement, current, defineAuxiliary, deliver, elementIteratorOptions, elements, expose, hook, install, isElement, isElementSymbol, isProduction, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, refresh, register, render, renderSymbol, setAuxiliary, setHook, typeSymbol, useValue, version, watch };
