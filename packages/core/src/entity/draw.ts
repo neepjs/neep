@@ -69,7 +69,7 @@ export function unmount(iRender: IRender, tree: MountedNodes): void {
 	recoveryMountedNode(tree);
 	if (node) {
 		setRef(ref, node, true);
-		iRender.remove(node);
+		iRender.removeNode(node);
 		return;
 	}
 	if (component) {
@@ -88,10 +88,10 @@ function replace<T extends MountedNode | MountedNode[]>(
 ): T {
 	const next = getFirstNode(oldTree);
 	if (!next) { return newTree; }
-	const parent = iRender.parent(next);
+	const parent = iRender.getParent(next);
 	if (!parent) { return newTree; }
 	for (const it of getNodes(newTree)) {
-		iRender.insert(parent, it, next);
+		iRender.insertNode(parent, it, next);
 	}
 	unmount(iRender, oldTree);
 	return newTree;
@@ -131,9 +131,9 @@ function updateList(
 	unmount(iRender, list);
 	tree = tree.filter(t => mountedMap.has(t));
 	const last = getLastNode(tree[tree.length - 1]);
-	const parent = iRender.parent(last);
+	const parent = iRender.getParent(last);
 	if (!parent) { return newList; }
-	let next = iRender.next(last);
+	let next = iRender.nextNode(last);
 	// 调整次序
 	for(let i = newList.length - 1; i >= 0; i--) {
 		const item = newList[i];
@@ -144,7 +144,7 @@ function updateList(
 			}
 		} else {
 			for (const it of getNodes(item)) {
-				iRender.insert(parent, it, next);
+				iRender.insertNode(parent, it, next);
 			}
 		}
 		next = getFirstNode(item) || next;
@@ -183,8 +183,8 @@ function updateAll(
 	if (source.length > length) {
 		// 创建多余项
 		const last = getLastNode(list[list.length - 1]);
-		const parent = iRender.parent(last);
-		const next = iRender.next(last);
+		const parent = iRender.getParent(last);
+		const next = iRender.nextNode(last);
 		for (; index < length; index++) {
 			const src = source[index];
 			const item = Array.isArray(src)
@@ -193,7 +193,7 @@ function updateAll(
 			list.push(item);
 			if (!parent) { continue; }
 			for (const it of getNodes(item)) {
-				iRender.insert(parent, it, next);
+				iRender.insertNode(parent, it, next);
 			}
 		}
 	}
@@ -279,7 +279,7 @@ function updateItem(
 		}, tree.id);
 	}
 	const { node } = tree;
-	iRender.update(
+	iRender.updateProps(
 		node as NativeElement,
 		source.props || {},
 	);
@@ -299,7 +299,7 @@ function updateItem(
 	if (source.children.length && !tree.children.length) {
 		const children = createAll(iRender, source.children);
 		for (const it of getNodes(children)) {
-			iRender.insert(node as NativeElement, it);
+			iRender.insertNode(node as NativeElement, it);
 		}
 		return createMountedNode({
 			...tree,
@@ -343,14 +343,14 @@ function createValue(
 		|| type === 'symbol'
 		|| value instanceof RegExp
 	) {
-		node = iRender.text(String(value));
+		node = iRender.createText(String(value));
 	} else if (value instanceof Date) {
-		node = iRender.text(value.toISOString());
+		node = iRender.createText(value.toISOString());
 	} else if (type === 'object' && value) {
-		node = iRender.text(String(value));
+		node = iRender.createText(String(value));
 		// TODO: 对象处理
 	}
-	if (!node) { node = iRender.placeholder(); }
+	if (!node) { node = iRender.createPlaceholder(); }
 	setRef(ref, node);
 	return createMountedNode({
 		...source,
@@ -368,7 +368,7 @@ function createAll(
 	if (!source.length) {
 		return [createMountedNode({
 			tag: null,
-			node: iRender.placeholder(),
+			node: iRender.createPlaceholder(),
 			component: undefined,
 			children: [],
 		})];
@@ -390,7 +390,7 @@ function createList(
 	}
 	return [createMountedNode({
 		tag: null,
-		node: iRender.placeholder(),
+		node: iRender.createPlaceholder(),
 		component: undefined,
 		children: [],
 	})];
@@ -402,7 +402,7 @@ function createItem(
 ): MountedNode {
 	const { tag, ref, component } = source;
 	if (!tag) {
-		const node = iRender.placeholder();
+		const node = iRender.createPlaceholder();
 		setRef(ref, node);
 		return createMountedNode({
 			tag: null,
@@ -445,13 +445,13 @@ function createItem(
 			children: createAll(iRender, source.children),
 		});
 	}
-	const node = iRender.create(tag, source.props || {});
+	const node = iRender.createElement(tag, source.props || {});
 	setRef(ref, node);
 	let children: (MountedNode | MountedNode[])[] = [];
 	if (source.children?.length) {
 		children = createAll(iRender, source.children);
 		for (const it of getNodes(children)) {
-			iRender.insert(node, it);
+			iRender.insertNode(node, it);
 		}
 	}
 	return createMountedNode({

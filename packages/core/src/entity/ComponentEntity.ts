@@ -209,11 +209,11 @@ export default class ComponentEntity<
 		this.tree = draw(iRender, convert(this, native));
 		this.shadowTree = draw(iRender, _nodes);
 		for (const it of getNodes(this.shadowTree)) {
-			iRender.insert(_shadow, it);
+			iRender.insertNode(_shadow, it);
 		}
 		this.nativeTree = draw(iRender, nativeNodes);
 		for (const it of getNodes(this.nativeTree)) {
-			iRender.insert(native, it);
+			iRender.insertNode(native, it);
 		}
 	}
 	_unmount() {

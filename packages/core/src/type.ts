@@ -171,7 +171,7 @@ export interface NeepElement {
 	/** 插槽 */
 	slot?: string;
 	/** 列表对比 key */
-	key: any;
+	key?: any;
 	/** Value 类型值 */
 	value?: any;
 	/** Slot 相关的渲染函数 */
@@ -251,7 +251,7 @@ export interface IRender {
 		node: NativeNode,
 		removed: boolean,
 	): any;
-	draw(container: NativeContainer, node: NativeNode): void;
+	drawNode(container: NativeContainer, node: NativeNode): void;
 	drawContainer(
 		container: NativeContainer,
 		node: NativeNode,
@@ -264,26 +264,26 @@ export interface IRender {
 	): [NativeContainer, NativeNode];
 
 	isNode(v: any): v is NativeNode;
-	create(
+	createElement(
 		tag: string,
 		props: Record<string, any>,
 	): NativeElement;
-	update(
+	updateProps(
 		node: NativeElement,
 		props: Record<string, any>,
 	): void;
-	text(text: string): NativeText;
-	placeholder(): NativePlaceholder;
+	createText(text: string): NativeText;
+	createPlaceholder(): NativePlaceholder;
 
 	component?(): [NativeComponent, NativeShadow];
 
-	parent(node: NativeNode): NativeContainer | null;
-	next(node: NativeNode): NativeNode | null;
+	getParent(node: NativeNode): NativeContainer | null;
+	nextNode(node: NativeNode): NativeNode | null;
 
-	insert(
+	insertNode(
 		parent: NativeContainer,
 		node: NativeNode,
 		next?: NativeNode | null,
 	): void;
-	remove(n: NativeNode): void;
+	removeNode(n: NativeNode): void;
 }

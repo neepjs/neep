@@ -11,6 +11,7 @@ import {
 import update from './update';
 import nextFrame from './nextFrame';
 import createElement from './createElement';
+import { isTagName } from './utils';
 
 const render: IRender = {
 	type: 'web',
@@ -19,20 +20,18 @@ const render: IRender = {
 		return v instanceof Node;
 	},
 	mount({target, class: className, style, tag}, parent) {
-		if (!(
-			typeof tag === 'string' &&
-			/^[a-z][a-z0-9]*(?:\-[a-z0-9]+)?(?:\:[a-z0-9]+(?:\-[a-z0-9]+)?)?$/i.test(tag)
-		)) {
-			tag = 'div';
-		}
-		const container = render.create(tag, { class: className, style });
+		if (!isTagName(tag)) { tag = 'div'; }
+
+		const container =
+			render.createElement(tag, { class: className, style });
+	
 		if (typeof target === 'string') {
 			target = document.querySelector(target);
 		}
 		if (target instanceof Element) {
 			target.appendChild(container as any);
 			if (parent) {
-				return [container, parent.placeholder()] as any;
+				return [container, parent.createPlaceholder()] as any;
 			}
 			return [container, container];
 		}
@@ -47,14 +46,15 @@ const render: IRender = {
 		(container as any as Element).remove();
 	},
 	drawContainer(container, node, {target, class: className, style, tag}, parent) {
-		render.update(container as NativeElement, { class: className, style });
+		render.updateProps(container as NativeElement, { class: className, style });
 		if (typeof target === 'string') {
 			target = document.querySelector(target);
 		}
 		if (parent !== render && !(target instanceof Element)) {
 			target = document.body;
 		}
-		const oldTarget = parent === render && container === node ? undefined : render.parent(node);
+		const oldTarget = parent === render && container === node
+			? undefined : render.getParent(node);
 		if (oldTarget === target) {
 			return [container, node];
 		}
@@ -63,19 +63,19 @@ const render: IRender = {
 			return [container, node];
 		}
 		if (!oldTarget) {
-			const newNode = parent.placeholder();
-			const pNode = parent.parent(node);
+			const newNode = parent.createPlaceholder();
+			const pNode = parent.getParent(node);
 			if (pNode) {
-				render.insert(pNode, newNode as any, node);
-				render.remove(node);
+				render.insertNode(pNode, newNode as any, node);
+				render.removeNode(node);
 			}
 			return [container, newNode];
 		}
 		if (!target) {
-			const pNode = parent.parent(node);
+			const pNode = parent.getParent(node);
 			if (pNode) {
-				render.insert(pNode, container, node);
-				render.remove(node);
+				render.insertNode(pNode, container, node);
+				render.removeNode(node);
 			}
 			return [container, container];
 
@@ -83,15 +83,15 @@ const render: IRender = {
 		target.appendChild(node);
 		return [container, node];
 	},
-	draw() {},
+	drawNode() {},
 
-	create(tag, props) {
+	createElement(tag, props) {
 		return update(createElement(tag), props) as any;
 	},
-	text(text: string): NativeText {
+	createText(text: string): NativeText {
 		return document.createTextNode(text) as any;
 	},
-	placeholder(): NativePlaceholder {
+	createPlaceholder(): NativePlaceholder {
 		return document.createComment('') as any;
 	},
 	component(): [NativeComponent, NativeShadow] {
@@ -99,24 +99,24 @@ const render: IRender = {
 		return [node, node.attachShadow({ mode: 'open' })] as any;
 	},
 
-	parent(node: NativeNode): NativeContainer | null {
+	getParent(node: NativeNode): NativeContainer | null {
 		return (node as any).parentNode as NativeContainer | null;
 	},
-	next(node: NativeNode): NativeNode | null {
+	nextNode(node: NativeNode): NativeNode | null {
 		return (node as any).nextSibling as NativeContainer | null;
 	},
-	update(node, props): void {
+	updateProps(node, props): void {
 		update(node as any, props);
 	},
-	insert(
+	insertNode(
 		parent: NativeContainer,
 		node: NativeNode,
 		next: NativeNode | null = null,
 	): void {
 		(parent as any).insertBefore(node, next);
 	},
-	remove(node: NativeNode): void {
-		const p = render.parent(node);
+	removeNode(node: NativeNode): void {
+		const p = render.getParent(node);
 		if (!p) { return; }
 		(p as any).removeChild(node);
 	},

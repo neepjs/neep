@@ -86,7 +86,7 @@ export default class ContainerEntity extends EntityObject {
 		const [container, node]
 			= iRender.mount(props, parent?.iRender);
 		for (const it of getNodes(content)) {
-			iRender.insert(container, it);
+			iRender.insertNode(container, it);
 		}
 		this.tree = [createMountedNode({
 			tag: Tags.Value,
@@ -215,7 +215,7 @@ export default class ContainerEntity extends EntityObject {
 		awaitDraw.clear();
 		if (needDraw) { this.drawSelf(); }
 		list.map(c => c.draw());
-		this.iRender.draw(container, node);
+		this.iRender.drawNode(container, node);
 		complete(() => this.callHook('drawn'));
 	}
 	private _containers = new Set<ContainerEntity>();
