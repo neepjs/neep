@@ -49,15 +49,14 @@ export function unmount(iRender: IRender, tree: MountedNodes): void {
 	}
 	const { component, children, node, ref } = tree;
 	recoveryMountedNode(tree);
-	if (node) {
-		setRef(ref, node, true);
-		iRender.removeNode(node);
-		return;
-	}
 	if (component) {
 		setRef(ref, component.exposed, true);
 		component.unmount();
 		return;
+	}
+	if (node) {
+		setRef(ref, node, true);
+		iRender.removeNode(node);
 	}
 	unmount(iRender, children);
 }
