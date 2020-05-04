@@ -155,7 +155,7 @@ export default class ComponentEntity<
 		// 原生组件
 		[this.native, this._shadow] =
 			component[typeSymbol] === 'native' &&
-			this.iRender.component?.() || [];
+			this.iRender.createComponent?.() || [];
 		// 父子关系
 		this.parent = parent;
 		parent.children.add(this.exposed);

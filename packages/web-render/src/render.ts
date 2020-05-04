@@ -94,7 +94,7 @@ const render: IRender = {
 	createPlaceholder(): NativePlaceholder {
 		return document.createComment('') as any;
 	},
-	component(): [NativeComponent, NativeShadow] {
+	createComponent(): [NativeComponent, NativeShadow] {
 		const node = createElement('neep-component');
 		return [node, node.attachShadow({ mode: 'open' })] as any;
 	},

@@ -275,7 +275,7 @@ export interface IRender {
 	createText(text: string): NativeText;
 	createPlaceholder(): NativePlaceholder;
 
-	component?(): [NativeComponent, NativeShadow];
+	createComponent?(): [NativeComponent, NativeShadow];
 
 	getParent(node: NativeNode): NativeContainer | null;
 	nextNode(node: NativeNode): NativeNode | null;
