@@ -1,13 +1,13 @@
 import { isValue } from '../install/neep';
 import { Value } from 'monitorable';
 
-export type RecursiveItem<T> = T | Array<RecursiveItem<T>> | Value<T>;
+export type RecursiveItem<T> = T | RecursiveItem<T>[] | Value<T>;
 
 export function *recursive2iterable<T>(
 	list: RecursiveItem<T>,
 ): Iterable<T> {
 	if (isValue(list)) {
-		yield* recursive2iterable(list());
+		yield *recursive2iterable(list());
 		return;
 
 	}
@@ -16,13 +16,13 @@ export function *recursive2iterable<T>(
 		return;
 	}
 	for (const it of list) {
-		yield* recursive2iterable(it);
+		yield *recursive2iterable(it);
 	}
 }
 
 export type Class = Set<string>;
 function getClass(
-	list: RecursiveItem<(string | {[k: string]: any})>
+	list: RecursiveItem<(string | {[k: string]: any})>,
 ): Class | undefined {
 	const set = new Set<string>();
 	for (const v of recursive2iterable(list)) {
@@ -47,7 +47,7 @@ function update(
 	el: Element,
 	classes?: Class,
 	oClasses?: Class,
-) {
+): void {
 	if (classes && oClasses) {
 		const list = el.getAttribute('class') || '';
 		const classList = new Set(list.split(' ').filter(Boolean));
@@ -64,7 +64,7 @@ export default function updateClass(
 	props: {[k: string]: any},
 	el: Element,
 	old?: Class,
-) {
+): Class | undefined {
 	const classes = getClass(isValue(props.class) ? props.class() : props.class);
 	update(el, classes, old);
 	return classes;

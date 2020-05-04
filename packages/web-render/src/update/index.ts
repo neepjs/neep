@@ -15,7 +15,7 @@ const PropsMap = new WeakMap<Element, {
 export default function update(
 	el: Element,
 	props: {[k: string]: any},
-) {
+): Element {
 	const css = (el as any).style;
 	const hasStyle = css instanceof CSSStyleDeclaration;
 	const old = PropsMap.get(el) || { attrs: {} };

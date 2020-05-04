@@ -11,7 +11,7 @@ export default function updateId(
 	props: {[k: string]: any},
 	el: Element,
 	old?: Id,
-) {
+): string | undefined {
 	const id = getId(isValue(props.id) ? props.id() : props.id);
 	if (id !== old) {
 		if (typeof id === 'string') {

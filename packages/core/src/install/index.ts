@@ -18,7 +18,7 @@ export interface InstallOptions {
 }
 
 
-export default function install(apis: InstallOptions) {
+export default function install(apis: InstallOptions): void {
 	installMonitorable(apis.monitorable);
 	installRender(apis.render);
 	if (!isProduction) {

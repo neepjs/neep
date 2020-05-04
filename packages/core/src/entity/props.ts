@@ -5,7 +5,7 @@ const disabledKey = new Set([
 	'&', '=', '+', '.',
 	'(', ')', '[', ']', '{', '}', '<', '>',
 ]);
-function filter(k: string | number | symbol) {
+function filter(k: string | number | symbol): boolean {
 	if (typeof k !== 'string') { return true; }
 	if (disabledKey.has(k[0])) { return false; }
 	if (/^n[:-]/.test(k)) { return false; }
@@ -18,7 +18,7 @@ export function updateProps(
 	oldProps: any = {},
 	define = false,
 	isProps = false,
-) {
+): any {
 	const keys = Reflect.ownKeys(props);
 	const newKeys = new Set(isProps ? keys.filter(filter) : keys);
 	for (const k of Reflect.ownKeys(obj)) {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
 	IRender,
 	MountProps,
@@ -16,7 +17,7 @@ import { nextFrame, exec } from '../install';
 
 let awaitDraw = new Set<ContainerEntity>();
 let requested = false;
-function markDraw(c: ContainerEntity) {
+function markDraw(c: ContainerEntity): void {
 	awaitDraw.add(c);
 	if (requested) { return; }
 	requested = true;
@@ -76,10 +77,10 @@ export default class ContainerEntity extends EntityObject {
 			this.setChildren(children);
 		});
 	}
-	requestDraw() {
+	requestDraw(): void {
 		this.markDraw(this);
 	}
-	_mount() {
+	_mount(): void {
 		const { props, parent, iRender } = this;
 		const content = draw(this.container.iRender, this._nodes);
 		this.content = content;
@@ -99,10 +100,10 @@ export default class ContainerEntity extends EntityObject {
 		this._node = node;
 		this._container = container;
 	}
-	_destroy() {
+	_destroy(): void {
 		destroy(this.content);
 	}
-	_unmount() {
+	_unmount(): void {
 		const { parent, iRender } = this;
 		if (parent) {
 			unmount(parent.iRender, this.tree);
@@ -114,7 +115,7 @@ export default class ContainerEntity extends EntityObject {
 		);
 		unmount(this.iRender, this.content);
 	}
-	_draw() {
+	_draw(): void {
 		const {
 			_drawChildren: drawChildren,
 			_drawContainer: drawContainer,
@@ -140,7 +141,7 @@ export default class ContainerEntity extends EntityObject {
 			);
 		}
 	}
-	_drawSelf() {
+	_drawSelf(): void {
 		const {
 			_drawChildren: drawChildren,
 			_drawContainer: drawContainer,
@@ -165,7 +166,7 @@ export default class ContainerEntity extends EntityObject {
 			);
 		}
 	}
-	drawSelf() {
+	drawSelf(): void {
 		if (!this.mounted) { return; }
 		if (this.destroyed) { return; }
 		this.callHook('beforeDraw');
@@ -183,7 +184,7 @@ export default class ContainerEntity extends EntityObject {
 	markDraw(
 		nObject: EntityObject,
 		remove = false,
-	) {
+	): void {
 		if (this.parent?.iRender === this.iRender) {
 			this.parent.container.markDraw(nObject, remove);
 			return;
@@ -201,7 +202,7 @@ export default class ContainerEntity extends EntityObject {
 			!this._needDraw && !this._awaitDraw.size || this.destroyed,
 		);
 	}
-	drawContainer() {
+	drawContainer(): void {
 		const {
 			_node: node,
 			_container: container,
@@ -222,7 +223,7 @@ export default class ContainerEntity extends EntityObject {
 	markDrawContainer(
 		container: ContainerEntity,
 		remove = false,
-	) {
+	): void {
 		if (remove) {
 			this._containers.delete(container);
 		} else {
@@ -230,7 +231,7 @@ export default class ContainerEntity extends EntityObject {
 		}
 		markDraw(this);
 	}
-	drawAll() {
+	drawAll(): void {
 		const containers = this._containers;
 		if (!containers.size) { return; }
 		this.callHook('beforeDrawAll');

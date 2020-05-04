@@ -117,7 +117,10 @@ const MathMLTags = new Set([
 	'semantics',
 ]);
 
-export default function createElement(tagname: string, namespace?: string) {
+export default function createElement(
+	tagname: string,
+	namespace?: string,
+): Element {
 	const res = /^([a-z][a-z0-9-]*):([a-z0-9-]+)$/i.exec(tagname);
 	const tag = res ? res[2] : tagname;
 	const ns = (namespace || res?.[1]

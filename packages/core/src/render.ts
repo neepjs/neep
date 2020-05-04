@@ -50,7 +50,6 @@ export default function render(
 			if (exposed.$unmounted) { return; }
 			if (exposed.$destroyed) { return container.destroy(); }
 			container.unmount();
-			return;
 		},
 		configurable: true,
 	});

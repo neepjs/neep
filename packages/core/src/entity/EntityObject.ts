@@ -1,6 +1,6 @@
 import {
 	Exposed, Delivered,
-	Entity as Entity,
+	Entity,
 	NativeComponent,
 	Hook, Hooks, NeepNode, IRender, Component, MountedNode, TreeNode,
 } from '../type';
@@ -29,10 +29,10 @@ function createExposed(obj: EntityObject): Exposed {
 }
 
 let completeList: (() => void)[] | undefined;
-export function setCompleteList(list?: (() => void)[]) {
+export function setCompleteList(list?: (() => void)[]): void {
 	completeList = list;
 }
-export function complete(it: () => void) {
+export function complete(it: () => void): void {
 	if (!completeList) {
 		it();
 	} else {
@@ -141,7 +141,7 @@ export default class EntityObject {
 	private _refreshing = false;
 	/** 渲染结果 */
 	protected _nodes: (TreeNode | TreeNode[])[] = [];
-	protected requestDraw() { }
+	protected requestDraw(): void { }
 	async asyncRefresh<T>(f: () => PromiseLike<T> | T): Promise<T> {
 		try {
 			this._delayedRefresh++;
@@ -186,7 +186,7 @@ export default class EntityObject {
 		this._refreshing = true;
 
 		let nodes: NeepNode[] | undefined;
-		while(this.needRefresh) {
+		while (this.needRefresh) {
 			nodes = this._render();
 			if (this.destroyed) { return; }
 		}
@@ -220,8 +220,8 @@ export default class EntityObject {
 	private __executed_destroy = false;
 	private __executed_mount = false;
 	private __executed_mounted = false;
-	protected _destroy() { }
-	destroy() {
+	protected _destroy(): void { }
+	destroy(): void {
 		if (this.__executed_destroy) { return; }
 		this.__executed_destroy = true;
 		this.callHook('beforeDestroy');
@@ -229,8 +229,8 @@ export default class EntityObject {
 		this.callHook('destroyed');
 		this.destroyed = true;
 	}
-	protected _mount() { }
-	mount() {
+	protected _mount(): void { }
+	mount(): void {
 		if (this.__executed_destroy) { return; }
 		if (this.__executed_mount) { return; }
 		this.__executed_mount = true;
@@ -245,8 +245,8 @@ export default class EntityObject {
 		this._cancelDrawMonitor = result.stop;
 		complete(() => this.callHook('mounted'));
 	}
-	protected _unmount() { }
-	unmount() {
+	protected _unmount(): void { }
+	unmount(): void {
 		if (!this.mounted) { return; }
 		if (this.__executed_mounted) { return; }
 		this.__executed_mounted = true;
@@ -255,11 +255,13 @@ export default class EntityObject {
 		this.callHook('unmounted');
 		this.unmounted = true;
 	}
-	_draw() {}
+	_draw(): void {}
 	_cancelDrawMonitor?: () => void;
-	draw() {
+	draw(): void {
 		if (this.__executed_destroy) { return; }
-		this._cancelDrawMonitor?.();
+		if (this._cancelDrawMonitor) {
+			this._cancelDrawMonitor();
+		}
 		this.callHook('beforeDraw');
 		const result = exec(
 			c => c && this.requestDraw(),

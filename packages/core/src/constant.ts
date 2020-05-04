@@ -4,7 +4,7 @@
  * Will be replaced by the 'rollup-plugin-replace' plug-in
  */
 
- /**
+/**
  * Neep code version
  */
 export const version = '__VERSION__' as string;

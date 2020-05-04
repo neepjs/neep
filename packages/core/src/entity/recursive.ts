@@ -1,4 +1,4 @@
-export interface RecursiveArray<T> extends Array<RecursiveItem<T>>{};
+export interface RecursiveArray<T> extends Array<RecursiveItem<T>>{}
 export type RecursiveItem<T> = T | RecursiveArray<T>;
 
 export function *recursive2iterable<T>(
@@ -9,6 +9,6 @@ export function *recursive2iterable<T>(
 		return;
 	}
 	for (const it of list) {
-		yield* recursive2iterable(it);
+		yield *recursive2iterable(it);
 	}
 }

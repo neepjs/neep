@@ -1,4 +1,4 @@
-import { Component, Context } from '../type';
+import { Component, Context, NeepNode } from '../type';
 import { value } from '../install';
 import { mSimple, mark, mName } from '../create';
 import { Auxiliary } from '../auxiliary';
@@ -11,14 +11,14 @@ export default function lazy<
 	Placeholder?: Component<{ loading: boolean }, any>,
 ): Component<P> {
 	const reslut = value<0 | 1 | -1>(0);
-	const Component = value<undefined | C>(undefined);
-	async function load() {
+	const ComponentValue = value<undefined | C>(undefined);
+	async function load(): Promise<void> {
 		if (reslut()) { return; }
 		reslut(1);
 		try {
 			const c = await component();
 			if (typeof c === 'function') {
-				Component(c);
+				ComponentValue(c);
 				return;
 			}
 			if (!c) {
@@ -26,7 +26,7 @@ export default function lazy<
 				return;
 			}
 			if (typeof c.default === 'function') {
-				Component(c.default);
+				ComponentValue(c.default);
 				return;
 			}
 			reslut(-1);
@@ -38,8 +38,8 @@ export default function lazy<
 		props: P,
 		{ childNodes }: Context,
 		{ createElement }: Auxiliary,
-	) {
-		const com = Component();
+	): NeepNode {
+		const com = ComponentValue();
 		if (com) { return createElement(com, props, ...childNodes); }
 		load();
 		if (!Placeholder) { return null; }

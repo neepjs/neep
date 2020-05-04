@@ -26,8 +26,8 @@ function toElement(t: any): null | NeepElement {
 }
 
 export function destroy(
-	tree: TreeNode | TreeNode[] | (TreeNode | TreeNode[])[]
-) {
+	tree: TreeNode | TreeNode[] | (TreeNode | TreeNode[])[],
+): void {
 	if (Array.isArray(tree)) {
 		tree.forEach(t => destroy(t));
 		return;
@@ -98,7 +98,7 @@ function createItem(
 			children: createAll(nObject, newDelivered, source.children),
 		};
 	}
-	
+
 	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
 		return {
 			...source,
@@ -126,8 +126,7 @@ function updateList(
 		const node = toElement(src);
 		if (!node) { continue; }
 		const index = tree.findIndex(it =>
-			it.tag === node.tag && it.key === node.key
-		);
+			it.tag === node.tag && it.key === node.key);
 		if (index >= 0) {
 			newList.push(updateItem(nObject, delivered, node, tree[index]));
 			tree.splice(index, 1);
@@ -246,8 +245,7 @@ function updateItem(
 		children: [...updateAll(nObject,
 			delivered,
 			source.children,
-			tree.children
-		)],
+			tree.children)],
 	};
 }
 
@@ -287,10 +285,10 @@ function *updateAll(
 	}
 	length = Math.max(source.length, source.length);
 	if (tree.length > length) {
-			// 销毁多余项
-			for (; index < length; index++) {
-				destroy(tree[index]);
-			}
+		// 销毁多余项
+		for (; index < length; index++) {
+			destroy(tree[index]);
+		}
 	}
 	if (source.length > length) {
 		// 创建多余项

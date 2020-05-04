@@ -2,12 +2,12 @@ import EntityObject from '../entity/EntityObject';
 
 let delayedRefresh = 0;
 const objectSet = new Set<EntityObject>();
-export function wait(obj: EntityObject) {
+export function wait(obj: EntityObject): boolean {
 	if (delayedRefresh <= 0) { return false; }
 	objectSet.add(obj);
 	return true;
 }
-function run() {
+function run(): void {
 	if (delayedRefresh > 0) { return; }
 	const list = [...objectSet];
 	objectSet.clear();

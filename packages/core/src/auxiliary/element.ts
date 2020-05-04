@@ -13,7 +13,7 @@ export function isElement(v: any): v is NeepElement {
 
 export function createElement(
 	tag: Tag,
-	attrs?: {[key:string]: any},
+	attrs?: {[key: string]: any},
 	...children: any[]
 ): NeepElement {
 	attrs = attrs ? {...attrs} : {};

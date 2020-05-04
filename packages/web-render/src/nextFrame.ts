@@ -1,5 +1,5 @@
 let list: (() => void)[] | undefined;
-export default function nextFrame(f: () => void) {
+export default function nextFrame(f: () => void): void {
 	if (list) {
 		list.push(f);
 		return;

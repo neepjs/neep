@@ -12,7 +12,7 @@ export function initContext(
 	return context;
 }
 export function addContextConstructor(
-	constructor: ContextConstructor
+	constructor: ContextConstructor,
 ): void {
 	constructors.push(safeify(constructor));
 }

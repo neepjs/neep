@@ -3,7 +3,7 @@ import { isValue } from '../install/neep';
 export type Style = string | Record<string, [string, 'important' | null]>;
 
 function getStyle(
-	style: any
+	style: any,
 ): Style | undefined {
 	if (typeof style === 'string') { return style; }
 	if (!style) { return undefined; }
@@ -17,9 +17,9 @@ function getStyle(
 				.replace(/-+/g, '-')
 				.toLowerCase();
 		if (typeof value === 'number') {
-			css[key] = [value === 0 ? '0' : `${value}px`, null];
+			css[key] = [value === 0 ? '0' : `${ value }px`, null];
 		} else if (value && typeof value === 'string') {
-			const v = value.replace(/\!important\s*$/, '');
+			const v = value.replace(/!important\s*$/, '');
 			css[key] = [v, v === value ? null : 'important'];
 		}
 	}
@@ -30,7 +30,7 @@ function update(
 	css: CSSStyleDeclaration,
 	style?: Style,
 	oStyle?: Style,
-) {
+): void {
 	if (!style) {
 		if (!oStyle) { return; }
 		if (typeof oStyle === 'string') {

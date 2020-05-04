@@ -6,7 +6,7 @@ export function setHook<H extends Hooks>(
 	id: H,
 	hook: Hook,
 	entity?: Entity,
-):() => void;
+): () => void;
 export function setHook(
 	id: string,
 	hook: Hook,
@@ -17,7 +17,7 @@ export function setHook(
 	id: string,
 	hook: Hook,
 	entity?: Entity,
-):() => void {
+): () => void {
 	let list = entity?.$_hooks || hooks;
 	if (!list) { return () => {}; }
 	hook = safeify(hook);

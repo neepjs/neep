@@ -15,9 +15,9 @@ interface AddEvent<T extends Record<string, any[]>> {
 }
 
 function addEventFromCollection(
-	addEvent:(entName: string, listener: (...p: any) => void) => void,
+	addEvent: (entName: string, listener: (...p: any) => void) => void,
 	events: any,
-) {
+): void {
 	if (!events) { return; }
 	if (typeof events === 'function') {
 		const { names } = events as Emit;
@@ -62,7 +62,7 @@ export default class EventEmitter<
 		custom?: (addEvent: AddEvent<T>) => void,
 	): (() => void)[] {
 		if (!props) { return []; }
-	
+
 		const newHandles: (() => void)[] = [];
 
 		function addEvent<N extends keyof T>(
@@ -106,7 +106,7 @@ export default class EventEmitter<
 				const event = events[name];
 				if (!event) { return true; }
 				let res = true;
-				for (const fn of [...event]) { 
+				for (const fn of [...event]) {
 					res = fn(...p) && res;
 				}
 				return res;
@@ -122,12 +122,12 @@ export default class EventEmitter<
 				configurable: true,
 			});
 			return emit as any as Emit<T>;
-		};
-		const on: On<T> = (name, listener) => {
+		}
+		const on: On<T> = (name, listener): () => void => {
 			function fn(...p: Parameters<typeof listener>): boolean {
 				try {
 					return listener(...p) !== false;
-				} catch(e) {
+				} catch (e) {
 					console.error(e);
 					return false;
 				}

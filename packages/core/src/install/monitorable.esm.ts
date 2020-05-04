@@ -13,18 +13,20 @@ export let monitor: typeof import('monitorable').monitor;
 
 export default function installMonitorable(
 	api?: typeof import('monitorable'),
-) {
+): void {
 	if (!api) { return; }
-	value = api.value;
-	computed = api.computed;
-	isValue = api.isValue;
-	encase = api.encase;
-	recover = api.recover;
-	valueify = api.valueify;
-	markRead = api.markRead;
-	markChange = api.markChange;
-	safeify = api.safeify;
-	asValue = api.asValue;
-	exec = api.exec;
-	monitor = api.monitor;
+	({
+		value,
+		computed,
+		isValue,
+		encase,
+		recover,
+		valueify,
+		markRead,
+		markChange,
+		safeify,
+		asValue,
+		exec,
+		monitor,
+	} = api);
 }

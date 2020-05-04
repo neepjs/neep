@@ -40,7 +40,7 @@ export function watch<T>(
 
 export function watch<T>(
 	value: Value<T> | (() => T),
-	cb: (v: Value<T> | T, stopped: boolean) => void
+	cb: (v: Value<T> | T, stopped: boolean) => void,
 ): () => void {
 	const entity = checkCurrent('watch');
 	if (typeof value !== 'function') { return () => {}; }

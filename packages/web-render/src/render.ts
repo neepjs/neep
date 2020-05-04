@@ -24,7 +24,7 @@ const render: IRender = {
 
 		const container =
 			render.createElement(tag, { class: className, style });
-	
+
 		if (typeof target === 'string') {
 			target = document.querySelector(target);
 		}

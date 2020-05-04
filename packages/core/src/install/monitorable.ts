@@ -6,5 +6,5 @@ export {
 
 export default function installMonitorable(
 	api?: typeof import('monitorable'),
-) {
+): void {
 }

@@ -78,12 +78,12 @@ function createSlots(
 	name: string,
 	list: any[],
 ): SlotFn {
-	const slot = (...props: any) => ({
+	const slot = (...props: any): NeepElement => ({
 		[isElementSymbol]: true,
 		tag: ScopeSlot,
 		children: renderSlots(list, ...props),
 		inserted: true,
-		label: isProduction ? undefined : [`[${name}]`, '#00F'],
+		label: isProduction ? undefined : [`[${ name }]`, '#00F'],
 	} as NeepElement);
 	slot.children = list;
 	return slot;
@@ -91,7 +91,7 @@ function createSlots(
 export function setSlots(
 	children: {[key: string]: any[]},
 	slots: Slots = Object.create(null),
-) {
+): Slots {
 	for (const k of Reflect.ownKeys(slots)) {
 		if (!(k in children)) {
 			delete slots[k as string];

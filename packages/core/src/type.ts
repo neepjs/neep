@@ -42,11 +42,11 @@ export interface ContextConstructor {
 	(context: Context, exposed?: Exposed): void;
 }
 export type Hooks = 'beforeCreate' | 'created'
-	| 'beforeDestroy' | 'destroyed'
-	| 'beforeUpdate' | 'updated'
-	| 'beforeMount' | 'mounted'
-	| 'beforeDraw' | 'drawn'
-	| 'beforeDrawAll' | 'drawnAll'
+| 'beforeDestroy' | 'destroyed'
+| 'beforeUpdate' | 'updated'
+| 'beforeMount' | 'mounted'
+| 'beforeDraw' | 'drawn'
+| 'beforeDrawAll' | 'drawnAll'
 ;
 export interface Exposed {
 	readonly $component: Component<any, any> | null;
@@ -102,7 +102,7 @@ export interface Entity {
 
 	callHook<H extends Hooks>(hook: H): void;
 	callHook(hook: string): void;
-	setHook<H extends Hooks>(id: H, hook: Hook):() => void;
+	setHook<H extends Hooks>(id: H, hook: Hook): () => void;
 	setHook(id: string, hook: Hook): () => void;
 	readonly $_hooks: { [name: string]: Set<Hook>; }
 
@@ -146,12 +146,12 @@ export interface Component<
 		context: Context,
 		auxiliary: Auxiliary
 	): undefined | null | NeepNode | NeepNode[] | R |
-		(() => undefined | null | NeepNode | NeepNode[] | R);
+	(() => undefined | null | NeepNode | NeepNode[] | R);
 }
 
 export type Tag = null | string
-	| typeof Tags[keyof typeof Tags]
-	| Component<any, any>;
+| typeof Tags[keyof typeof Tags]
+| Component<any, any>;
 
 export interface Ref {
 	(node: NativeNode | Exposed, isRemove?: boolean): void;
@@ -186,8 +186,8 @@ export interface NeepElement {
 
 export interface TreeNode
 	extends Omit<
-		NeepElement,
-		'children' | typeof symbols.isElementSymbol
+	NeepElement,
+	'children' | typeof symbols.isElementSymbol
 	>
 {
 	children: (this | this[])[];
@@ -245,7 +245,7 @@ export interface IRender {
 		props: MountProps,
 		parent?: IRender
 	):
-		[NativeContainer, NativeNode];
+	[NativeContainer, NativeNode];
 	unmount(
 		container: NativeContainer,
 		node: NativeNode,

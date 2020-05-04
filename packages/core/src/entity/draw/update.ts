@@ -1,27 +1,12 @@
-import { isValue } from '../auxiliary';
-import { IRender, NativeNode, NativeElement, Exposed, Ref, MountedNode, TreeNode } from '../type';
-import { createMountedNode, recoveryMountedNode } from './id';
+import { isValue } from '../../auxiliary';
+import { IRender, NativeNode, NativeElement, MountedNode, TreeNode } from '../../type';
+import { createMountedNode } from '../id';
+import { createItem, createAll, createValue, createList } from './create';
+import { getNodes, unmount, setRef } from './utils';
 
-let refList: (() => void)[] | undefined;
-export function setRefList(list?: (() => void)[]) {
-	refList = list;
-}
-function setRef(
-	ref?: Ref,
-	node?: Exposed | NativeNode,
-	isRemove?: boolean,
-) {
-	if (typeof ref !== 'function') { return; }
-	if (!node) { return; }
-	if (!refList) {
-		ref(node, isRemove);
-	} else {
-		refList.push(() => ref(node, isRemove));
-	}
-}
 
 type MountedNodes = MountedNode | MountedNode[]
-	| (MountedNode | MountedNode[])[];
+| (MountedNode | MountedNode[])[];
 
 function getLastNode(tree: MountedNodes): NativeNode {
 	if (Array.isArray(tree)) {
@@ -40,46 +25,6 @@ function getFirstNode(tree: MountedNodes): NativeNode {
 	if (component) { return getFirstNode(component.tree); }
 	return getFirstNode(children[0]);
 }
-
-export function *getNodes(tree: MountedNodes): Iterable<NativeNode> {
-	if (Array.isArray(tree)) {
-		for (const it of tree) {
-			yield* getNodes(it);
-		}
-		return;
-	}
-	const { children, node, component } = tree;
-	if (node) {
-		yield node;
-		return;
-	}
-	if (component) {
-		yield* getNodes(component.tree);
-		return;
-	}
-	yield* getNodes(children);
-}
-
-export function unmount(iRender: IRender, tree: MountedNodes): void {
-	if (Array.isArray(tree)) {
-		tree.forEach(e => unmount(iRender, e));
-		return;
-	}
-	const { component, children, node, ref } = tree;
-	recoveryMountedNode(tree);
-	if (node) {
-		setRef(ref, node, true);
-		iRender.removeNode(node);
-		return;
-	}
-	if (component) {
-		setRef(ref, component.exposed, true);
-		component.unmount();
-		return;
-	}
-	unmount(iRender, children);
-}
-
 
 function replace<T extends MountedNode | MountedNode[]>(
 	iRender: IRender,
@@ -112,8 +57,7 @@ function updateList(
 	const mountedMap = new Map<MountedNode, MountedNode>();
 	for (const src of source) {
 		const index = list.findIndex(it =>
-			it.tag === src.tag && it.key === src.key
-		);
+			it.tag === src.tag && it.key === src.key);
 		if (index >= 0) {
 			const old = list[index];
 			const item = updateItem(iRender, src, old);
@@ -135,7 +79,7 @@ function updateList(
 	if (!parent) { return newList; }
 	let next = iRender.nextNode(last);
 	// 调整次序
-	for(let i = newList.length - 1; i >= 0; i--) {
+	for (let i = newList.length - 1; i >= 0; i--) {
 		const item = newList[i];
 		const index = tree.findIndex(o => mountedMap.get(o) === item);
 		if (index >= 0) {
@@ -157,7 +101,7 @@ function updateList(
  * @param source 用于替换的源
  * @param iRender Neep 对象
  */
-function updateAll(
+export function updateAll(
 	iRender: IRender,
 	source: (TreeNode | TreeNode[])[],
 	tree: (MountedNode | MountedNode[])[],
@@ -175,8 +119,8 @@ function updateAll(
 	}
 	length = Math.max(source.length, tree.length);
 	if (tree.length > length) {
-			// 销毁多余项
-			for (; index < length; index++) {
+		// 销毁多余项
+		for (; index < length; index++) {
 			unmount(iRender, tree[index]);
 		}
 	}
@@ -213,8 +157,7 @@ function updateItem(
 ): MountedNode {
 	if (Array.isArray(tree)) {
 		const index = tree.findIndex(it =>
-			it.tag === source.tag && it.component === source.component
-		);
+			it.tag === source.tag && it.component === source.component);
 		if (index < 0) {
 			return replace(iRender, createItem(iRender, source), tree);
 		}
@@ -236,7 +179,7 @@ function updateItem(
 				...source,
 				node: undefined,
 				component: undefined,
-				children: draw(
+				children: updateAll(
 					iRender,
 					source.children,
 					tree.children,
@@ -252,9 +195,9 @@ function updateItem(
 		}, tree.id);
 	}
 	if (ltag === 'neep:value') {
-		let value = source.value;
+		let {value} = source;
 		if (isValue(value)) { value = value(); }
-		if(tree.value === value) {
+		if (tree.value === value) {
 			setRef(ref, tree.node);
 			return createMountedNode({
 				...tree,
@@ -291,7 +234,8 @@ function updateItem(
 				...source,
 				children: [],
 			},
-			tree.id);
+			tree.id,
+		);
 	}
 	if (!source.children.length && tree.children.length) {
 		unmount(iRender, tree.children);
@@ -315,160 +259,4 @@ function updateItem(
 			tree.children,
 		),
 	}, tree.id);
-}
-
-function createValue(
-	iRender: IRender,
-	source: TreeNode,
-	value: any,
-): MountedNode {
-	let { ref } = source;
-	if (iRender.isNode(value)) {
-		setRef(ref, value);
-		return createMountedNode({
-			...source,
-			value,
-			node: value,
-			children: [],
-			component: undefined,
-		});
-	}
-	const type = typeof value;
-	let node: NativeNode | undefined;
-	if (
-		type === 'bigint'
-		|| type === 'boolean'
-		|| type === 'number'
-		|| type === 'string'
-		|| type === 'symbol'
-		|| value instanceof RegExp
-	) {
-		node = iRender.createText(String(value));
-	} else if (value instanceof Date) {
-		node = iRender.createText(value.toISOString());
-	} else if (type === 'object' && value) {
-		node = iRender.createText(String(value));
-		// TODO: 对象处理
-	}
-	if (!node) { node = iRender.createPlaceholder(); }
-	setRef(ref, node);
-	return createMountedNode({
-		...source,
-		value,
-		node,
-		component: undefined,
-		children: [],
-	});
-}
-
-function createAll(
-	iRender: IRender,
-	source: (TreeNode | TreeNode[])[],
-): (MountedNode | MountedNode[])[] {
-	if (!source.length) {
-		return [createMountedNode({
-			tag: null,
-			node: iRender.createPlaceholder(),
-			component: undefined,
-			children: [],
-		})];
-	}
-
-	return source.map(item =>
-		Array.isArray(item)
-			? createList(iRender, item)
-			: createItem(iRender, item)
-	);
-}
-
-function createList(
-	iRender: IRender,
-	source: TreeNode[],
-): MountedNode[] {
-	if (source.length) {
-		return source.map(it => createItem(iRender, it));
-	}
-	return [createMountedNode({
-		tag: null,
-		node: iRender.createPlaceholder(),
-		component: undefined,
-		children: [],
-	})];
-}
-
-function createItem(
-	iRender: IRender,
-	source: TreeNode,
-): MountedNode {
-	const { tag, ref, component } = source;
-	if (!tag) {
-		const node = iRender.createPlaceholder();
-		setRef(ref, node);
-		return createMountedNode({
-			tag: null,
-			node,
-			component: undefined,
-			children: [],
-		});
-	}
-
-	const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
-	if (typeof tag !== 'string' || ltag === 'neep:container') {
-		if (!component) {
-			// TODO: ref
-			return createMountedNode({
-				...source,
-				node: undefined,
-				component: undefined,
-				children: draw(iRender, source.children),
-			});
-		}
-		component.mount();
-		setRef(ref, component.exposed);
-		return createMountedNode({
-			...source,
-			node: undefined,
-			component, children: [],
-		});
-	}
-	if (ltag === 'neep:value') {
-		let value = source.value;
-		if (isValue(value)) { value = value(); }
-		return createValue(iRender, source, value);
-	}
-	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
-		// TODO: ref
-		return createMountedNode({
-			...source,
-			node: undefined,
-			component: undefined,
-			children: createAll(iRender, source.children),
-		});
-	}
-	const node = iRender.createElement(tag, source.props || {});
-	setRef(ref, node);
-	let children: (MountedNode | MountedNode[])[] = [];
-	if (source.children?.length) {
-		children = createAll(iRender, source.children);
-		for (const it of getNodes(children)) {
-			iRender.insertNode(node, it);
-		}
-	}
-	return createMountedNode({
-		...source,
-		node,
-		component: undefined,
-		children,
-	});
-}
-
-export default function draw(
-	iRender: IRender,
-	source: (TreeNode | TreeNode[])[],
-	tree?: (MountedNode | MountedNode[])[],
-): (MountedNode | MountedNode[])[] {
-	if (tree) {
-		return updateAll(iRender, source, tree);
-	}
-	return createAll(iRender, source);
 }

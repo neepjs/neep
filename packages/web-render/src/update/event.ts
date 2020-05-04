@@ -5,7 +5,7 @@ export interface Events extends InstanceType<typeof EventEmitter> {
 }
 
 function createEventEmitter(): Events {
-	const events: Events = new EventEmitter as Events;
+	const events: Events = new EventEmitter() as Events;
 	events.__eventBind = Object.create(null);
 	return events;
 }
@@ -13,13 +13,13 @@ function createEventEmitter(): Events {
 
 function *getElementModel(el: Element): Iterable<[string, string, (e: any) => any]> {
 	if (el instanceof HTMLInputElement) {
-		switch(el.type.toLowerCase()) {
+		switch (el.type.toLowerCase()) {
 			case 'checkbox':
 			case 'radio':
-			return yield [
-				'checked', 'change',
-				(e: any) => (e.currentTarget as HTMLInputElement).checked,
-			];
+				return yield [
+					'checked', 'change',
+					(e: any) => (e.currentTarget as HTMLInputElement).checked,
+				];
 		}
 		return yield [
 			'value', 'input',
@@ -72,7 +72,7 @@ export default function updateEvent(
 	const {emit} = event;
 	for (const k of names) {
 		if (k in eventBind) { continue; }
-		const f = (...p: any[]) => emit(k, ...p);
+		const f = (...p: any[]): boolean => emit(k, ...p);
 		el.addEventListener(k, f);
 		eventBind[k] = () => {
 			el.removeEventListener(k, f);

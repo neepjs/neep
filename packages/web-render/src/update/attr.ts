@@ -1,11 +1,15 @@
+/* eslint-disable no-fallthrough */
 import { isValue } from '../install/neep';
 
 export type Attrs = Record<string, string | null>;
 
-export function setAttrs(el: Element, attrs: Record<string, string | null>) {
+export function setAttrs(
+	el: Element,
+	attrs: Record<string, string | null>,
+): void {
 	if (el instanceof HTMLInputElement && 'checked' in attrs) {
 
-		switch(el.type.toLowerCase()) {
+		switch (el.type.toLowerCase()) {
 			case 'checkbox':
 			case 'radio':
 				if ((attrs.checked !== null) !== el.checked) {
@@ -14,7 +18,7 @@ export function setAttrs(el: Element, attrs: Record<string, string | null>) {
 		}
 	}
 	if ((
-		el instanceof HTMLSelectElement 
+		el instanceof HTMLSelectElement
 		|| el instanceof HTMLInputElement
 	) && 'value' in attrs) {
 		const value = attrs.value || '';
@@ -43,14 +47,14 @@ function stringify(
 function getAttrs(
 	props: {[k: string]: any},
 	hasStyle: boolean,
-) {
+): Attrs {
 	const attrs: Attrs = Object.create(null);
 	for (const k in props) {
 		if (/^(n|on|bind|slot)[:-]/.test(k)) { continue; }
 		if (!/^[a-zA-Z:_][a-zA-Z0-9:_-]*$/.test(k)) { continue; }
 		const name = k
 			.toLowerCase();
-		switch(name) {
+		switch (name) {
 			case 'style':
 				if (!hasStyle) { break; }
 			case 'ref':
@@ -70,7 +74,7 @@ function update(
 	el: Element,
 	attrs: Attrs,
 	old: Attrs,
-) {
+): void {
 	for (const k of Object.keys(attrs)) {
 		const v = attrs[k];
 		if (!(k in old) || old[k] !== v) {

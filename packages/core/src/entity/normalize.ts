@@ -4,7 +4,7 @@ import {
 } from '../type';
 import { typeSymbol, componentsSymbol } from '../symbols';
 import { isProduction } from '../constant';
-import auxiliary, { isElement, Tags, valueify } from '../auxiliary';
+import auxiliary, { isElement, Tags } from '../auxiliary';
 import { renderSymbol, isElementSymbol } from '../symbols';
 import { getLabel } from '../helper/label';
 import ComponentEntity from './ComponentEntity';
@@ -17,7 +17,7 @@ import { components as globalComponents } from '../register';
 
 function getComponents(
 	...components: (Record<string, Component> | undefined)[]
-) {
+): Record<string, Component>[] {
 	return components.filter(Boolean) as Record<string, Component>[];
 }
 
@@ -212,12 +212,11 @@ function exec(
 ): any {
 	if (Array.isArray(node)) {
 		return node.map(n =>
-			exec(nObject, delivered, n, slots, components, native)
-		);
+			exec(nObject, delivered, n, slots, components, native));
 	}
 	if (!isElement(node)) { return node; }
 	return getElement(
-		nObject, 
+		nObject,
 		delivered,
 		node,
 		slots,
@@ -259,7 +258,7 @@ function renderNode<R extends object = object>(
 export default function normalize(
 	nObject: ComponentEntity,
 	result: any,
-) {
+): any {
 	const { component } = nObject;
 	return exec(
 		nObject,

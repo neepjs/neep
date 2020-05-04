@@ -30,7 +30,7 @@ export function checkCurrent(
 ): Entity {
 	if (!current) {
 		throw new NeepError(
-			`Function \`${name}\` can only be called within a cycle.`,
+			`Function \`${ name }\` can only be called within a cycle.`,
 			'life',
 		);
 	}
@@ -41,7 +41,7 @@ export function checkCurrent(
 		return current;
 	}
 	throw new NeepError(
-		`Function \`${name}\` can only be called at initialization time.`,
+		`Function \`${ name }\` can only be called at initialization time.`,
 		'life',
 	);
 }

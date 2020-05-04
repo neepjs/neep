@@ -1,4 +1,13 @@
-import { Component, NeepNode, Slots, Context, Delivered, NativeShadow, TreeNode, MountedNode } from '../type';
+import {
+	Component,
+	NeepNode,
+	Slots,
+	Context,
+	Delivered,
+	NativeShadow,
+	TreeNode,
+	MountedNode,
+} from '../type';
 import auxiliary from '../auxiliary';
 import { exec, monitor, encase } from '../install';
 import { setCurrent } from '../helper/current';
@@ -15,8 +24,8 @@ import { refresh } from '../helper';
 function update(
 	nObject: ComponentEntity<any, any>,
 	props: any,
-	children:any[],
-) {
+	children: any[],
+): void {
 	updateProps(nObject.props, props, {}, false, true);
 	nObject.events.updateInProps(props);
 	const slots = Object.create(null);
@@ -53,7 +62,7 @@ function createContext<
 
 /** 初始化渲染 */
 function initRender<R extends object = object>(
-	nObject: ComponentEntity<any, R>
+	nObject: ComponentEntity<any, R>,
 ): { render(): any, nodes: any, stopRender(): void } {
 	const {
 		component,
@@ -61,12 +70,19 @@ function initRender<R extends object = object>(
 		context,
 		entity,
 	} = nObject;
-	const refresh = (changed: boolean) => changed && nObject.refresh();
+	function refresh(changed: boolean): void {
+		if (!changed) { return; }
+		nObject.refresh();
+	}
 	// 初始化执行
-	const result = exec(refresh, () => setCurrent(
-		() => component(props, context, auxiliary),
-		entity,
-	), { resultOnly: true });
+	const result = exec(
+		refresh,
+		() => setCurrent(
+			() => component(props, context, auxiliary),
+			entity,
+		),
+		{ resultOnly: true },
+	);
 	if (typeof result === 'function') {
 		// 响应式
 		const render = monitor(
@@ -110,7 +126,7 @@ export default class ComponentEntity<
 	/** 组件槽 */
 	readonly slots: Slots = encase(Object.create(null));
 	/** 结果渲染函数 */
-	private readonly _stopRender:() => void;
+	private readonly _stopRender: () => void;
 	/** 原生子代 */
 	nativeNodes: (TreeNode | TreeNode[])[] | undefined;
 	shadowTree: (MountedNode | MountedNode[])[] = [];
@@ -167,7 +183,7 @@ export default class ComponentEntity<
 		this.childNodes = children;
 		refresh(() => update(this, props, children));
 	}
-	_destroy() {
+	_destroy(): void {
 		if (this._stopRender) {
 			this._stopRender();
 		}
@@ -176,10 +192,10 @@ export default class ComponentEntity<
 	}
 
 	/** 刷新 */
-	requestDraw() {
+	requestDraw(): void {
 		this.container.markDraw(this);
 	}
-	_draw() {
+	_draw(): void {
 		const {nativeNodes, iRender, _shadow, native} = this;
 		if (!native || !nativeNodes || !_shadow) {
 			this.tree = draw(
@@ -200,7 +216,7 @@ export default class ComponentEntity<
 			this.nativeTree,
 		);
 	}
-	_mount() {
+	_mount(): void {
 		const {nativeNodes, iRender, _shadow, native, _nodes} = this;
 		if (!native || !nativeNodes || !_shadow) {
 			this.tree = draw(iRender, _nodes);
@@ -216,7 +232,7 @@ export default class ComponentEntity<
 			iRender.insertNode(native, it);
 		}
 	}
-	_unmount() {
+	_unmount(): void {
 		const {iRender, nativeTree} = this;
 		unmount(iRender, this.tree);
 		if (!nativeTree) { return; }
