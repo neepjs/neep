@@ -7,7 +7,7 @@ import {
 	Delivered,
 	MountedNode,
 } from '../type';
-import { Tags } from '../auxiliary';
+import { Value } from '../auxiliary';
 import { createMountedNode } from './id';
 import convert, { destroy } from './convert';
 import draw, { unmount, getNodes, setRefList } from './draw';
@@ -90,7 +90,7 @@ export default class ContainerEntity extends EntityObject {
 			iRender.insertNode(container, it);
 		}
 		this.tree = [createMountedNode({
-			tag: Tags.Value,
+			tag: Value,
 			key: undefined,
 			component: undefined,
 			node,

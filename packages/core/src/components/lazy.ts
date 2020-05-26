@@ -1,7 +1,7 @@
 import { Component, Context, NeepNode } from '../type';
 import { value } from '../install';
 import { mSimple, mark, mName } from '../create';
-import { Auxiliary } from '../auxiliary';
+import { createElement } from '../auxiliary';
 
 export default function lazy<
 	P extends object = object,
@@ -37,7 +37,6 @@ export default function lazy<
 	function Lazy(
 		props: P,
 		{ childNodes }: Context,
-		{ createElement }: Auxiliary,
 	): NeepNode {
 		const com = ComponentValue();
 		if (com) { return createElement(com, props, ...childNodes); }

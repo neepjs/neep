@@ -1,5 +1,4 @@
 import './jsx.d.ts';
-import { Auxiliary, Tags } from './auxiliary';
 import * as symbols from './symbols';
 
 export type EntityObject = InstanceType<typeof import('./entity/EntityObject').default>;
@@ -125,7 +124,7 @@ export interface Entity {
 }
 
 export interface Render<R extends object = any> {
-	(data: R, context: Context, auxiliary: Auxiliary): NeepNode;
+	(data: R, context: Context): NeepNode;
 }
 export interface Service<T extends object> {
 	(entity: Entity): T;
@@ -149,14 +148,12 @@ export interface Component<
 	(
 		props: P,
 		context: Context,
-		auxiliary: Auxiliary
 	): undefined | null | NeepNode | NeepNode[] | R |
 	(() => undefined | null | NeepNode | NeepNode[] | R);
 }
 
-export type Tag = null | string
-| typeof Tags[keyof typeof Tags]
-| Component<any, any>;
+type Tags = typeof import('./auxiliary/tags');
+export type Tag = null | string | Tags[keyof Tags] | Component<any, any>;
 
 export interface Ref {
 	(node: NativeNode | Exposed, isRemove?: boolean): void;

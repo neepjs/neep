@@ -8,7 +8,6 @@ import {
 	TreeNode,
 	MountedNode,
 } from '../type';
-import auxiliary from '../auxiliary';
 import { exec, monitor, encase } from '../install';
 import { setCurrent } from '../helper/current';
 import convert, { destroy } from './convert';
@@ -78,7 +77,7 @@ function initRender<R extends object = object>(
 	const result = exec(
 		refresh,
 		() => setCurrent(
-			() => component(props, context, auxiliary),
+			() => component(props, context),
 			entity,
 		),
 		{ resultOnly: true },
@@ -99,7 +98,7 @@ function initRender<R extends object = object>(
 	const render = monitor(
 		refresh,
 		() => normalize(nObject, setCurrent(
-			() => component(props, context, auxiliary),
+			() => component(props, context),
 			entity,
 		)),
 	);

@@ -4,7 +4,7 @@ import {
 } from '../type';
 import { typeSymbol, componentsSymbol } from '../symbols';
 import { isProduction } from '../constant';
-import auxiliary, { isElement, Tags } from '../auxiliary';
+import { isElement, ScopeSlot, Deliver, Slot, Value } from '../auxiliary';
 import { renderSymbol, isElementSymbol } from '../symbols';
 import { getLabel } from '../helper/label';
 import ComponentEntity from './ComponentEntity';
@@ -48,7 +48,7 @@ function execSimple(
 		emit: event.emit,
 	});
 	if (!isProduction) { getLabel(); }
-	const result = tag(props, context, auxiliary);
+	const result = tag(props, context);
 	let label: [string, string] | undefined;
 	if (!isProduction) { label = getLabel(); }
 	const nodes = exec(
@@ -98,7 +98,7 @@ function execSlot(
 		: [`[${ slotName }]`, '#00F'];
 	return {
 		...node,
-		tag: Tags.ScopeSlot,
+		tag: ScopeSlot,
 		label,
 		children: exec(
 			nObject,
@@ -136,7 +136,7 @@ function getElement(
 ): NeepElement {
 	const { inserted, args = [{}] } = node;
 	let tag = findComponent(node.tag, components);
-	if (tag === Tags.Deliver) {
+	if (tag === Deliver) {
 		const props = { ...node.props };
 		delete props.ref;
 		delete props.slot;
@@ -184,10 +184,10 @@ function getElement(
 		return { ...node, children, tag };
 
 	}
-	if (tag === Tags.Slot) {
-		tag = native ? 'slot' : Tags.ScopeSlot;
+	if (tag === Slot) {
+		tag = native ? 'slot' : ScopeSlot;
 	}
-	if (tag !== Tags.ScopeSlot || inserted) {
+	if (tag !== ScopeSlot || inserted) {
 		return { ...node, children, tag };
 	}
 	return execSlot(
@@ -240,7 +240,7 @@ function renderNode<R extends object = object>(
 	if (!iRender.isNode(node)
 		&& node && typeof node === 'object' && render
 	) {
-		node = render(node, context, auxiliary);
+		node = render(node, context);
 	}
 	if (isElement(node)) { return [node]; }
 	if (node === undefined || node === null) {
@@ -249,7 +249,7 @@ function renderNode<R extends object = object>(
 	return [{
 		[isElementSymbol]: true,
 		key: undefined,
-		tag: Tags.Value,
+		tag: Value,
 		value: node,
 		children: [],
 	}];
