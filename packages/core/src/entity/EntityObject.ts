@@ -57,6 +57,8 @@ function createEntity(obj: EntityObject): Entity {
 		$_hooks: { configurable: true, value: Object.create(null) },
 		$_valueIndex: { configurable: true, value: 0, writable: true },
 		$_values: { configurable: true, value: [] },
+		$_serviceIndex: { configurable: true, value: 0, writable: true },
+		$_services: { configurable: true, value: [] },
 		callHook: {
 			configurable: true,
 			value(h: string) { callHook(h, entity); },

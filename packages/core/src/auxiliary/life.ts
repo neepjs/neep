@@ -3,7 +3,7 @@
  * @description 简单组件不支持
  **********************************/
 import { Value, WatchCallback } from 'monitorable';
-import { Hooks } from '../type';
+import { Hooks, Service } from '../type';
 import { checkCurrent } from '../helper';
 import NeepError from '../Error';
 import { setHook } from '../hook';
@@ -52,10 +52,10 @@ export function watch<T>(
 }
 
 export function useValue(): Value<any>;
-export function useValue<T>(fn: () => T, name?: string): T;
-export function useValue<T>(fn?: () => T, name?: string): T | Value<any>;
-export function useValue<T>(fn?: () => T, name = 'useValue'): T | Value<any> {
-	const entity = checkCurrent(name);
+export function useValue<T>(fn: () => T): T;
+export function useValue<T>(fn?: () => T): T | Value<any>;
+export function useValue<T>(fn?: () => T): T | Value<any> {
+	const entity = checkCurrent('useValue');
 	const index = entity.$_valueIndex++;
 	const values = entity.$_values;
 	if (!entity.created) {
@@ -72,6 +72,26 @@ export function useValue<T>(fn?: () => T, name = 'useValue'): T | Value<any> {
 	return values[index];
 
 }
+
+export function useService<T extends object>(fn: Service<T>): T {
+	const entity = checkCurrent('useService');
+	const index = entity.$_serviceIndex++;
+	const services = entity.$_services;
+	if (!entity.created) {
+		services[index] = undefined;
+		const v = fn(entity);
+		services[index] = v;
+		return v;
+	}
+	if (index >= services.length) {
+		throw new NeepError(
+			'Inconsistent number of useService executions',
+			'life',
+		);
+	}
+	return services[index];
+}
+
 
 /**********************************
  * 钩子类 API

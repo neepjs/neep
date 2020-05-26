@@ -11,10 +11,19 @@ export function setCurrent<T>(
 	current = entity;
 	try {
 		current.$_valueIndex = 0;
+		current.$_serviceIndex = 0;
 		const ret = fn();
 		if (current.$_valueIndex !== current.$_values.length) {
 			throw new NeepError(
 				'Inconsistent number of useValue executions',
+				'life',
+			);
+		}
+		if (
+			current.$_serviceIndex &&
+			current.$_serviceIndex !== current.$_services.length) {
+			throw new NeepError(
+				'Inconsistent number of useService executions',
 				'life',
 			);
 		}

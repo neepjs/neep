@@ -70,7 +70,7 @@ export interface RootExposed extends Exposed {
 }
 
 /** 上下文环境 */
-export interface Context<P = any> {
+export interface Context {
 	/** 作用域槽 */
 	slots: Slots;
 	/** 是否已经完成初始化 */
@@ -120,10 +120,15 @@ export interface Entity {
 
 	$_valueIndex: number;
 	readonly $_values: any[];
+	$_serviceIndex: number;
+	readonly $_services: any[];
 }
 
 export interface Render<R extends object = any> {
 	(data: R, context: Context, auxiliary: Auxiliary): NeepNode;
+}
+export interface Service<T extends object> {
+	(entity: Entity): T;
 }
 
 /** 组件标记 */
