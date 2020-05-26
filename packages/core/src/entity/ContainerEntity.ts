@@ -12,7 +12,8 @@ import { createMountedNode } from './id';
 import convert, { destroy } from './convert';
 import draw, { unmount, getNodes, setRefList } from './draw';
 import EntityObject, { setCompleteList, complete } from './EntityObject';
-import { nextFrame, exec } from '../install';
+import { nextFrame, exec, monitor } from '../install';
+import { init } from './normalize';
 
 
 let awaitDraw = new Set<ContainerEntity>();
@@ -50,8 +51,26 @@ export default class ContainerEntity extends EntityObject {
 			this.rootContainer = parent.container.rootContainer;
 		}
 		this.callHook('beforeCreate');
-		this._render = () => children;
-		this._nodes = convert(this, children);
+		this.childNodes = children;
+
+		const refresh = (changed: boolean): void => {
+			if (!changed) { return; }
+			this.refresh();
+		}
+		const slots = Object.create(null);
+		
+		this._render = monitor(
+			refresh,
+			() => init(
+				this,
+				this.delivered,
+				this.childNodes,
+				slots,
+				[],
+				false,
+			),
+		);
+		this._nodes = convert(this, this._render());
 		this.callHook('created');
 		this.created = true;
 	}
