@@ -1,11 +1,41 @@
 /*!
- * Neep v0.1.0-alpha.10
+ * Neep v0.1.0-alpha.12
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
 import * as _mp_rt1_monitorable__ from 'monitorable';
-import { value, computed, isValue, encase, recover, valueify, asValue, Value as Value$1, WatchCallback } from 'monitorable';
+import { Value as Value$1, WatchCallback } from 'monitorable';
 export { asValue, computed, encase, isValue, recover, value, valueify } from 'monitorable';
+
+declare const ScopeSlot = "Neep:ScopeSlot";
+declare const SlotRender = "Neep:SlotRender";
+declare const Slot = "Neep:Slot";
+declare const Value = "Neep:Value";
+declare const Container = "Neep:Container";
+declare const Deliver = "Neep:Deliver";
+declare const Template = "template";
+declare const Fragment = "template";
+
+declare const _mp_rt9___auxiliary_tags___ScopeSlot: typeof ScopeSlot;
+declare const _mp_rt9___auxiliary_tags___SlotRender: typeof SlotRender;
+declare const _mp_rt9___auxiliary_tags___Slot: typeof Slot;
+declare const _mp_rt9___auxiliary_tags___Value: typeof Value;
+declare const _mp_rt9___auxiliary_tags___Container: typeof Container;
+declare const _mp_rt9___auxiliary_tags___Deliver: typeof Deliver;
+declare const _mp_rt9___auxiliary_tags___Template: typeof Template;
+declare const _mp_rt9___auxiliary_tags___Fragment: typeof Fragment;
+declare namespace _mp_rt9___auxiliary_tags__ {
+  export {
+    _mp_rt9___auxiliary_tags___ScopeSlot as ScopeSlot,
+    _mp_rt9___auxiliary_tags___SlotRender as SlotRender,
+    _mp_rt9___auxiliary_tags___Slot as Slot,
+    _mp_rt9___auxiliary_tags___Value as Value,
+    _mp_rt9___auxiliary_tags___Container as Container,
+    _mp_rt9___auxiliary_tags___Deliver as Deliver,
+    _mp_rt9___auxiliary_tags___Template as Template,
+    _mp_rt9___auxiliary_tags___Fragment as Fragment,
+  };
+}
 
 interface AddEvent<T extends Record<string, any[]>> {
     <N extends keyof T>(entName: N, listener: (...p: T[N]) => void): void;
@@ -15,7 +45,7 @@ declare class EventEmitter<T extends Record<string, any[]> = Record<string, any[
     static updateInProps<T extends Record<string, any[]>>(emitter: EventEmitter<T>, props: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
     private readonly _names;
     private readonly _cancelHandles;
-    readonly names: (keyof T)[];
+    get names(): (keyof T)[];
     readonly emit: Emit<T>;
     readonly on: On<T>;
     constructor();
@@ -57,8 +87,8 @@ declare class EntityObject {
     constructor(iRender: IRender, parent?: EntityObject, delivered?: Delivered, container?: ContainerEntity);
     /** 结果渲染函数 */
     protected _render: () => NeepNode[];
-    readonly canRefresh: boolean;
-    protected readonly needRefresh: boolean;
+    get canRefresh(): boolean;
+    protected get needRefresh(): boolean;
     /** 是否需要继续刷新 */
     protected _needRefresh: boolean;
     private _delayedRefresh;
@@ -199,222 +229,6 @@ declare global {
 	}
 };
 
-/**
- * Global constant
- *
- * Will be replaced by the 'rollup-plugin-replace' plug-in
- */
-/**
-* Neep code version
-*/
-declare const version: string;
-/**
- * Is the current mode production mode
- * @description Support tree shaking
- */
-declare const isProduction: boolean;
-
-declare const Constant_version: typeof version;
-declare const Constant_isProduction: typeof isProduction;
-declare namespace Constant {
-  export {
-    Constant_version as version,
-    Constant_isProduction as isProduction,
-  };
-}
-
-declare const ScopeSlot = "Neep:ScopeSlot";
-declare const SlotRender = "Neep:SlotRender";
-declare const Slot = "Neep:Slot";
-declare const Value = "Neep:Value";
-declare const Container = "Neep:Container";
-declare const Deliver = "Neep:Deliver";
-declare const Template = "template";
-declare const Fragment = "template";
-
-declare const Tags_ScopeSlot: typeof ScopeSlot;
-declare const Tags_SlotRender: typeof SlotRender;
-declare const Tags_Slot: typeof Slot;
-declare const Tags_Value: typeof Value;
-declare const Tags_Container: typeof Container;
-declare const Tags_Deliver: typeof Deliver;
-declare const Tags_Template: typeof Template;
-declare const Tags_Fragment: typeof Fragment;
-declare namespace Tags {
-  export {
-    Tags_ScopeSlot as ScopeSlot,
-    Tags_SlotRender as SlotRender,
-    Tags_Slot as Slot,
-    Tags_Value as Value,
-    Tags_Container as Container,
-    Tags_Deliver as Deliver,
-    Tags_Template as Template,
-    Tags_Fragment as Fragment,
-  };
-}
-
-
-
-declare const State_value: typeof value;
-declare const State_computed: typeof computed;
-declare const State_isValue: typeof isValue;
-declare const State_encase: typeof encase;
-declare const State_recover: typeof recover;
-declare const State_valueify: typeof valueify;
-declare const State_asValue: typeof asValue;
-declare namespace State {
-  export {
-    State_value as value,
-    State_computed as computed,
-    State_isValue as isValue,
-    State_encase as encase,
-    State_recover as recover,
-    State_valueify as valueify,
-    State_asValue as asValue,
-  };
-}
-
-/**********************************
- * 状态管理类 API
- **********************************/
-/**
- * 监听指定值的变化
- * @description 本质是调用 Value 对象的 watch 方法
- * @description 但是通过此方法进行的观察，会在组件生命周期结束时自动停止观察
- * @description 此函数只有在初始化调用时有效
- * @param value 被监听的值
- * @param cb    当监听的值发送变化时调用的函数
- */
-declare function watch<T>(value: Value$1<T>, cb: WatchCallback<T>): () => void;
-/**
- * 监听指定值的变化
- * @description 本质是创建调用 Value 对象的 watch 方法
- * @description 但是通过此方法进行的观察，会在组件生命周期结束时自动停止观察
- * @description 此函数只有在初始化调用时有效
- * @param value 用于计算观测值的函数
- * @param cb    当监听的值发送变化时调用的函数
- */
-declare function watch<T>(value: () => T, cb: (v: T, stopped: boolean) => void): () => void;
-declare function useValue(): Value$1<any>;
-declare function useValue<T>(fn: () => T, name?: string): T;
-declare function useValue<T>(fn?: () => T, name?: string): T | Value$1<any>;
-/**********************************
- * 钩子类 API
- **********************************/
-/**
- * 为当前组件注册钩子
- * @param name 钩子名称
- * @param hook 钩子
- * @param initOnly 是否仅在初始化时有效
- */
-declare function hook<H extends Hooks>(name: H, hook: () => void, initOnly?: boolean): undefined | (() => void);
-declare function hook(name: string, hook: () => void, initOnly?: boolean): undefined | (() => void);
-/**
- * 将 Value 导出
- * @param name 导出用的名称
- */
-declare function expose<T>(name: string | number | symbol, value: Value$1<T>, mix?: boolean): void;
-/**
- * 将普通值导出
- * @param name
- * @param value
- */
-declare function expose<T>(name: string | number | symbol, value: T): void;
-/**
- * 设置基于 getter 的导出
- * @param name
- * @param getter
- * @param nonModifiable
- */
-declare function expose<T>(name: string | number | symbol, getter: () => T, nonModifiable: true): void;
-/**
- * 设置基于 getter/setter 的导出
- * @param name
- * @param getter
- * @param setter
- */
-declare function expose<T>(name: string | number | symbol, getter: () => T, setter: (value: T) => void): void;
-/**
- * 将 Value 传递给子组件
- * @param name 导出用的名称
- */
-declare function deliver<T>(name: string | number | symbol, value: Value$1<T>, mix?: boolean): void;
-/**
- * 将普通值导出
- * @param name
- * @param value
- */
-declare function deliver<T>(name: string | number | symbol, value: T): void;
-/**
- * 设置基于 getter 的传递
- * @param name
- * @param getter
- * @param nonModifiable
- */
-declare function deliver<T>(name: string | number | symbol, getter: () => T, nonModifiable: true): void;
-/**
- * 设置基于 getter/setter 的传递
- * @param name
- * @param getter
- * @param setter
- */
-declare function deliver<T>(name: string | number | symbol, getter: () => T, setter: (value: T) => void): void;
-
-declare const Life_watch: typeof watch;
-declare const Life_useValue: typeof useValue;
-declare const Life_hook: typeof hook;
-declare const Life_expose: typeof expose;
-declare const Life_deliver: typeof deliver;
-declare namespace Life {
-  export {
-    Life_watch as watch,
-    Life_useValue as useValue,
-    Life_hook as hook,
-    Life_expose as expose,
-    Life_deliver as deliver,
-  };
-}
-
-/**
- * 判读是否为元素
- */
-declare function isElement(v: any): v is NeepElement;
-declare function createElement(tag: Tag, attrs?: {
-    [key: string]: any;
-}, ...children: any[]): NeepElement;
-interface elementIteratorOptions {
-    simple?: boolean | Component[] | ((c: Component) => boolean);
-}
-declare function elements(node: any, opt?: elementIteratorOptions): any[];
-
-declare const Element_isElement: typeof isElement;
-declare const Element_createElement: typeof createElement;
-type Element_elementIteratorOptions = elementIteratorOptions;
-declare const Element_elements: typeof elements;
-declare namespace Element {
-  export {
-    Element_isElement as isElement,
-    Element_createElement as createElement,
-    Element_elementIteratorOptions as elementIteratorOptions,
-    Element_elements as elements,
-  };
-}
-
-declare function label(text: string, color?: string): void;
-
-declare const Dev_label: typeof label;
-declare namespace Dev {
-  export {
-    Dev_label as label,
-  };
-}
-
-/** 辅助 */
-interface Auxiliary extends Readonly<typeof Tags>, Readonly<typeof State>, Readonly<typeof Life>, Readonly<typeof Element>, Readonly<typeof Dev>, Readonly<typeof Constant> {
-}
-declare function setAuxiliary<T>(name: string, value: T): void;
-declare function defineAuxiliary<T>(name: string, get: (this: Auxiliary) => T): void;
-
 declare const isElementSymbol: unique symbol;
 declare const typeSymbol: unique symbol;
 declare const nameSymbol: unique symbol;
@@ -496,7 +310,7 @@ interface RootExposed extends Exposed {
     $unmount(): void;
 }
 /** 上下文环境 */
-interface Context<P = any> {
+interface Context {
     /** 作用域槽 */
     slots: Slots;
     /** 是否已经完成初始化 */
@@ -537,9 +351,14 @@ interface Entity {
     refresh<T>(f?: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T | undefined;
     $_valueIndex: number;
     readonly $_values: any[];
+    $_serviceIndex: number;
+    readonly $_services: any[];
 }
 interface Render<R extends object = any> {
-    (data: R, context: Context, auxiliary: Auxiliary): NeepNode;
+    (data: R, context: Context): NeepNode;
+}
+interface Service<T extends object> {
+    (entity: Entity): T;
 }
 /** 组件标记 */
 interface Marks {
@@ -553,9 +372,10 @@ interface Marks {
 }
 /** 构造函数 */
 interface Component<P extends object = object, R extends object = object> extends Marks {
-    (props: P, context: Context, auxiliary: Auxiliary): undefined | null | NeepNode | NeepNode[] | R | (() => undefined | null | NeepNode | NeepNode[] | R);
+    (props: P, context: Context): undefined | null | NeepNode | NeepNode[] | R | (() => undefined | null | NeepNode | NeepNode[] | R);
 }
-declare type Tag = null | string | typeof Tags[keyof typeof Tags] | Component<any, any>;
+declare type Tags = typeof _mp_rt9___auxiliary_tags__;
+declare type Tag = null | string | Tags[keyof Tags] | Component<any, any>;
 interface Ref {
     (node: NativeNode | Exposed, isRemove?: boolean): void;
 }
@@ -575,7 +395,7 @@ interface NeepElement {
     /** 插槽 */
     slot?: string;
     /** 列表对比 key */
-    key: any;
+    key?: any;
     /** Value 类型值 */
     value?: any;
     /** Slot 相关的渲染函数 */
@@ -633,27 +453,36 @@ interface MountProps {
     target?: any;
     [key: string]: any;
 }
+interface Rect {
+    readonly bottom: number;
+    readonly height: number;
+    readonly left: number;
+    readonly right: number;
+    readonly top: number;
+    readonly width: number;
+}
 interface IRender {
     type: string;
     nextFrame?(fn: () => void): void;
     mount(props: MountProps, parent?: IRender): [NativeContainer, NativeNode];
     unmount(container: NativeContainer, node: NativeNode, removed: boolean): any;
-    draw(container: NativeContainer, node: NativeNode): void;
+    drawNode(container: NativeContainer, node: NativeNode): void;
     drawContainer(container: NativeContainer, node: NativeNode, props: MountProps, parent?: IRender, 
     /**
      * 当 parent 存在且与当前节点不同时，用于区分
      */
     isSelf?: boolean): [NativeContainer, NativeNode];
     isNode(v: any): v is NativeNode;
-    create(tag: string, props: Record<string, any>): NativeElement;
-    update(node: NativeElement, props: Record<string, any>): void;
-    text(text: string): NativeText;
-    placeholder(): NativePlaceholder;
-    component?(): [NativeComponent, NativeShadow];
-    parent(node: NativeNode): NativeContainer | null;
-    next(node: NativeNode): NativeNode | null;
-    insert(parent: NativeContainer, node: NativeNode, next?: NativeNode | null): void;
-    remove(n: NativeNode): void;
+    createElement(tag: string, props: Record<string, any>): NativeElement;
+    updateProps(node: NativeElement, props: Record<string, any>): void;
+    createText(text: string): NativeText;
+    createPlaceholder(): NativePlaceholder;
+    createComponent?(): [NativeComponent, NativeShadow];
+    getParent(node: NativeNode): NativeContainer | null;
+    nextNode(node: NativeNode): NativeNode | null;
+    insertNode(parent: NativeContainer, node: NativeNode, next?: NativeNode | null): void;
+    removeNode(n: NativeNode): void;
+    getRect(n: NativeNode): Rect | null;
 }
 
 interface InstallOptions {
@@ -677,6 +506,124 @@ declare function lazy<P extends object = object, C extends Component<P, any> = C
 }>, Placeholder?: Component<{
     loading: boolean;
 }, any>): Component<P>;
+
+/**
+ * Global constant
+ *
+ * Will be replaced by the 'rollup-plugin-replace' plug-in
+ */
+/**
+ * Neep code version
+ */
+declare const version: string;
+/**
+ * Is the current mode production mode
+ * @description Support tree shaking
+ */
+declare const isProduction: boolean;
+
+/**********************************
+ * 状态管理类 API
+ **********************************/
+/**
+ * 监听指定值的变化
+ * @description 本质是调用 Value 对象的 watch 方法
+ * @description 但是通过此方法进行的观察，会在组件生命周期结束时自动停止观察
+ * @description 此函数只有在初始化调用时有效
+ * @param value 被监听的值
+ * @param cb    当监听的值发送变化时调用的函数
+ */
+declare function watch<T>(value: Value$1<T>, cb: WatchCallback<T>): () => void;
+/**
+ * 监听指定值的变化
+ * @description 本质是创建调用 Value 对象的 watch 方法
+ * @description 但是通过此方法进行的观察，会在组件生命周期结束时自动停止观察
+ * @description 此函数只有在初始化调用时有效
+ * @param value 用于计算观测值的函数
+ * @param cb    当监听的值发送变化时调用的函数
+ */
+declare function watch<T>(value: () => T, cb: (v: T, stopped: boolean) => void): () => void;
+declare function useValue(): Value$1<any>;
+declare function useValue<T>(fn: () => T): T;
+declare function useValue<T>(fn?: () => T): T | Value$1<any>;
+declare function useService<T extends object>(fn: Service<T>): T;
+/**********************************
+ * 钩子类 API
+ **********************************/
+/**
+ * 为当前组件注册钩子
+ * @param name 钩子名称
+ * @param hook 钩子
+ * @param initOnly 是否仅在初始化时有效
+ */
+declare function hook<H extends Hooks>(name: H, hook: () => void, initOnly?: boolean): undefined | (() => void);
+declare function hook(name: string, hook: () => void, initOnly?: boolean): undefined | (() => void);
+/**
+ * 将 Value 导出
+ * @param name 导出用的名称
+ */
+declare function expose<T>(name: string | number | symbol, value: Value$1<T>, mix?: boolean): void;
+/**
+ * 将普通值导出
+ * @param name
+ * @param value
+ */
+declare function expose<T>(name: string | number | symbol, value: T): void;
+/**
+ * 设置基于 getter 的导出
+ * @param name
+ * @param getter
+ * @param nonModifiable
+ */
+declare function expose<T>(name: string | number | symbol, getter: () => T, nonModifiable: true): void;
+/**
+ * 设置基于 getter/setter 的导出
+ * @param name
+ * @param getter
+ * @param setter
+ */
+declare function expose<T>(name: string | number | symbol, getter: () => T, setter: (value: T) => void): void;
+/**
+ * 将 Value 传递给子组件
+ * @param name 导出用的名称
+ */
+declare function deliver<T>(name: string | number | symbol, value: Value$1<T>, mix?: boolean): void;
+/**
+ * 将普通值导出
+ * @param name
+ * @param value
+ */
+declare function deliver<T>(name: string | number | symbol, value: T): void;
+/**
+ * 设置基于 getter 的传递
+ * @param name
+ * @param getter
+ * @param nonModifiable
+ */
+declare function deliver<T>(name: string | number | symbol, getter: () => T, nonModifiable: true): void;
+/**
+ * 设置基于 getter/setter 的传递
+ * @param name
+ * @param getter
+ * @param setter
+ */
+declare function deliver<T>(name: string | number | symbol, getter: () => T, setter: (value: T) => void): void;
+
+/**
+ * 判读是否为元素
+ */
+declare function isElement(v: any): v is NeepElement;
+declare function createElement(tag: Tag, attrs?: {
+    [key: string]: any;
+}, ...children: any[]): NeepElement;
+interface elementIteratorOptions {
+    simple?: boolean | Component[] | ((c: Component) => boolean);
+}
+declare function elements(node: any, opt?: elementIteratorOptions): any[];
+
+declare function label(text: string, color?: string): void;
+
+declare function getRect(n: NativeNode): Rect | null;
 
 /** 当前正在执行的对象 */
 declare let current: Entity | undefined;
@@ -722,4 +669,4 @@ declare function setHook(id: string, hook: Hook, entity?: Entity): () => void;
 declare function callHook<H extends Hooks>(id: H, exposed: Entity): void;
 declare function callHook(id: string, exposed: Entity): void;
 
-export { Auxiliary, Component, ComponentEntity$1 as ComponentEntity, Container, ContainerEntity$1 as ContainerEntity, Context, ContextConstructor, Deliver, Delivered, Devtools, Emit, Entity, EntityObject$1 as EntityObject, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, MountedNode, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Ref, Render, RootExposed, ScopeSlot, Slot, SlotFn, SlotRender, Slots, Tag, Tags, Template, TreeNode, Value, addContextConstructor, callHook, checkCurrent, componentsSymbol, configSymbol, create, createElement, current, defineAuxiliary, deliver, elementIteratorOptions, elements, expose, hook, install, isElement, isElementSymbol, isProduction, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, refresh, register, render, renderSymbol, setAuxiliary, setHook, typeSymbol, useValue, version, watch };
+export { Component, ComponentEntity$1 as ComponentEntity, Container, ContainerEntity$1 as ContainerEntity, Context, ContextConstructor, Deliver, Delivered, Devtools, Emit, Entity, EntityObject$1 as EntityObject, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, MountedNode, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Rect, Ref, Render, RootExposed, ScopeSlot, Service, Slot, SlotFn, SlotRender, Slots, Tag, Template, TreeNode, Value, addContextConstructor, callHook, checkCurrent, componentsSymbol, configSymbol, create, createElement, current, deliver, elementIteratorOptions, elements, expose, getRect, hook, install, isElement, isElementSymbol, isProduction, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, refresh, register, render, renderSymbol, setHook, typeSymbol, useService, useValue, version, watch };

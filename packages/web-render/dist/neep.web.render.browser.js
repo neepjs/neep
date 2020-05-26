@@ -1,5 +1,5 @@
 /*!
- * NeepWebRender v0.1.0-alpha.9
+ * NeepWebRender v0.1.0-alpha.12
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -127,7 +127,7 @@
 	    if (typeof value === 'number') {
 	      css[key] = [value === 0 ? '0' : `${value}px`, null];
 	    } else if (value && typeof value === 'string') {
-	      const v = value.replace(/\!important\s*$/, '');
+	      const v = value.replace(/!important\s*$/, '');
 	      css[key] = [v, v === value ? null : 'important'];
 	    }
 	  }
@@ -473,6 +473,15 @@
 	  return document.createElementNS(ns in xmlnsMap && xmlnsMap[ns] || ns, tag);
 	}
 
+	const tagRegex = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)?(?::[a-z0-9]+(?:-[a-z0-9]+)?)?$/i;
+	function isTagName(tag) {
+	  if (typeof tag !== 'string') {
+	    return false;
+	  }
+
+	  return tagRegex.test(tag);
+	}
+
 	const render = {
 	  type: 'web',
 	  nextFrame,
@@ -487,11 +496,11 @@
 	    style,
 	    tag
 	  }, parent) {
-	    if (!(typeof tag === 'string' && /^[a-z][a-z0-9]*(?:\-[a-z0-9]+)?(?:\:[a-z0-9]+(?:\-[a-z0-9]+)?)?$/i.test(tag))) {
+	    if (!isTagName(tag)) {
 	      tag = 'div';
 	    }
 
-	    const container = render.create(tag, {
+	    const container = render.createElement(tag, {
 	      class: className,
 	      style
 	    });
@@ -504,7 +513,7 @@
 	      target.appendChild(container);
 
 	      if (parent) {
-	        return [container, parent.placeholder()];
+	        return [container, parent.createPlaceholder()];
 	      }
 
 	      return [container, container];
@@ -532,7 +541,7 @@
 	    style,
 	    tag
 	  }, parent) {
-	    render.update(container, {
+	    render.updateProps(container, {
 	      class: className,
 	      style
 	    });
@@ -545,7 +554,7 @@
 	      target = document.body;
 	    }
 
-	    const oldTarget = parent === render && container === node ? undefined : render.parent(node);
+	    const oldTarget = parent === render && container === node ? undefined : render.getParent(node);
 
 	    if (oldTarget === target) {
 	      return [container, node];
@@ -557,23 +566,23 @@
 	    }
 
 	    if (!oldTarget) {
-	      const newNode = parent.placeholder();
-	      const pNode = parent.parent(node);
+	      const newNode = parent.createPlaceholder();
+	      const pNode = parent.getParent(node);
 
 	      if (pNode) {
-	        render.insert(pNode, newNode, node);
-	        render.remove(node);
+	        render.insertNode(pNode, newNode, node);
+	        render.removeNode(node);
 	      }
 
 	      return [container, newNode];
 	    }
 
 	    if (!target) {
-	      const pNode = parent.parent(node);
+	      const pNode = parent.getParent(node);
 
 	      if (pNode) {
-	        render.insert(pNode, container, node);
-	        render.remove(node);
+	        render.insertNode(pNode, container, node);
+	        render.removeNode(node);
 	      }
 
 	      return [container, container];
@@ -583,51 +592,93 @@
 	    return [container, node];
 	  },
 
-	  draw() {},
+	  drawNode() {},
 
-	  create(tag, props) {
+	  createElement(tag, props) {
 	    return update$3(createElement(tag), props);
 	  },
 
-	  text(text) {
+	  createText(text) {
 	    return document.createTextNode(text);
 	  },
 
-	  placeholder() {
+	  createPlaceholder() {
 	    return document.createComment('');
 	  },
 
-	  component() {
+	  createComponent() {
 	    const node = createElement('neep-component');
 	    return [node, node.attachShadow({
 	      mode: 'open'
 	    })];
 	  },
 
-	  parent(node) {
+	  getParent(node) {
 	    return node.parentNode;
 	  },
 
-	  next(node) {
+	  nextNode(node) {
 	    return node.nextSibling;
 	  },
 
-	  update(node, props) {
+	  updateProps(node, props) {
 	    update$3(node, props);
 	  },
 
-	  insert(parent, node, next = null) {
+	  insertNode(parent, node, next = null) {
 	    parent.insertBefore(node, next);
 	  },
 
-	  remove(node) {
-	    const p = render.parent(node);
+	  removeNode(node) {
+	    const p = render.getParent(node);
 
 	    if (!p) {
 	      return;
 	    }
 
 	    p.removeChild(node);
+	  },
+
+	  getRect(node) {
+	    if (node instanceof Element) {
+	      const {
+	        top,
+	        right,
+	        bottom,
+	        left,
+	        width,
+	        height
+	      } = node.getBoundingClientRect();
+	      return {
+	        top,
+	        right,
+	        bottom,
+	        left,
+	        width,
+	        height
+	      };
+	    }
+
+	    if (node instanceof ShadowRoot) {
+	      const {
+	        top,
+	        right,
+	        bottom,
+	        left,
+	        width,
+	        height
+	      } = node.host.getBoundingClientRect();
+	      return {
+	        top,
+	        right,
+	        bottom,
+	        left,
+	        width,
+	        height
+	      };
+	    }
+
+	    return null;
 	  }
 
 	};

@@ -1,7 +1,7 @@
 {
   "name": "neep",
   "private": true,
-  "version": "0.1.0-alpha.10",
+  "version": "0.1.0-alpha.12",
   "main": "dist/neep.common.js",
   "module": "dist/neep.esm.js",
   "scripts": {

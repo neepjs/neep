@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.10
+ * Neep v0.1.0-alpha.12
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -7,15 +7,10 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-var State = require('monitorable');
+var monitorable = require('monitorable');
 
-const version = '0.1.0-alpha.10';
+const version = '0.1.0-alpha.12';
 const isProduction = process.env.NODE_ENV === 'production';
-
-var Constant = /*#__PURE__*/Object.freeze({
-	version: version,
-	isProduction: isProduction
-});
 
 const devtools = {
   renderHook() {}
@@ -75,7 +70,10 @@ function assert(v, message, tag) {
 let nextFrameApi;
 function nextFrame(fn) {
   assert(nextFrameApi, 'The basic renderer is not installed', 'install');
-  nextFrameApi(fn);
+
+  if (nextFrameApi) {
+    nextFrameApi(fn);
+  }
 }
 const renders = Object.create(null);
 function getRender(type = '') {
@@ -276,7 +274,7 @@ class EventEmitter {
 
       Reflect.defineProperty(emit, 'names', {
         get: () => {
-          State.markRead(createEmit, 'names');
+          monitorable.markRead(createEmit, 'names');
           return [...names].filter(t => !omitNames.includes(t));
         },
         configurable: true
@@ -301,7 +299,7 @@ class EventEmitter {
       if (!((_event = event) === null || _event === void 0 ? void 0 : _event.size)) {
         event = new Set();
         events[name] = event;
-        State.markChange(createEmit, 'names');
+        monitorable.markChange(createEmit, 'names');
         names.add(name);
       }
 
@@ -319,7 +317,7 @@ class EventEmitter {
           return;
         }
 
-        State.markChange(createEmit, 'names');
+        monitorable.markChange(createEmit, 'names');
         names.delete(name);
       };
     };
@@ -362,27 +360,21 @@ const Deliver = 'Neep:Deliver';
 const Template = 'template';
 const Fragment = Template;
 
-var Tags = /*#__PURE__*/Object.freeze({
-	ScopeSlot: ScopeSlot,
-	SlotRender: SlotRender,
-	Slot: Slot,
-	Value: Value,
-	Container: Container,
-	Deliver: Deliver,
-	Template: Template,
-	Fragment: Fragment
-});
-
 function setCurrent(fn, entity) {
   const oldEntity = exports.current;
   exports.current = entity;
 
   try {
     exports.current.$_valueIndex = 0;
+    exports.current.$_serviceIndex = 0;
     const ret = fn();
 
     if (exports.current.$_valueIndex !== exports.current.$_values.length) {
       throw new NeepError('Inconsistent number of useValue executions', 'life');
+    }
+
+    if (exports.current.$_serviceIndex && exports.current.$_serviceIndex !== exports.current.$_services.length) {
+      throw new NeepError('Inconsistent number of useService executions', 'life');
     }
 
     return ret;
@@ -415,7 +407,7 @@ function initContext(context, exposed) {
   return context;
 }
 function addContextConstructor(constructor) {
-  constructors.push(State.safeify(constructor));
+  constructors.push(monitorable.safeify(constructor));
 }
 
 let delayedRefresh = 0;
@@ -471,7 +463,7 @@ function setHook(id, hook, entity) {
     return () => {};
   }
 
-  hook = State.safeify(hook);
+  hook = monitorable.safeify(hook);
   let set = list[id];
 
   if (!set) {
@@ -503,18 +495,18 @@ function watch(value, cb) {
     return () => {};
   }
 
-  const stop = State.isValue(value) ? value.watch(cb) : State.computed(value).watch((v, s) => cb(v(), s));
+  const stop = monitorable.isValue(value) ? value.watch(cb) : monitorable.computed(value).watch((v, s) => cb(v(), s));
   setHook('beforeDestroy', () => stop(), entity);
   return stop;
 }
-function useValue(fn, name = 'useValue') {
-  const entity = checkCurrent(name);
+function useValue(fn) {
+  const entity = checkCurrent('useValue');
   const index = entity.$_valueIndex++;
   const values = entity.$_values;
 
   if (!entity.created) {
     values[index] = undefined;
-    const v = typeof fn === 'function' ? fn() : State.value(undefined);
+    const v = typeof fn === 'function' ? fn() : monitorable.value(undefined);
     return values[index] = v;
   }
 
@@ -523,6 +515,24 @@ function useValue(fn, name = 'useValue') {
   }
 
   return values[index];
+}
+function useService(fn) {
+  const entity = checkCurrent('useService');
+  const index = entity.$_serviceIndex++;
+  const services = entity.$_services;
+
+  if (!entity.created) {
+    services[index] = undefined;
+    const v = fn(entity);
+    services[index] = v;
+    return v;
+  }
+
+  if (index >= services.length) {
+    throw new NeepError('Inconsistent number of useService executions', 'life');
+  }
+
+  return services[index];
 }
 function hook(name, hook, initOnly) {
   const entity = checkCurrent('setHook');
@@ -539,7 +549,7 @@ function setValue(obj, name, value, opt) {
     return;
   }
 
-  if (State.isValue(value) && opt) {
+  if (monitorable.isValue(value) && opt) {
     Reflect.defineProperty(obj, name, {
       get() {
         return value();
@@ -581,14 +591,6 @@ function expose(name, value, opt) {
 function deliver(name, value, opt) {
   setValue(checkCurrent('deliver', true).delivered, name, value, opt);
 }
-
-var Life = /*#__PURE__*/Object.freeze({
-	watch: watch,
-	useValue: useValue,
-	hook: hook,
-	expose: expose,
-	deliver: deliver
-});
 
 const isElementSymbol = Symbol.for('isNeepElement');
 const typeSymbol = Symbol.for('type');
@@ -730,12 +732,6 @@ function elements(node, opt = {}) {
   return elements(node.children, opt);
 }
 
-var Element = /*#__PURE__*/Object.freeze({
-	isElement: isElement,
-	createElement: createElement,
-	elements: elements
-});
-
 let label;
 function setLabel(l) {
   label = l;
@@ -760,58 +756,26 @@ function label$1(text, color = '') {
   }
 }
 
-var Dev = /*#__PURE__*/Object.freeze({
-	label: label$1
-});
+function getRect(n) {
+  for (const t of Object.keys(renders)) {
+    const render = renders[t];
 
-const auxiliary = { ...Tags,
-  ...Life,
-  ...Element,
-  ...Dev,
-  ...Constant,
+    if (!render) {
+      continue;
+    }
 
-  get value() {
-    return State.value;
-  },
+    if (!render.isNode(n)) {
+      continue;
+    }
 
-  get computed() {
-    return State.computed;
-  },
+    const rect = render.getRect(n);
 
-  get isValue() {
-    return State.isValue;
-  },
-
-  get encase() {
-    return State.encase;
-  },
-
-  get recover() {
-    return State.recover;
-  },
-
-  get valueify() {
-    return State.valueify;
-  },
-
-  get asValue() {
-    return State.asValue;
+    if (rect) {
+      return rect;
+    }
   }
 
-};
-function setAuxiliary(name, value) {
-  Reflect.defineProperty(auxiliary, name, {
-    value,
-    enumerable: true,
-    configurable: true
-  });
-}
-function defineAuxiliary(name, get) {
-  Reflect.defineProperty(auxiliary, name, {
-    get,
-    enumerable: true,
-    configurable: true
-  });
+  return null;
 }
 
 let ids = 0;
@@ -863,7 +827,6 @@ let refList;
 function setRefList(list) {
   refList = list;
 }
-
 function setRef(ref, node, isRemove) {
   if (typeof ref !== 'function') {
     return;
@@ -878,6 +841,201 @@ function setRef(ref, node, isRemove) {
   } else {
     refList.push(() => ref(node, isRemove));
   }
+}
+function* getNodes(tree) {
+  if (Array.isArray(tree)) {
+    for (const it of tree) {
+      yield* getNodes(it);
+    }
+
+    return;
+  }
+
+  const {
+    children,
+    node,
+    component
+  } = tree;
+
+  if (node) {
+    yield node;
+    return;
+  }
+
+  if (component) {
+    yield* getNodes(component.tree);
+    return;
+  }
+
+  yield* getNodes(children);
+}
+function unmount(iRender, tree) {
+  if (Array.isArray(tree)) {
+    tree.forEach(e => unmount(iRender, e));
+    return;
+  }
+
+  const {
+    component,
+    children,
+    node,
+    ref
+  } = tree;
+  recoveryMountedNode(tree);
+
+  if (component) {
+    setRef(ref, component.exposed, true);
+    component.unmount();
+    return;
+  }
+
+  if (node) {
+    setRef(ref, node, true);
+    iRender.removeNode(node);
+  }
+
+  unmount(iRender, children);
+}
+
+function createValue(iRender, source, value) {
+  let {
+    ref
+  } = source;
+
+  if (iRender.isNode(value)) {
+    setRef(ref, value);
+    return createMountedNode({ ...source,
+      value,
+      node: value,
+      children: [],
+      component: undefined
+    });
+  }
+
+  const type = typeof value;
+  let node;
+
+  if (type === 'bigint' || type === 'boolean' || type === 'number' || type === 'string' || type === 'symbol' || value instanceof RegExp) {
+    node = iRender.createText(String(value));
+  } else if (value instanceof Date) {
+    node = iRender.createText(value.toISOString());
+  } else if (type === 'object' && value) {
+    node = iRender.createText(String(value));
+  }
+
+  if (!node) {
+    node = iRender.createPlaceholder();
+  }
+
+  setRef(ref, node);
+  return createMountedNode({ ...source,
+    value,
+    node,
+    component: undefined,
+    children: []
+  });
+}
+function createAll(iRender, source) {
+  if (!source.length) {
+    return [createMountedNode({
+      tag: null,
+      node: iRender.createPlaceholder(),
+      component: undefined,
+      children: []
+    })];
+  }
+
+  return source.map(item => Array.isArray(item) ? createList(iRender, item) : createItem(iRender, item));
+}
+function createList(iRender, source) {
+  if (source.length) {
+    return source.map(it => createItem(iRender, it));
+  }
+
+  return [createMountedNode({
+    tag: null,
+    node: iRender.createPlaceholder(),
+    component: undefined,
+    children: []
+  })];
+}
+function createItem(iRender, source) {
+  var _source$children;
+
+  const {
+    tag,
+    ref,
+    component
+  } = source;
+
+  if (!tag) {
+    const node = iRender.createPlaceholder();
+    setRef(ref, node);
+    return createMountedNode({
+      tag: null,
+      node,
+      component: undefined,
+      children: []
+    });
+  }
+
+  const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
+
+  if (typeof tag !== 'string' || ltag === 'neep:container') {
+    if (!component) {
+      return createMountedNode({ ...source,
+        node: undefined,
+        component: undefined,
+        children: createAll(iRender, source.children)
+      });
+    }
+
+    component.mount();
+    setRef(ref, component.exposed);
+    return createMountedNode({ ...source,
+      node: undefined,
+      component,
+      children: []
+    });
+  }
+
+  if (ltag === 'neep:value') {
+    let {
+      value
+    } = source;
+
+    if (monitorable.isValue(value)) {
+      value = value();
+    }
+
+    return createValue(iRender, source, value);
+  }
+
+  if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
+    return createMountedNode({ ...source,
+      node: undefined,
+      component: undefined,
+      children: createAll(iRender, source.children)
+    });
+  }
+
+  const node = iRender.createElement(tag, source.props || {});
+  setRef(ref, node);
+  let children = [];
+
+  if ((_source$children = source.children) === null || _source$children === void 0 ? void 0 : _source$children.length) {
+    children = createAll(iRender, source.children);
+
+    for (const it of getNodes(children)) {
+      iRender.insertNode(node, it);
+    }
+  }
+
+  return createMountedNode({ ...source,
+    node,
+    component: undefined,
+    children
+  });
 }
 
 function getLastNode(tree) {
@@ -924,62 +1082,6 @@ function getFirstNode(tree) {
   return getFirstNode(children[0]);
 }
 
-function* getNodes(tree) {
-  if (Array.isArray(tree)) {
-    for (const it of tree) {
-      yield* getNodes(it);
-    }
-
-    return;
-  }
-
-  const {
-    children,
-    node,
-    component
-  } = tree;
-
-  if (node) {
-    yield node;
-    return;
-  }
-
-  if (component) {
-    yield* getNodes(component.tree);
-    return;
-  }
-
-  yield* getNodes(children);
-}
-function unmount(iRender, tree) {
-  if (Array.isArray(tree)) {
-    tree.forEach(e => unmount(iRender, e));
-    return;
-  }
-
-  const {
-    component,
-    children,
-    node,
-    ref
-  } = tree;
-  recoveryMountedNode(tree);
-
-  if (node) {
-    setRef(ref, node, true);
-    iRender.remove(node);
-    return;
-  }
-
-  if (component) {
-    setRef(ref, component.exposed, true);
-    component.unmount();
-    return;
-  }
-
-  unmount(iRender, children);
-}
-
 function replace(iRender, newTree, oldTree) {
   const next = getFirstNode(oldTree);
 
@@ -987,14 +1089,14 @@ function replace(iRender, newTree, oldTree) {
     return newTree;
   }
 
-  const parent = iRender.parent(next);
+  const parent = iRender.getParent(next);
 
   if (!parent) {
     return newTree;
   }
 
   for (const it of getNodes(newTree)) {
-    iRender.insert(parent, it, next);
+    iRender.insertNode(parent, it, next);
   }
 
   unmount(iRender, oldTree);
@@ -1040,13 +1142,13 @@ function updateList(iRender, source, tree) {
   unmount(iRender, list);
   tree = tree.filter(t => mountedMap.has(t));
   const last = getLastNode(tree[tree.length - 1]);
-  const parent = iRender.parent(last);
+  const parent = iRender.getParent(last);
 
   if (!parent) {
     return newList;
   }
 
-  let next = iRender.next(last);
+  let next = iRender.nextNode(last);
 
   for (let i = newList.length - 1; i >= 0; i--) {
     const item = newList[i];
@@ -1058,7 +1160,7 @@ function updateList(iRender, source, tree) {
       }
     } else {
       for (const it of getNodes(item)) {
-        iRender.insert(parent, it, next);
+        iRender.insertNode(parent, it, next);
       }
     }
 
@@ -1093,8 +1195,8 @@ function updateAll(iRender, source, tree) {
 
   if (source.length > length) {
     const last = getLastNode(list[list.length - 1]);
-    const parent = iRender.parent(last);
-    const next = iRender.next(last);
+    const parent = iRender.getParent(last);
+    const next = iRender.nextNode(last);
 
     for (; index < length; index++) {
       const src = source[index];
@@ -1106,7 +1208,7 @@ function updateAll(iRender, source, tree) {
       }
 
       for (const it of getNodes(item)) {
-        iRender.insert(parent, it, next);
+        iRender.insertNode(parent, it, next);
       }
     }
   }
@@ -1148,7 +1250,7 @@ function updateItem(iRender, source, tree) {
       return createMountedNode({ ...source,
         node: undefined,
         component: undefined,
-        children: draw(iRender, source.children, tree.children)
+        children: updateAll(iRender, source.children, tree.children)
       }, tree.id);
     }
 
@@ -1161,9 +1263,11 @@ function updateItem(iRender, source, tree) {
   }
 
   if (ltag === 'neep:value') {
-    let value = source.value;
+    let {
+      value
+    } = source;
 
-    if (State.isValue(value)) {
+    if (monitorable.isValue(value)) {
       value = value();
     }
 
@@ -1190,7 +1294,7 @@ function updateItem(iRender, source, tree) {
   const {
     node
   } = tree;
-  iRender.update(node, source.props || {});
+  iRender.updateProps(node, source.props || {});
   setRef(ref, node);
 
   if (!source.children.length && !tree.children.length) {
@@ -1208,7 +1312,7 @@ function updateItem(iRender, source, tree) {
     const children = createAll(iRender, source.children);
 
     for (const it of getNodes(children)) {
-      iRender.insert(node, it);
+      iRender.insertNode(node, it);
     }
 
     return createMountedNode({ ...tree,
@@ -1221,148 +1325,6 @@ function updateItem(iRender, source, tree) {
     ...source,
     children: updateAll(iRender, source.children, tree.children)
   }, tree.id);
-}
-
-function createValue(iRender, source, value) {
-  let {
-    ref
-  } = source;
-
-  if (iRender.isNode(value)) {
-    setRef(ref, value);
-    return createMountedNode({ ...source,
-      value,
-      node: value,
-      children: [],
-      component: undefined
-    });
-  }
-
-  const type = typeof value;
-  let node;
-
-  if (type === 'bigint' || type === 'boolean' || type === 'number' || type === 'string' || type === 'symbol' || value instanceof RegExp) {
-    node = iRender.text(String(value));
-  } else if (value instanceof Date) {
-    node = iRender.text(value.toISOString());
-  } else if (type === 'object' && value) {
-    node = iRender.text(String(value));
-  }
-
-  if (!node) {
-    node = iRender.placeholder();
-  }
-
-  setRef(ref, node);
-  return createMountedNode({ ...source,
-    value,
-    node,
-    component: undefined,
-    children: []
-  });
-}
-
-function createAll(iRender, source) {
-  if (!source.length) {
-    return [createMountedNode({
-      tag: null,
-      node: iRender.placeholder(),
-      component: undefined,
-      children: []
-    })];
-  }
-
-  return source.map(item => Array.isArray(item) ? createList(iRender, item) : createItem(iRender, item));
-}
-
-function createList(iRender, source) {
-  if (source.length) {
-    return source.map(it => createItem(iRender, it));
-  }
-
-  return [createMountedNode({
-    tag: null,
-    node: iRender.placeholder(),
-    component: undefined,
-    children: []
-  })];
-}
-
-function createItem(iRender, source) {
-  var _source$children;
-
-  const {
-    tag,
-    ref,
-    component
-  } = source;
-
-  if (!tag) {
-    const node = iRender.placeholder();
-    setRef(ref, node);
-    return createMountedNode({
-      tag: null,
-      node,
-      component: undefined,
-      children: []
-    });
-  }
-
-  const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
-
-  if (typeof tag !== 'string' || ltag === 'neep:container') {
-    if (!component) {
-      return createMountedNode({ ...source,
-        node: undefined,
-        component: undefined,
-        children: draw(iRender, source.children)
-      });
-    }
-
-    component.mount();
-    setRef(ref, component.exposed);
-    return createMountedNode({ ...source,
-      node: undefined,
-      component,
-      children: []
-    });
-  }
-
-  if (ltag === 'neep:value') {
-    let value = source.value;
-
-    if (State.isValue(value)) {
-      value = value();
-    }
-
-    return createValue(iRender, source, value);
-  }
-
-  if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
-    return createMountedNode({ ...source,
-      node: undefined,
-      component: undefined,
-      children: createAll(iRender, source.children)
-    });
-  }
-
-  const node = iRender.create(tag, source.props || {});
-  setRef(ref, node);
-  let children = [];
-
-  if ((_source$children = source.children) === null || _source$children === void 0 ? void 0 : _source$children.length) {
-    children = createAll(iRender, source.children);
-
-    for (const it of getNodes(children)) {
-      iRender.insert(node, it);
-    }
-  }
-
-  return createMountedNode({ ...source,
-    node,
-    component: undefined,
-    children
-  });
 }
 
 function draw(iRender, source, tree) {
@@ -1525,7 +1487,7 @@ function updateProps(obj, props, oldProps = {}, define = false, isProps = false)
       continue;
     }
 
-    if (State.isValue(value)) {
+    if (monitorable.isValue(value)) {
       Reflect.defineProperty(obj, k, {
         configurable: true,
         enumerable: true,
@@ -1595,7 +1557,7 @@ function execSimple(nObject, delivered, node, tag, components, children) {
     getLabel();
   }
 
-  const result = tag(props, context, auxiliary);
+  const result = tag(props, context);
   let label;
 
   if (!isProduction) {
@@ -1741,7 +1703,7 @@ function renderNode(iRender, node, context, render) {
   }
 
   if (!iRender.isNode(node) && node && typeof node === 'object' && render) {
-    node = render(node, context, auxiliary);
+    node = render(node, context);
   }
 
   if (isElement(node)) {
@@ -1876,6 +1838,15 @@ function createEntity(obj) {
       writable: true
     },
     $_values: {
+      configurable: true,
+      value: []
+    },
+    $_serviceIndex: {
+      configurable: true,
+      value: 0,
+      writable: true
+    },
+    $_services: {
       configurable: true,
       value: []
     },
@@ -2134,7 +2105,7 @@ class EntityObject {
 
     this.__executed_mount = true;
     this.callHook('beforeMount');
-    const result = State.exec(c => c && this.requestDraw(), () => {
+    const result = monitorable.exec(c => c && this.requestDraw(), () => {
       this._mount();
 
       this.mounted = true;
@@ -2166,15 +2137,16 @@ class EntityObject {
   _draw() {}
 
   draw() {
-    var _this$_cancelDrawMoni;
-
     if (this.__executed_destroy) {
       return;
     }
 
-    (_this$_cancelDrawMoni = this._cancelDrawMonitor) === null || _this$_cancelDrawMoni === void 0 ? void 0 : _this$_cancelDrawMoni.call(this);
+    if (this._cancelDrawMonitor) {
+      this._cancelDrawMonitor();
+    }
+
     this.callHook('beforeDraw');
-    const result = State.exec(c => c && this.requestDraw(), () => this._draw());
+    const result = monitorable.exec(c => c && this.requestDraw(), () => this._draw());
     this._cancelDrawMonitor = result.stop;
     complete(() => this.callHook('drawn'));
   }
@@ -2247,14 +2219,20 @@ function initRender(nObject) {
     entity
   } = nObject;
 
-  const refresh = changed => changed && nObject.refresh();
+  function refresh(changed) {
+    if (!changed) {
+      return;
+    }
 
-  const result = State.exec(refresh, () => setCurrent(() => component(props, context, auxiliary), entity), {
+    nObject.refresh();
+  }
+
+  const result = monitorable.exec(refresh, () => setCurrent(() => component(props, context), entity), {
     resultOnly: true
   });
 
   if (typeof result === 'function') {
-    const render = State.monitor(refresh, () => normalize(nObject, result()));
+    const render = monitorable.monitor(refresh, () => normalize(nObject, result()));
     return {
       nodes: render(),
       render,
@@ -2262,9 +2240,9 @@ function initRender(nObject) {
     };
   }
 
-  const render = State.monitor(refresh, () => normalize(nObject, setCurrent(() => component(props, context, auxiliary), entity)));
+  const render = monitorable.monitor(refresh, () => normalize(nObject, setCurrent(() => component(props, context), entity)));
   return {
-    nodes: State.exec(refresh, () => normalize(nObject, result), {
+    nodes: monitorable.exec(refresh, () => normalize(nObject, result), {
       resultOnly: true
     }),
     render,
@@ -2274,15 +2252,15 @@ function initRender(nObject) {
 
 class ComponentEntity extends EntityObject {
   constructor(component, props, children, parent, delivered) {
-    var _this$iRender$compone, _this$iRender;
+    var _this$iRender$createC, _this$iRender;
 
     super(parent.iRender, parent, delivered, parent.container);
 
     _defineProperty(this, "component", void 0);
 
-    _defineProperty(this, "props", State.encase(Object.create(null)));
+    _defineProperty(this, "props", monitorable.encase(Object.create(null)));
 
-    _defineProperty(this, "slots", State.encase(Object.create(null)));
+    _defineProperty(this, "slots", monitorable.encase(Object.create(null)));
 
     _defineProperty(this, "_stopRender", void 0);
 
@@ -2306,7 +2284,7 @@ class ComponentEntity extends EntityObject {
       enumerable: true,
       configurable: true
     });
-    [this.native, this._shadow] = component[typeSymbol] === 'native' && ((_this$iRender$compone = (_this$iRender = this.iRender).component) === null || _this$iRender$compone === void 0 ? void 0 : _this$iRender$compone.call(_this$iRender)) || [];
+    [this.native, this._shadow] = component[typeSymbol] === 'native' && ((_this$iRender$createC = (_this$iRender = this.iRender).createComponent) === null || _this$iRender$createC === void 0 ? void 0 : _this$iRender$createC.call(_this$iRender)) || [];
     this.parent = parent;
     parent.children.add(this.exposed);
     const context = createContext(this);
@@ -2387,13 +2365,13 @@ class ComponentEntity extends EntityObject {
     this.shadowTree = draw(iRender, _nodes);
 
     for (const it of getNodes(this.shadowTree)) {
-      iRender.insert(_shadow, it);
+      iRender.insertNode(_shadow, it);
     }
 
     this.nativeTree = draw(iRender, nativeNodes);
 
     for (const it of getNodes(this.nativeTree)) {
-      iRender.insert(native, it);
+      iRender.insertNode(native, it);
     }
   }
 
@@ -2849,7 +2827,7 @@ class ContainerEntity extends EntityObject {
     const [container, node] = iRender.mount(props, parent === null || parent === void 0 ? void 0 : parent.iRender);
 
     for (const it of getNodes(content)) {
-      iRender.insert(container, it);
+      iRender.insertNode(container, it);
     }
 
     this.tree = [createMountedNode({
@@ -2936,7 +2914,7 @@ class ContainerEntity extends EntityObject {
     }
 
     this.callHook('beforeDraw');
-    State.exec(c => c && this.markDraw(this), () => this._drawSelf());
+    monitorable.exec(c => c && this.markDraw(this), () => this._drawSelf());
     complete(() => this.callHook('drawn'));
   }
 
@@ -2982,7 +2960,7 @@ class ContainerEntity extends EntityObject {
     }
 
     list.map(c => c.draw());
-    this.iRender.draw(container, node);
+    this.iRender.drawNode(container, node);
     complete(() => this.callHook('drawn'));
   }
 
@@ -3071,7 +3049,6 @@ function render(e, p = {}) {
       }
 
       container.unmount();
-      return;
     },
 
     configurable: true
@@ -3179,8 +3156,8 @@ function mark(component, ...marks) {
 }
 
 function lazy(component, Placeholder) {
-  const reslut = State.value(0);
-  const Component = State.value(undefined);
+  const reslut = monitorable.value(0);
+  const ComponentValue = monitorable.value(undefined);
 
   async function load() {
     if (reslut()) {
@@ -3193,7 +3170,7 @@ function lazy(component, Placeholder) {
       const c = await component();
 
       if (typeof c === 'function') {
-        Component(c);
+        ComponentValue(c);
         return;
       }
 
@@ -3203,7 +3180,7 @@ function lazy(component, Placeholder) {
       }
 
       if (typeof c.default === 'function') {
-        Component(c.default);
+        ComponentValue(c.default);
         return;
       }
 
@@ -3215,10 +3192,8 @@ function lazy(component, Placeholder) {
 
   function Lazy(props, {
     childNodes
-  }, {
-    createElement
   }) {
-    const com = Component();
+    const com = ComponentValue();
 
     if (com) {
       return createElement(com, props, ...childNodes);
@@ -3241,43 +3216,43 @@ function lazy(component, Placeholder) {
 Object.defineProperty(exports, 'asValue', {
 	enumerable: true,
 	get: function () {
-		return State.asValue;
+		return monitorable.asValue;
 	}
 });
 Object.defineProperty(exports, 'computed', {
 	enumerable: true,
 	get: function () {
-		return State.computed;
+		return monitorable.computed;
 	}
 });
 Object.defineProperty(exports, 'encase', {
 	enumerable: true,
 	get: function () {
-		return State.encase;
+		return monitorable.encase;
 	}
 });
 Object.defineProperty(exports, 'isValue', {
 	enumerable: true,
 	get: function () {
-		return State.isValue;
+		return monitorable.isValue;
 	}
 });
 Object.defineProperty(exports, 'recover', {
 	enumerable: true,
 	get: function () {
-		return State.recover;
+		return monitorable.recover;
 	}
 });
 Object.defineProperty(exports, 'value', {
 	enumerable: true,
 	get: function () {
-		return State.value;
+		return monitorable.value;
 	}
 });
 Object.defineProperty(exports, 'valueify', {
 	enumerable: true,
 	get: function () {
-		return State.valueify;
+		return monitorable.valueify;
 	}
 });
 exports.Container = Container;
@@ -3288,7 +3263,6 @@ exports.Fragment = Fragment;
 exports.ScopeSlot = ScopeSlot;
 exports.Slot = Slot;
 exports.SlotRender = SlotRender;
-exports.Tags = Tags;
 exports.Template = Template;
 exports.Value = Value;
 exports.addContextConstructor = addContextConstructor;
@@ -3298,10 +3272,10 @@ exports.componentsSymbol = componentsSymbol;
 exports.configSymbol = configSymbol;
 exports.create = create;
 exports.createElement = createElement;
-exports.defineAuxiliary = defineAuxiliary;
 exports.deliver = deliver;
 exports.elements = elements;
 exports.expose = expose;
+exports.getRect = getRect;
 exports.hook = hook;
 exports.install = install;
 exports.isElement = isElement;
@@ -3322,9 +3296,9 @@ exports.refresh = refresh;
 exports.register = register;
 exports.render = render;
 exports.renderSymbol = renderSymbol;
-exports.setAuxiliary = setAuxiliary;
 exports.setHook = setHook;
 exports.typeSymbol = typeSymbol;
+exports.useService = useService;
 exports.useValue = useValue;
 exports.version = version;
 exports.watch = watch;

@@ -1,6 +1,6 @@
 {
   "name": "@neep/core",
-  "version": "0.1.0-alpha.10",
+  "version": "0.1.0-alpha.12",
   "main": "dist/neep.core.js",
   "module": "dist/neep.core.mjs",
   "browser": "dist/neep.core.browser.min.js",
