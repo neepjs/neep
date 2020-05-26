@@ -9,7 +9,7 @@ export function nextFrame(fn: () => void): void {
 	}
 }
 
-const renders: Record<string, IRender>
+export const renders: Record<string, IRender>
 	= Object.create(null);
 
 export function getRender(

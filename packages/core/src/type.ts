@@ -240,6 +240,17 @@ export interface MountProps {
 }
 
 
+
+export interface Rect {
+	readonly bottom: number;
+	readonly height: number;
+	readonly left: number;
+	readonly right: number;
+	readonly top: number;
+	readonly width: number;
+}
+
+
 export interface IRender {
 	type: string;
 	nextFrame?(fn: () => void): void;
@@ -288,4 +299,5 @@ export interface IRender {
 		next?: NativeNode | null,
 	): void;
 	removeNode(n: NativeNode): void;
+	getRect(n: NativeNode): Rect | null;
 }

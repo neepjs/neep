@@ -120,6 +120,21 @@ const render: IRender = {
 		if (!p) { return; }
 		(p as any).removeChild(node);
 	},
+	getRect(node: NativeNode) {
+		if (node instanceof Element) {
+			const {
+				top, right, bottom, left, width, height
+			} = node.getBoundingClientRect();
+			return { top, right, bottom, left, width, height };
+		}
+		if (node instanceof ShadowRoot) {
+			const {
+				top, right, bottom, left, width, height
+			} = node.host.getBoundingClientRect();
+			return { top, right, bottom, left, width, height };
+		}
+		return null;
+	}
 };
 
 export default render;
