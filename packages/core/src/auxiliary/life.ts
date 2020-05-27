@@ -73,13 +73,19 @@ export function useValue<T>(fn?: () => T): T | Value<any> {
 
 }
 
-export function useService<T extends object>(fn: Service<T>): T {
+/**********************************
+ * 服务 API
+ **********************************/
+export function useService<T, P extends any[]>(
+	fn: Service<T, P>,
+	...p: P
+): T {
 	const entity = checkCurrent('useService');
 	const index = entity.$_serviceIndex++;
 	const services = entity.$_services;
 	if (!entity.created) {
 		services[index] = undefined;
-		const v = fn(entity);
+		const v = fn(entity, ...p);
 		services[index] = v;
 		return v;
 	}
@@ -90,6 +96,14 @@ export function useService<T extends object>(fn: Service<T>): T {
 		);
 	}
 	return services[index];
+}
+
+export function byService<T, P extends any[]>(
+	fn: Service<T, P>,
+	...p: P
+): T {
+	const entity = checkCurrent('byService');
+	return fn(entity, ...p);
 }
 
 
