@@ -9,16 +9,16 @@ import {
 	MountedNode,
 } from '../type';
 import { exec, monitor, encase } from '../install';
-import { setCurrent } from '../helper/current';
+import { setCurrent } from '../extends/current';
 import convert, { destroy } from './convert';
 import draw, { unmount, getNodes } from './draw';
 import normalize from './normalize';
 import { getSlots, setSlots } from './slot';
 import EntityObject from './EntityObject';
-import { initContext } from '../helper/context';
+import { initContext } from '../extends/context';
 import { updateProps } from './props';
 import { typeSymbol, configSymbol, componentsSymbol } from '../symbols';
-import { refresh } from '../helper';
+import { refresh } from '../extends';
 
 function update(
 	nObject: ComponentEntity<any, any>,

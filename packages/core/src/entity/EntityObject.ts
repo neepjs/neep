@@ -7,7 +7,7 @@ import {
 import { callHook, setHook } from '../hook';
 import ContainerEntity from './ContainerEntity';
 import convert from './convert';
-import { wait } from '../helper/refresh';
+import { wait } from '../extends/refresh';
 import { exec } from '../install';
 import EventEmitter from '../EventEmitter';
 

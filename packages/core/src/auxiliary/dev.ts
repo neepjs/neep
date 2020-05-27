@@ -1,6 +1,6 @@
 import { isProduction } from '../constant';
-import { current } from '../helper';
-import { setLabel } from '../helper/label';
+import { current } from '../extends';
+import { setLabel } from '../extends/label';
 
 export function label(text: string, color = ''): void {
 	if (!isProduction) {

@@ -6,7 +6,7 @@ export { register } from './register';
 export * from './components';
 export * from './constant';
 export * from './auxiliary';
-export * from './helper';
+export * from './extends';
 export * from './create';
 export * from './type';
 export * from './symbols';

@@ -4,7 +4,7 @@
  **********************************/
 import { Value, WatchCallback } from 'monitorable';
 import { Hooks, Service } from '../type';
-import { checkCurrent } from '../helper';
+import { checkCurrent } from '../extends';
 import NeepError from '../Error';
 import { setHook } from '../hook';
 import { isValue, value, computed } from './state';

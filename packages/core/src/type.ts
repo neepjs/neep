@@ -126,8 +126,8 @@ export interface Entity {
 export interface Render<R extends object = any> {
 	(data: R, context: Context): NeepNode;
 }
-export interface Service<T extends object> {
-	(entity: Entity): T;
+export interface Service<T, P extends any[]> {
+	(entity: Entity, ...p: P): T;
 }
 
 /** 组件标记 */
