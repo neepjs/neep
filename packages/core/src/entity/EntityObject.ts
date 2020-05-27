@@ -10,6 +10,7 @@ import convert from './convert';
 import { wait } from '../extends/refresh';
 import { exec } from '../install';
 import EventEmitter from '../EventEmitter';
+import { initEntity } from '../extends/entity';
 
 function createExposed(obj: EntityObject): Exposed {
 	const cfg: { [K in Exclude<keyof Exposed, '$label'>]-?:
@@ -75,7 +76,7 @@ function createEntity(obj: EntityObject): Entity {
 		config: { configurable: true, value: obj.config },
 	};
 	const entity: Entity = Object.create(null, cfg);
-	return entity;
+	return initEntity(entity);
 }
 
 export default class EntityObject {

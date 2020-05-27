@@ -56,7 +56,7 @@ function createContext<
 		get childNodes() { return nObject.childNodes; },
 		get emit() { return nObject.emit; },
 		refresh(f) { nObject.refresh(f); },
-	}, nObject.exposed);
+	}, nObject.entity);
 }
 
 /** 初始化渲染 */

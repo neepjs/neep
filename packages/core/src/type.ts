@@ -34,11 +34,17 @@ export interface EventSet {
 	[key: string]: (...p: any[]) => void;
 }
 export interface On<T extends Record<string, any[]> = Record<string, any[]>> {
-	<N extends keyof T>(name: N, listener: (...p: T[N]) => void | undefined | null | boolean): () => void;
+	<N extends keyof T>(
+		name: N,
+		listener: (...p: T[N]) => void | undefined | null | boolean,
+	): () => void;
 }
 
 export interface ContextConstructor {
-	(context: Context, exposed?: Exposed): void;
+	(context: Context, entity?: Entity): void;
+}
+export interface EntityConstructor {
+	(entity: Entity): void;
 }
 export type Hooks = 'beforeCreate' | 'created'
 | 'beforeDestroy' | 'destroyed'
