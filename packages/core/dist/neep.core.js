@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.12
+ * Neep v0.1.0-alpha.13
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -9,7 +9,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 var monitorable = require('monitorable');
 
-const version = '0.1.0-alpha.12';
+const version = '0.1.0-alpha.13';
 const isProduction = process.env.NODE_ENV === 'production';
 
 const devtools = {
@@ -399,15 +399,27 @@ function checkCurrent(name, initOnly = false) {
 }
 
 const constructors = [];
-function initContext(context, exposed) {
+function initContext(context, entity) {
   for (const constructor of constructors) {
-    constructor(context, exposed);
+    constructor(context, entity);
   }
 
   return context;
 }
 function addContextConstructor(constructor) {
   constructors.push(monitorable.safeify(constructor));
+}
+
+const constructors$1 = [];
+function initEntity(entity) {
+  for (const constructor of constructors$1) {
+    constructor(entity);
+  }
+
+  return entity;
+}
+function addEntityConstructor(constructor) {
+  constructors$1.push(monitorable.safeify(constructor));
 }
 
 let delayedRefresh = 0;
@@ -516,14 +528,14 @@ function useValue(fn) {
 
   return values[index];
 }
-function useService(fn) {
+function useService(fn, ...p) {
   const entity = checkCurrent('useService');
   const index = entity.$_serviceIndex++;
   const services = entity.$_services;
 
   if (!entity.created) {
     services[index] = undefined;
-    const v = fn(entity);
+    const v = fn(entity, ...p);
     services[index] = v;
     return v;
   }
@@ -533,6 +545,10 @@ function useService(fn) {
   }
 
   return services[index];
+}
+function byService(fn, ...p) {
+  const entity = checkCurrent('byService');
+  return fn(entity, ...p);
 }
 function hook(name, hook, initOnly) {
   const entity = checkCurrent('setHook');
@@ -1564,7 +1580,7 @@ function execSimple(nObject, delivered, node, tag, components, children) {
     label = getLabel();
   }
 
-  const nodes = exec(nObject, delivered, renderNode(iRender, result, context, tag[renderSymbol]), slots, getComponents(...components, tag[componentsSymbol]), false);
+  const nodes = init(nObject, delivered, renderNode(nObject.iRender, result, context, tag[renderSymbol]), slots, getComponents(...components, tag[componentsSymbol]), false);
   return { ...node,
     tag,
     execed: true,
@@ -1573,27 +1589,40 @@ function execSimple(nObject, delivered, node, tag, components, children) {
   };
 }
 
-function execSlot(nObject, delivered, node, slots, components, children, args = [{}], native) {
-  var _node$props;
+function exec(nObject, delivered, node, components) {
+  if (Array.isArray(node)) {
+    return node.map(n => exec(nObject, delivered, n, components));
+  }
 
-  const slotName = ((_node$props = node.props) === null || _node$props === void 0 ? void 0 : _node$props.name) || 'default';
-  const slot = slots[slotName];
+  if (!isElement(node)) {
+    return node;
+  }
 
-  if (typeof slot === 'function') {
+  let {
+    tag,
+    children
+  } = node;
+
+  if (tag === Deliver) {
+    const props = { ...node.props
+    };
+    delete props.ref;
+    delete props.slot;
+    delete props.key;
     return { ...node,
-      ...slot(...args)
+      tag,
+      children: children.map(n => exec(nObject, updateProps(Object.create(delivered), props || {}, {}, true), n, components))
     };
   }
 
-  const {
-    render
-  } = node;
-  const label = isProduction ? undefined : [`[${slotName}]`, '#00F'];
-  return { ...node,
-    tag: ScopeSlot,
-    label,
-    children: exec(nObject, delivered, typeof render !== 'function' ? children : render(...args), slots, components, native)
-  };
+  if (typeof tag !== 'function' || tag[typeSymbol] !== 'simple') {
+    return { ...node,
+      tag,
+      children: children.map(n => exec(nObject, delivered, n, components))
+    };
+  }
+
+  return execSimple(nObject, delivered, node, tag, components, children);
 }
 
 function findComponent(tag, components$1) {
@@ -1624,64 +1653,56 @@ function findComponent(tag, components$1) {
   return components[tag] || tag;
 }
 
-function getElement(nObject, delivered, node, slots, components, native) {
-  const {
-    inserted,
-    args = [{}]
-  } = node;
-  let tag = findComponent(node.tag, components);
+function replaceNode(node, slots, components, native) {
+  var _node$props;
 
-  if (tag === Deliver) {
-    const props = { ...node.props
-    };
-    delete props.ref;
-    delete props.slot;
-    delete props.key;
-    return { ...node,
-      tag,
-      children: node.children.map(n => exec(nObject, updateProps(Object.create(delivered), props || {}, {}, true), n, slots, components, native))
-    };
-  }
-
-  const children = node.children.map(n => exec(nObject, delivered, n, slots, components, native));
-
-  if (typeof tag === 'function') {
-    if (tag[typeSymbol] === 'simple') {
-      return execSimple(nObject, delivered, node, tag, components, exec(nObject, delivered, children, slots, components, native));
-    }
-
-    return { ...node,
-      children,
-      tag
-    };
-  }
-
-  if (tag === Slot) {
-    tag = native ? 'slot' : ScopeSlot;
-  }
-
-  if (tag !== ScopeSlot || inserted) {
-    return { ...node,
-      children,
-      tag
-    };
-  }
-
-  return execSlot(nObject, delivered, { ...node,
-    tag
-  }, slots, components, children, args, native);
-}
-
-function exec(nObject, delivered, node, slots, components, native) {
   if (Array.isArray(node)) {
-    return node.map(n => exec(nObject, delivered, n, slots, components, native));
+    return node.map(n => replaceNode(n, slots, components, native));
   }
 
   if (!isElement(node)) {
     return node;
   }
 
-  return getElement(nObject, delivered, node, slots, components, native);
+  let {
+    children,
+    args = [{}]
+  } = node;
+  let tag = findComponent(node.tag, components);
+
+  if (tag === Slot) {
+    tag = native ? 'slot' : ScopeSlot;
+  }
+
+  if (tag !== ScopeSlot) {
+    return { ...node,
+      tag,
+      children: replaceNode(children, slots, components, native)
+    };
+  }
+
+  if (node.tag === ScopeSlot && node.inserted) {
+    return node;
+  }
+
+  const slotName = ((_node$props = node.props) === null || _node$props === void 0 ? void 0 : _node$props.name) || 'default';
+  const slot = slots[slotName];
+
+  if (typeof slot === 'function') {
+    return { ...node,
+      ...slot(...args)
+    };
+  }
+
+  const {
+    render
+  } = node;
+  const label = isProduction ? undefined : [`[${slotName}]`, '#00F'];
+  return { ...node,
+    tag: ScopeSlot,
+    label,
+    children: replaceNode(typeof render !== 'function' ? children : render(...args), slots, components, native)
+  };
 }
 
 function renderNode(iRender, node, context, render) {
@@ -1728,11 +1749,14 @@ function renderNode(iRender, node, context, render) {
   }];
 }
 
+function init(nObject, delivered, node, slots, components, native) {
+  return exec(nObject, delivered, replaceNode(node, slots, components, native), components);
+}
 function normalize(nObject, result) {
   const {
     component
   } = nObject;
-  return exec(nObject, nObject.delivered, renderNode(nObject.iRender, result, nObject.context, component[renderSymbol]), nObject.context.slots, getComponents(component[componentsSymbol]), Boolean(nObject.native));
+  return init(nObject, nObject.delivered, renderNode(nObject.iRender, result, nObject.context, component[renderSymbol]), nObject.slots, getComponents(component[componentsSymbol]), Boolean(nObject.native));
 }
 
 function createExposed(obj) {
@@ -1884,7 +1908,7 @@ function createEntity(obj) {
     }
   };
   const entity = Object.create(null, cfg);
-  return entity;
+  return initEntity(entity);
 }
 
 class EntityObject {
@@ -2208,7 +2232,7 @@ function createContext(nObject) {
       nObject.refresh(f);
     }
 
-  }, nObject.exposed);
+  }, nObject.entity);
 }
 
 function initRender(nObject) {
@@ -2643,7 +2667,7 @@ function updateItem$1(nObject, delivered, source, tree) {
     const newDelivered = updateProps(tree.delivered || Object.create(delivered), props, tree.props, true);
     return { ...source,
       delivered: newDelivered,
-      children: [...updateAll$1(nObject, delivered, source.children, tree.children)]
+      children: [...updateAll$1(nObject, newDelivered, source.children, tree.children)]
     };
   }
 
@@ -2774,10 +2798,20 @@ class ContainerEntity extends EntityObject {
     }
 
     this.callHook('beforeCreate');
+    this.childNodes = children;
 
-    this._render = () => children;
+    const refresh = changed => {
+      if (!changed) {
+        return;
+      }
 
-    this._nodes = convert(this, children);
+      this._drawChildren = true;
+      this.refresh();
+    };
+
+    const slots = Object.create(null);
+    this._render = monitorable.monitor(refresh, () => init(this, this.delivered, this.childNodes, slots, [], false));
+    this._nodes = convert(this, this._render());
     this.callHook('created');
     this.created = true;
   }
@@ -2788,9 +2822,6 @@ class ContainerEntity extends EntityObject {
     }
 
     this.childNodes = children;
-
-    this._render = () => children;
-
     this._drawChildren = true;
     this.refresh();
   }
@@ -3266,6 +3297,8 @@ exports.SlotRender = SlotRender;
 exports.Template = Template;
 exports.Value = Value;
 exports.addContextConstructor = addContextConstructor;
+exports.addEntityConstructor = addEntityConstructor;
+exports.byService = byService;
 exports.callHook = callHook;
 exports.checkCurrent = checkCurrent;
 exports.componentsSymbol = componentsSymbol;

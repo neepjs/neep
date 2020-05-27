@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.12
+ * Neep v0.1.0-alpha.13
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -286,7 +286,10 @@ interface On<T extends Record<string, any[]> = Record<string, any[]>> {
     <N extends keyof T>(name: N, listener: (...p: T[N]) => void | undefined | null | boolean): () => void;
 }
 interface ContextConstructor {
-    (context: Context, exposed?: Exposed): void;
+    (context: Context, entity?: Entity): void;
+}
+interface EntityConstructor {
+    (entity: Entity): void;
 }
 declare type Hooks = 'beforeCreate' | 'created' | 'beforeDestroy' | 'destroyed' | 'beforeUpdate' | 'updated' | 'beforeMount' | 'mounted' | 'beforeDraw' | 'drawn' | 'beforeDrawAll' | 'drawnAll';
 interface Exposed {
@@ -357,8 +360,8 @@ interface Entity {
 interface Render<R extends object = any> {
     (data: R, context: Context): NeepNode;
 }
-interface Service<T extends object> {
-    (entity: Entity): T;
+interface Service<T, P extends any[]> {
+    (entity: Entity, ...p: P): T;
 }
 /** 组件标记 */
 interface Marks {
@@ -546,7 +549,11 @@ declare function watch<T>(value: () => T, cb: (v: T, stopped: boolean) => void):
 declare function useValue(): Value$1<any>;
 declare function useValue<T>(fn: () => T): T;
 declare function useValue<T>(fn?: () => T): T | Value$1<any>;
-declare function useService<T extends object>(fn: Service<T>): T;
+/**********************************
+ * 服务 API
+ **********************************/
+declare function useService<T, P extends any[]>(fn: Service<T, P>, ...p: P): T;
+declare function byService<T, P extends any[]>(fn: Service<T, P>, ...p: P): T;
 /**********************************
  * 钩子类 API
  **********************************/
@@ -631,6 +638,8 @@ declare function checkCurrent(name: string, initOnly?: boolean): Entity;
 
 declare function addContextConstructor(constructor: ContextConstructor): void;
 
+declare function addEntityConstructor(constructor: EntityConstructor): void;
+
 declare function refresh<T>(f: () => T, async?: false): T;
 declare function refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
 declare function refresh<T>(f: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T;
@@ -669,4 +678,4 @@ declare function setHook(id: string, hook: Hook, entity?: Entity): () => void;
 declare function callHook<H extends Hooks>(id: H, exposed: Entity): void;
 declare function callHook(id: string, exposed: Entity): void;
 
-export { Component, ComponentEntity$1 as ComponentEntity, Container, ContainerEntity$1 as ContainerEntity, Context, ContextConstructor, Deliver, Delivered, Devtools, Emit, Entity, EntityObject$1 as EntityObject, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, MountedNode, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Rect, Ref, Render, RootExposed, ScopeSlot, Service, Slot, SlotFn, SlotRender, Slots, Tag, Template, TreeNode, Value, addContextConstructor, callHook, checkCurrent, componentsSymbol, configSymbol, create, createElement, current, deliver, elementIteratorOptions, elements, expose, getRect, hook, install, isElement, isElementSymbol, isProduction, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, refresh, register, render, renderSymbol, setHook, typeSymbol, useService, useValue, version, watch };
+export { Component, ComponentEntity$1 as ComponentEntity, Container, ContainerEntity$1 as ContainerEntity, Context, ContextConstructor, Deliver, Delivered, Devtools, Emit, Entity, EntityConstructor, EntityObject$1 as EntityObject, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, MountedNode, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Rect, Ref, Render, RootExposed, ScopeSlot, Service, Slot, SlotFn, SlotRender, Slots, Tag, Template, TreeNode, Value, addContextConstructor, addEntityConstructor, byService, callHook, checkCurrent, componentsSymbol, configSymbol, create, createElement, current, deliver, elementIteratorOptions, elements, expose, getRect, hook, install, isElement, isElementSymbol, isProduction, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, refresh, register, render, renderSymbol, setHook, typeSymbol, useService, useValue, version, watch };
