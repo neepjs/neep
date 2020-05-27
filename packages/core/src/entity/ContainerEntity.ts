@@ -55,6 +55,7 @@ export default class ContainerEntity extends EntityObject {
 
 		const refresh = (changed: boolean): void => {
 			if (!changed) { return; }
+			this._drawChildren = true;
 			this.refresh();
 		}
 		const slots = Object.create(null);
@@ -79,7 +80,6 @@ export default class ContainerEntity extends EntityObject {
 	setChildren(children: any[]): void {
 		if (this.destroyed) { return; }
 		this.childNodes = children;
-		this._render = () => children;
 		this._drawChildren = true;
 		this.refresh();
 	}

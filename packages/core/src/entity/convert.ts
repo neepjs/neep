@@ -223,7 +223,7 @@ function updateItem(
 			delivered: newDelivered,
 			children: [...updateAll(
 				nObject,
-				delivered,
+				newDelivered,
 				source.children,
 				tree.children,
 			)],
