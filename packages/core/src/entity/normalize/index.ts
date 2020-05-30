@@ -1,19 +1,19 @@
 import {
 	NeepElement, Exposed, Delivered,
 	Render, NeepNode, Slots, Context, IRender, Component,
-} from '../type';
-import { typeSymbol, componentsSymbol } from '../symbols';
-import { isProduction } from '../constant';
-import { isElement, ScopeSlot, Deliver, Slot, Value } from '../auxiliary';
-import { renderSymbol, isElementSymbol } from '../symbols';
-import { getLabel } from '../extends/label';
-import ComponentEntity from './ComponentEntity';
-import EntityObject from './EntityObject';
-import { getSlots, setSlots } from './slot';
-import { initContext } from '../extends/context';
-import { updateProps } from './props';
-import EventEmitter from '../EventEmitter';
-import { components as globalComponents } from '../register';
+} from '../../type';
+import { typeSymbol, componentsSymbol } from '../../symbols';
+import { isProduction } from '../../constant';
+import { isElement, Deliver, Value, SlotRender } from '../../auxiliary';
+import { renderSymbol, isElementSymbol } from '../../symbols';
+import { getLabel } from '../../extends/label';
+import ComponentEntity from '../ComponentEntity';
+import EntityObject from '../EntityObject';
+import { getSlots, setSlots } from '../slot';
+import { initContext } from '../../extends/context';
+import { updateProps } from '../props';
+import EventEmitter from '../../EventEmitter';
+import replaceNode from './replaceNode';
 
 
 function getComponents(
@@ -65,7 +65,7 @@ function execSimple(
 		getComponents(...components, tag[componentsSymbol]),
 		false,
 	) as NeepNode[];
-	
+
 
 	return {
 		...node,
@@ -77,15 +77,47 @@ function execSimple(
 }
 
 
+function getSlotRenderFn(
+	nObject: EntityObject,
+	delivered: Delivered,
+	children: any[],
+	slots: Slots,
+	components: Record<string, Component>[],
+	native: boolean,
+): any {
+	if (children.length !== 1) {
+		return null;
+	}
+	const [runderFn] = children;
+	if (typeof runderFn !== 'function') {
+		return null;
+	}
+	// TODO
+	return function(this: any, ...p: any[]) {
+		return init(
+			nObject,
+			delivered,
+			runderFn.call(this, ...p),
+			slots,
+			components,
+			native,
+		);
+	};
+
+}
+
+
 function exec(
 	nObject: EntityObject,
 	delivered: Delivered,
 	node: any,
+	slots: Slots,
 	components: Record<string, Component>[],
+	native: boolean,
 ): any {
 	if (Array.isArray(node)) {
 		return node.map(n =>
-			exec(nObject, delivered, n, components));
+			exec(nObject, delivered, n, slots, components, native));
 	}
 	if (!isElement(node)) { return node; }
 	let { tag, children } = node;
@@ -106,14 +138,39 @@ function exec(
 					true,
 				),
 				n,
+				slots,
 				components,
+				native,
 			)),
 		};
+	}
+	if (tag === SlotRender) {
+		const slotRenderFn = getSlotRenderFn(
+			nObject,
+			delivered,
+			children,
+			slots,
+			components,
+			native,
+		);
+		if (slotRenderFn) {
+			return {
+				...node,
+				children: [slotRenderFn],
+			} as NeepElement;
+		}
 	}
 
 	if (typeof tag !== 'function' || tag[typeSymbol] !== 'simple') {
 		return { ...node, tag, children: children
-			.map(n => exec(nObject, delivered, n, components)) };
+			.map(n => exec(
+				nObject,
+				delivered,
+				n,
+				slots,
+				components,
+				native,
+			)) };
 	}
 
 	return execSimple(
@@ -124,79 +181,6 @@ function exec(
 		components,
 		children,
 	);
-}
-
-function findComponent(
-	tag: any,
-	components: Record<string, Component>[],
-): Component | string | null {
-	if (!tag) { return null; }
-	if (typeof tag !== 'string') { return tag; }
-	if (tag === 'template') { return tag; }
-	if (/^neep:.+/i.test(tag)) { return tag; }
-	for (const list of components) {
-		const component = list[tag];
-		if (component) { return component; }
-	}
-	return globalComponents[tag] || tag;
-}
-
-function replaceNode(
-	node: any,
-	slots: Slots,
-	components: Record<string, Component>[],
-	native: boolean,
-): any {
-	if (Array.isArray(node)) {
-		return node.map(n =>
-			replaceNode( n, slots, components, native));
-	}
-	if (!isElement(node)) { return node; }
-	let { children, args = [{}] } = node;
-	let tag = findComponent(node.tag, components);
-
-	if (tag === Slot) {
-		tag = native ? 'slot' : ScopeSlot;
-	}
-	if (tag !== ScopeSlot ) {
-		return {
-			...node,
-			tag,
-			children: replaceNode(
-				children,
-				slots,
-				components,
-				native,
-			),
-		} as NeepElement;
-	}
-	if (node.tag === ScopeSlot && node.inserted) {
-		return node;
-	}
-	const slotName = node.props?.name || 'default';
-	const slot = slots[slotName];
-	if (typeof slot === 'function') {
-		return {
-			...node,
-			...slot(...args),
-		} as NeepElement;
-	}
-	const { render } = node;
-
-	const label: [string, string] | undefined = isProduction
-		? undefined
-		: [`[${ slotName }]`, '#00F'];
-	return {
-		...node,
-		tag: ScopeSlot,
-		label,
-		children: replaceNode(
-			typeof render !== 'function' ? children : render(...args),
-			slots,
-			components,
-			native,
-		),
-	} as NeepElement;
 }
 
 
@@ -254,8 +238,11 @@ export function init(
 			slots,
 			components,
 			native,
+			true,
 		),
+		slots,
 		components,
+		native,
 	);
 }
 
@@ -277,5 +264,5 @@ export default function normalize(
 		nObject.slots,
 		getComponents(component[componentsSymbol]),
 		Boolean(nObject.native),
-	)
+	);
 }

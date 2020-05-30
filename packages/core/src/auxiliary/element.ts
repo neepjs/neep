@@ -1,6 +1,6 @@
 import { Tag, NeepElement, Component } from '../type';
 import { isElementSymbol, typeSymbol } from '../symbols';
-import { Value, Template, SlotRender, ScopeSlot, Slot } from './tags';
+import { Value, Template, ScopeSlot } from './tags';
 
 /**
  * 判读是否为元素
@@ -21,37 +21,21 @@ export function createElement(
 		[isElementSymbol]: true,
 		tag,
 		key: undefined,
-		children: [],
+		props: attrs,
+		children,
 	};
 	if ('n:key' in attrs) { node.key = attrs.key; }
 	else if ('n-key' in attrs) { node.key = attrs.key; }
 	if ('slot' in attrs) { node.slot = attrs.slot; }
-	if (typeof attrs.ref === 'function') { node.ref = attrs.ref; }
+	if (typeof attrs['n:ref'] === 'function') {
+		node.ref = attrs['n:ref'];
+	} else if (typeof attrs['n-ref'] === 'function') {
+		node.ref = attrs['n-ref'];
+	} else if (typeof attrs.ref === 'function') {
+		node.ref = attrs.ref;
+	}
 	if (tag === Value) {
 		node.value = attrs.value;
-		return node;
-	}
-	node.children = children;
-	if (tag === Template) { return node; }
-	if (tag === SlotRender) {
-		node.render = attrs.render;
-		return node;
-	}
-	if (tag === ScopeSlot || tag === Slot) {
-		const { render, argv, args, name } = attrs;
-		node.render = render;
-		node.args = argv && [argv]
-			|| Array.isArray(args) && args.length && args
-			|| [{}];
-
-		if (tag === ScopeSlot) {
-			node.props = { name };
-			return node;
-		}
-	}
-	node.props = {};
-	for (let k in attrs) {
-		node.props[k] = attrs[k];
 	}
 	return node;
 }

@@ -182,10 +182,6 @@ export interface NeepElement {
 	key?: any;
 	/** Value 类型值 */
 	value?: any;
-	/** Slot 相关的渲染函数 */
-	render?(...props: any[]): any;
-	/** 槽渲染参数 */
-	args?: any[];
 	/** 是否是已插入的 */
 	inserted?: boolean;
 	/** 标注 */
@@ -244,7 +240,6 @@ export interface MountProps {
 	target?: any;
 	[key: string]: any;
 }
-
 
 
 export interface Rect {

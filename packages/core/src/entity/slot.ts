@@ -3,7 +3,14 @@ import { isElement, SlotRender, ScopeSlot } from '../auxiliary';
 import { isElementSymbol } from '../symbols';
 import { isProduction } from '../constant';
 
-
+/**
+ * 获取槽元素
+ * @param iRender 渲染函数
+ * @param children 子代
+ * @param slots 槽列表
+ * @param native 是否为原生组件
+ * @returns 原生节点
+ */
 export function getSlots(
 	iRender: IRender,
 	children: any[],
@@ -68,10 +75,11 @@ function renderSlots(
 				slot: undefined,
 			} as NeepElement;
 		}
-		if (typeof it.render === 'function') {
-			return it.render(...props);
-		}
-		return it.children;
+		const { children } = it;
+		if (children?.length !== 1) { return children; }
+		const [ render ] = children;
+		if (typeof render !== 'function') { return children; }
+		return render(...props);
 	});
 }
 function createSlots(
@@ -88,6 +96,11 @@ function createSlots(
 	slot.children = list;
 	return slot;
 }
+/**
+ * 将槽子代设置到槽列表上
+ * @param children 槽子代
+ * @param slots 槽对象
+ */
 export function setSlots(
 	children: {[key: string]: any[]},
 	slots: Slots = Object.create(null),
