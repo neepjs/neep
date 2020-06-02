@@ -302,3 +302,7 @@ export interface IRender {
 	removeNode(n: NativeNode): void;
 	getRect(n: NativeNode): Rect | null;
 }
+
+export interface CustomEqual {
+	(a: any, b: any, equal: (a: any, b: any) => boolean): boolean | null
+}
