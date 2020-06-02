@@ -1,4 +1,4 @@
-import { Tag, NeepElement, Component } from '../type';
+import { Tag, NeepElement, ElementIteratorOptions } from '../type';
 import { isElementSymbol, typeSymbol } from '../symbols';
 import { Value, Template, ScopeSlot } from './tags';
 
@@ -40,13 +40,10 @@ export function createElement(
 	return node;
 }
 
-export interface elementIteratorOptions {
-	simple?: boolean | Component[] | ((c: Component) => boolean);
-}
 
 export function elements(
 	node: any,
-	opt: elementIteratorOptions = {},
+	opt: ElementIteratorOptions = {},
 ): any[] {
 	if (Array.isArray(node)) {
 		const list: any[][] = [];

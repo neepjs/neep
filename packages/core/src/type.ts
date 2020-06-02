@@ -306,3 +306,7 @@ export interface IRender {
 export interface CustomEqual {
 	(a: any, b: any, equal: (a: any, b: any) => boolean): boolean | null
 }
+
+export interface ElementIteratorOptions {
+	simple?: boolean | Component[] | ((c: Component) => boolean);
+}
