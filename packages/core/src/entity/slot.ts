@@ -2,6 +2,8 @@ import { NeepElement, SlotFn, Slots, IRender } from '../type';
 import { isElement, SlotRender, ScopeSlot } from '../auxiliary';
 import { isElementSymbol } from '../symbols';
 import { isProduction } from '../constant';
+import { isValue } from '../install';
+import { equal } from '../extends';
 
 /**
  * 获取槽元素
@@ -78,7 +80,7 @@ function renderSlots(
 		const { children } = it;
 		if (children?.length !== 1) { return children; }
 		const [ render ] = children;
-		if (typeof render !== 'function') { return children; }
+		if (isValue(render) || typeof render !== 'function') { return children; }
 		return render(...props);
 	});
 }
@@ -104,14 +106,22 @@ function createSlots(
 export function setSlots(
 	children: {[key: string]: any[]},
 	slots: Slots = Object.create(null),
+	oldChildren?: {[key: string]: any[]},
 ): Slots {
 	for (const k of Reflect.ownKeys(slots)) {
-		if (!(k in children)) {
-			delete slots[k as string];
+		if (k in children) { continue; }
+		delete slots[k as keyof Slots];
+	}
+	if (!oldChildren) {
+		for (const k of Reflect.ownKeys(children) as string[]) {
+			slots[k] = createSlots(k, children[k]);
 		}
+		return slots;
 	}
 	for (const k of Reflect.ownKeys(children) as string[]) {
-		slots[k] = createSlots(k, children[k]);
+		const list = children[k];
+		if (equal(list, oldChildren[k])) { continue; }
+		slots[k] = createSlots(k, list);
 	}
 	return slots;
 }

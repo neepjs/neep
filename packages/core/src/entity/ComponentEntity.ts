@@ -35,7 +35,8 @@ function update(
 		slots,
 		Boolean(native),
 	);
-	setSlots(slots, nObject.slots);
+	setSlots(slots, nObject.slots, nObject.lastSlots);
+	nObject.lastSlots = slots;
 	if (!native) { return; }
 	nObject.nativeNodes
 		= convert(nObject, childNodes, nObject.nativeNodes);
@@ -124,6 +125,7 @@ export default class ComponentEntity<
 	readonly props: P = encase(Object.create(null));
 	/** 组件槽 */
 	readonly slots: Slots = encase(Object.create(null));
+	lastSlots: Record<string | symbol, any[]> | undefined;
 	/** 结果渲染函数 */
 	private readonly _stopRender: () => void;
 	/** 原生子代 */
