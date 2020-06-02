@@ -80,6 +80,7 @@ function createEntity(obj: EntityObject): Entity {
 }
 
 export default class EntityObject {
+	readonly slotRenderFnList = new WeakMap<Function, Function>();
 	readonly events = new EventEmitter();
 	readonly emit = this.events.emit;
 	readonly on = this.events.on;

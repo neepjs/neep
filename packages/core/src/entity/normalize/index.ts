@@ -14,6 +14,7 @@ import { initContext } from '../../extends/context';
 import { updateProps } from '../props';
 import EventEmitter from '../../EventEmitter';
 import replaceNode from './replaceNode';
+import { isValue } from '../../install';
 
 
 function getComponents(
@@ -84,26 +85,29 @@ function getSlotRenderFn(
 	slots: Slots,
 	components: Record<string, Component>[],
 	native: boolean,
-): any {
+): null | Function {
 	if (children.length !== 1) {
 		return null;
 	}
-	const [runderFn] = children;
-	if (typeof runderFn !== 'function') {
+	const [renderFn] = children;
+	if (isValue(renderFn) || typeof renderFn !== 'function') {
 		return null;
 	}
-	// TODO
-	return function(this: any, ...p: any[]) {
+	const { slotRenderFnList } = nObject;
+	const fn = slotRenderFnList.get(renderFn);
+	if (fn) { return fn; }
+	const newFn = function(this: any, ...p: any[]): any {
 		return init(
 			nObject,
 			delivered,
-			runderFn.call(this, ...p),
+			renderFn.call(this, ...p),
 			slots,
 			components,
 			native,
 		);
 	};
-
+	slotRenderFnList.set(renderFn, newFn);
+	return newFn;
 }
 
 
