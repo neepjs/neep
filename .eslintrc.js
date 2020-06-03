@@ -4,13 +4,20 @@ module.exports = {
 		node: true,
 		es6: true,
 	},
+	"settings": {
+		"react": {
+			"pragma": 'createElement',
+		},
+	},
 	parser: '@typescript-eslint/parser',
 	parserOptions: {
 		sourceType: 'module',
 		project: './tsconfig.json',
 	},
-	plugins: ['@typescript-eslint'],
+	plugins: ['@typescript-eslint', 'react'],
 	rules: {
+		'react/jsx-uses-react': 'error',
+		'react/jsx-uses-vars': 'error',
 		// 要求成员重载是连续的
 		'@typescript-eslint/adjacent-overload-signatures': 'error',
 		// 需要使用 T[] 或 Array<T> 用于数组
