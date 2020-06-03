@@ -33,8 +33,19 @@ API
   * `{Object} options` - 选项
 * 返回值： `{Array NeepElement}`
 
+### Neep.equal(a, b)
+
+比较两个 Element 结构是否相同
+
+* 参数：
+  * `{any} a` - 被比较的结构
+  * `{any} b` - 被比较的结构
+* 返回值： `{Boolean}}`
+
 辅助/状态 API
 --------
+
+这一组 API 继承自 monitorable 与在 monitorable 中的定义相同
 
 ### Neep.value(value [, options])
 
@@ -87,12 +98,28 @@ console.log(c) // 3
 
 ### Neep.encase(value [, nest])
 
+将 value 进行包装。
+
+* 参数：
+  * `{Object | Function} value` - 将被包装对象
+* 返回值： `{Object | Function}`
+
 ### Neep.recover(value)
+
+获取 value 包装前的值。
+
+* 参数：
+  * `{Object | Function} any` - 被包装对象
+* 返回值： `{Object | Function}`
+
+### Neep.valueify(props [, key [, def [, set]]])
+
+### Neep.asValue(props[, key])
 
 辅助/声明周期 API
 --------
 
-这一组 API 尽在组件（不含简单组件）的执行周期中有效，在执行周期之外执行会报错
+这一组 API 只在组件（不含简单组件）的执行周期中有效，在执行周期之外执行会报错
 
 ### Neep.watch(value/fn, cb)
 
@@ -105,10 +132,26 @@ console.log(c) // 3
 
 ### Neep.useValue(fn)
 
-用于普通函数组件在不同执行周期中能够哪道相同值。
+用于普通函数组件在不同执行周期中能够得到相同值。
 
 * 参数：
   * `{Function} fn` - 初始化值的函数
+
+### Neep.useService(fn [, ...args])
+
+用于普通函数组件在不同执行周期中能够使用同一个服务实例。
+
+* 参数：
+  * `{Function} fn` - 服务函数
+  * `{any} args` - 传递给 fn 的参数
+
+### Neep.byService(fn [, ...args])
+
+获取基于当前实例的服务实例。
+
+* 参数：
+  * `{Function} fn` - 服务函数
+  * `{any} args` - 传递给 fn 的参数
 
 ### Neep.hook(name, hook [, createOnly])
 
@@ -121,11 +164,11 @@ console.log(c) // 3
 
 ### Neep.expose(name, value/getter [, mix/nonModifiable/setter])
 
-将值获函数暴露出去
+将值获函数暴露出去。
 
-### Neep.deliver(name, value/getter mix/nonModifiable/setter)
+### Neep.deliver(name, value/getter [, mix/nonModifiable/setter])
 
-传递值给后代组件
+传递值给后代组件。
 
 辅助/标签 API
 --------
@@ -151,6 +194,11 @@ console.log(c) // 3
 ### Neep.Fragment
 
 Neep.Template 的别名
+
+辅助/原生节点 API
+--------
+
+### Neep.getRect
 
 辅助/开发模式 API
 --------
@@ -185,6 +233,10 @@ Neep.Template 的别名
 ### Neep.mNative(component)
 
 ### Neep.mRender(fn, component)
+
+### Neep.mConfig(name, config, component)
+
+### Neep.mComponent(name, item, component)
 
 ### Neep.mark(component, ...marks)
 
@@ -261,9 +313,9 @@ Neep.Template 的别名
 
 ### Neep.addContextConstructor(constructor)
 
-### Neep.setAuxiliary(name, value)
+### Neep.addEntityConstructor(constructor)
 
-### Neep.defineAuxiliary(name, get)
+### Neep.register(name, component)
 
 错误类型
 --------
@@ -275,6 +327,15 @@ Neep.Template 的别名
 
 ### Neep.version
 
-### Neep.mode
+Neep Core 的版本号。
 
 ### Neep.isProduction
+
+所使用的 Neep 是否为生产环境版本。
+
+内置组件
+--------
+
+### Neep.lazy(importComponent)
+
+创建懒加载组件
