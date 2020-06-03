@@ -1,6 +1,6 @@
 import { NeepElement, SlotFn, Slots, IRender } from '../type';
-import { isElement, SlotRender, ScopeSlot, equal } from '../auxiliary';
-import { isElementSymbol } from '../symbols';
+import { isElement, SlotRender, ScopeSlot, equal, Template } from '../auxiliary';
+import { isElementSymbol, typeSymbol } from '../symbols';
 import { isProduction } from '../constant';
 import { isValue } from '../install';
 
@@ -34,6 +34,27 @@ export function getSlots(
 			}
 			continue;
 		}
+		if (isElement(it) && it.slot === undefined) {
+			if (
+				typeof it.tag === 'function'
+				&& it.tag[typeSymbol] === 'simple'
+				&& it.execed
+				|| it.tag === Template
+			) {
+				const list: Record<string | symbol, any[]>
+				= Object.create(null);
+				nativeList.push(getSlots(iRender, it.children, list, native));
+				for (const k of Reflect.ownKeys(list) as string[]) {
+					const node = { ...it, children: list[k] };
+					if (k in slots) {
+						slots[k].push(node);
+					} else {
+						slots[k] = [node];
+					}
+				}
+				continue;
+			}
+		}
 		if (native) {
 			if (iRender.isNode(it)) {
 				nativeList.push(it);
@@ -43,7 +64,7 @@ export function getSlots(
 				nativeList.push(it);
 				continue;
 			}
-			if (it.tag !== SlotRender) {
+			if (it.tag !== SlotRender && it.tag !== Template) {
 				nativeList.push(it);
 				continue;
 			}
