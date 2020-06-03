@@ -1,9 +1,9 @@
-import { create, mark, mName } from '@neep/core';
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
+import { create, mark, mName, Template, createElement, useValue, computed } from '@neep/core';
 
 const Compute2 = create((
 	props: {  a?: any, onset?: () => void },
 	{ slots, delivered, emit },
-	{ Template, Slot, createElement, useValue, computed }
 ) => {
 	const a = useValue();
 	const b = useValue();
@@ -19,4 +19,4 @@ const Compute2 = create((
 		<div><input value={a} />+<input value={b} />={c4}</div>
 	</Template>;
 });
-export default mark(Compute2, mName('Compute2'), );
+export default mark(Compute2, mName('Compute2') );

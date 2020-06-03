@@ -1,12 +1,11 @@
-import { create, mark, mName, mSimple, Deliver } from '@neep/core';
+import { create, mark, mName, mSimple, Deliver, createElement, label  } from '@neep/core';
 
 const E = create((
 	props: {  a?: any, onset?: () => void },
 	{ childNodes, delivered },
-	{ createElement, label },
 ) => {
 	label('{E}', '#F00');
-	return <Deliver a={delivered.a + 1}>
+	return <Deliver a={delivered.a as number + 1}>
 		<div>E: {delivered.a}</div>
 		<tb {...props} {...{'@set': props.onset}}>
 			{ childNodes }

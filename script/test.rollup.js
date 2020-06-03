@@ -16,7 +16,6 @@ export default {
 	plugins: [
 		alias({
 			entries: {
-				'monitorable': '../../monitorable.js/src/index.ts',
 				'@neep/core': './packages/core/src/index.ts',
 				'@neep/web-render': './packages/web-render/src/index.ts',
 			},

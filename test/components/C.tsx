@@ -1,14 +1,13 @@
-import { create, mark, mName, mSimple, Deliver, mComponent } from '@neep/core';
+import { create, mark, mName, mSimple, Deliver, createElement, label, mComponent } from '@neep/core';
 
 import D from './D';
 
 const C = create((
 	props: {  a?: any, onset?: () => void },
 	{ childNodes, delivered },
-	{ createElement, label },
 ) => {
 	label('{C}', '#F00');
-	return <Deliver a={delivered.a + 1}>
+	return <Deliver a={delivered.a as number + 1}>
 		<div>C: {delivered.a}</div>
 		<td {...props}>
 			{ childNodes }

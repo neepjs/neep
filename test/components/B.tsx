@@ -1,4 +1,4 @@
-import { create, mark, mName, mNative } from '@neep/core';
+import { create, mark, mName, Template, Slot, createElement, hook } from '@neep/core';
 import Compute from './Compute';
 import Compute2 from './Compute2';
 import Sync from './Sync';
@@ -7,17 +7,13 @@ import Sync2 from './Sync2';
 const B = create((
 	props: {  a?: any, onset?: () => void },
 	{ slots, delivered, emit },
-	{ Template, Slot, createElement, useValue, hook }
 ) => {
-	const inputValue = useValue();
-	const checked = useValue();
 	hook('beforeCreate', () => console.log('Hook', 'B', 'beforeCreate'), true);
 	hook('created', () => console.log('Hook', 'B', 'created'), true);
 	hook('beforeMount', () => console.log('Hook', 'B', 'beforeMount'), true);
 	hook('mounted', () => console.log('Hook', 'B', 'mounted'), true);
 	hook('beforeUpdate', () => console.log('Hook', 'B', 'beforeUpdate'), true);
 	hook('updated', () => console.log('Hook', 'B', 'updated'), true);
-	const ref = (x: any) => console.log('Ref', 'B', x);
 	return <Template>
 		<div>B: {delivered.a}</div>
 		{slots.name?.()}
@@ -46,4 +42,4 @@ const B = create((
 		<hr />
 	</Template>;
 });
-export default mark(B, mName('B'), );
+export default mark(B, mName('B'));

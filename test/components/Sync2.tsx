@@ -1,10 +1,6 @@
-import { create, mark, mName, mNative } from '@neep/core';
+import { create, mark, mName, Template, createElement, useValue } from '@neep/core';
 
-const Sync2 = create((
-	props: {  a?: any, onset?: () => void },
-	{ },
-	{ Template, createElement, useValue }
-) => {
+const Sync2 = create(() => {
 	const inputValue = useValue();
 	const checked = useValue();
 
@@ -16,4 +12,4 @@ const Sync2 = create((
 		<div>[{checked}]{inputValue}</div>
 	</Template>;
 });
-export default mark(Sync2, mName('Sync2'), );
+export default mark(Sync2, mName('Sync2') );
