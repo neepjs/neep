@@ -8,6 +8,11 @@ import {
 	TreeNode,
 	MountedNode,
 } from '../type';
+import {
+	typeSymbol,
+	configSymbol,
+	componentsSymbol,
+} from '../symbols';
 import { exec, monitor, encase } from '../install';
 import { setCurrent } from '../extends/current';
 import convert, { destroy } from './convert';
@@ -17,7 +22,6 @@ import { getSlots, setSlots } from './slot';
 import EntityObject from './EntityObject';
 import { initContext } from '../extends/context';
 import { updateProps } from './props';
-import { typeSymbol, configSymbol, componentsSymbol } from '../symbols';
 import { refresh } from '../extends';
 
 function update(
@@ -151,7 +155,11 @@ export default class ComponentEntity<
 		Reflect.defineProperty(
 			this.exposed,
 			'$component',
-			{ value: component, enumerable: true, configurable: true },
+			{
+				value: component,
+				enumerable: true,
+				configurable: true,
+			},
 		);
 		// 原生组件
 		[this.native, this._shadow] =
@@ -218,7 +226,13 @@ export default class ComponentEntity<
 		);
 	}
 	_mount(): void {
-		const {nativeNodes, iRender, _shadow, native, _nodes} = this;
+		const {
+			nativeNodes,
+			iRender,
+			_shadow,
+			native,
+			_nodes,
+		} = this;
 		if (!native || !nativeNodes || !_shadow) {
 			this.tree = draw(iRender, _nodes);
 			return;

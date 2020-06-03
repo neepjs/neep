@@ -11,7 +11,9 @@ import { Value } from '../auxiliary';
 import { createMountedNode } from './id';
 import convert, { destroy } from './convert';
 import draw, { unmount, getNodes, setRefList } from './draw';
-import EntityObject, { setCompleteList, complete } from './EntityObject';
+import EntityObject, {
+	setCompleteList, complete,
+} from './EntityObject';
 import { nextFrame, exec, monitor } from '../install';
 import { init } from './normalize';
 
@@ -57,9 +59,9 @@ export default class ContainerEntity extends EntityObject {
 			if (!changed) { return; }
 			this._drawChildren = true;
 			this.refresh();
-		}
+		};
 		const slots = Object.create(null);
-		
+
 		this._render = monitor(
 			refresh,
 			() => init(
@@ -218,7 +220,8 @@ export default class ContainerEntity extends EntityObject {
 		}
 		this.rootContainer.markDrawContainer(
 			this,
-			!this._needDraw && !this._awaitDraw.size || this.destroyed,
+			!this._needDraw && !this._awaitDraw.size
+			|| this.destroyed,
 		);
 	}
 	drawContainer(): void {
