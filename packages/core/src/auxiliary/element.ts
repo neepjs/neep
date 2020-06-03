@@ -70,3 +70,48 @@ export function elements(
 	}
 	return elements(node.children, opt);
 }
+
+export function equalProps(a?: any, b?: any): boolean {
+	if (a === b) { return true; }
+	if (!a) { return false; }
+	if (!b) { return false; }
+	if (typeof a !== 'object') { return false; }
+	if (typeof b !== 'object') { return false; }
+	const aKeys = new Set(Reflect.ownKeys(a));
+	const bKeys = Reflect.ownKeys(b);
+	if (aKeys.size !== bKeys.length) { return false; }
+	for (const k of bKeys) {
+		if (!aKeys.has(k)) { return false; }
+		if (a[k] !== b[k]) { return false; }
+	}
+	return true;
+}
+export function equal(a: any, b: any): boolean {
+	if (typeof a !== typeof b) { return false; }
+	if (a === b) { return true; }
+	if (typeof a === 'function') { return false; }
+	if (!a) { return false; }
+	if (!b) { return false; }
+	if (Array.isArray(a)) {
+		if (!Array.isArray(b)) { return false; }
+		if (a.length !== b.length) { return false; }
+		for (let i = a.length - 1; i >= 0; i--) {
+			if (!equal(a[i], b[i])) { return false; }
+		}
+		return true;
+	}
+	if (Array.isArray(b)) {
+		return false;
+	}
+	if (!isElement(a)) { return false; }
+	if (!isElement(b)) { return false; }
+	if (a.tag !== b.tag) { return false; }
+	if (a.execed !== b.execed) { return false; }
+	if (a.inserted !== b.inserted) { return false; }
+	if (a.ref !== b.ref) { return false; }
+	if (a.value !== b.value) { return false; }
+	if (a.key !== b.key) { return false; }
+	if (a.slot !== b.slot) { return false; }
+	return equalProps(a.props, b.props)
+		&& equal(a.children, b.children);
+}

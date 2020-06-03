@@ -1,9 +1,8 @@
 import { NeepElement, SlotFn, Slots, IRender } from '../type';
-import { isElement, SlotRender, ScopeSlot } from '../auxiliary';
+import { isElement, SlotRender, ScopeSlot, equal } from '../auxiliary';
 import { isElementSymbol } from '../symbols';
 import { isProduction } from '../constant';
 import { isValue } from '../install';
-import { equal } from '../extends';
 
 /**
  * 获取槽元素
