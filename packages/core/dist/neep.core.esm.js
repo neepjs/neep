@@ -1,9 +1,9 @@
 /*!
- * Neep v0.1.0-alpha.13
+ * Neep v0.1.0-alpha.14
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
-const version = '0.1.0-alpha.13';
+const version = '0.1.0-alpha.14';
 const isProduction = "development" === 'production';
 
 const devtools = {
@@ -110,6 +110,7 @@ let safeify;
 let asValue;
 let exec;
 let monitor;
+let printError;
 function installMonitorable(api) {
   if (!api) {
     return;
@@ -127,7 +128,8 @@ function installMonitorable(api) {
     safeify,
     asValue,
     exec,
-    monitor
+    monitor,
+    printError
   } = api);
 }
 
@@ -137,6 +139,114 @@ function install(apis) {
 
   {
     installDevtools(apis.devtools);
+  }
+}
+
+let current;
+function setCurrent(fn, entity) {
+  const oldEntity = current;
+  current = entity;
+
+  try {
+    current.$_valueIndex = 0;
+    current.$_serviceIndex = 0;
+    const ret = fn();
+
+    if (current.$_valueIndex !== current.$_values.length) {
+      throw new NeepError('Inconsistent number of useValue executions', 'life');
+    }
+
+    if (current.$_serviceIndex && current.$_serviceIndex !== current.$_services.length) {
+      throw new NeepError('Inconsistent number of useService executions', 'life');
+    }
+
+    return ret;
+  } finally {
+    current = oldEntity;
+  }
+}
+function checkCurrent(name, initOnly = false) {
+  if (!current) {
+    throw new NeepError(`Function \`${name}\` can only be called within a cycle.`, 'life');
+  }
+
+  if (!initOnly) {
+    return current;
+  }
+
+  if (!current.created) {
+    return current;
+  }
+
+  throw new NeepError(`Function \`${name}\` can only be called at initialization time.`, 'life');
+}
+
+const constructors = [];
+function initContext(context, entity) {
+  for (const constructor of constructors) {
+    constructor(context, entity);
+  }
+
+  return context;
+}
+function addContextConstructor(constructor) {
+  constructors.push(safeify(constructor));
+}
+
+const constructors$1 = [];
+function initEntity(entity) {
+  for (const constructor of constructors$1) {
+    constructor(entity);
+  }
+
+  return entity;
+}
+function addEntityConstructor(constructor) {
+  constructors$1.push(safeify(constructor));
+}
+
+let delayedRefresh = 0;
+const objectSet = new Set();
+function wait(obj) {
+  if (delayedRefresh <= 0) {
+    return false;
+  }
+
+  objectSet.add(obj);
+  return true;
+}
+
+function run() {
+  if (delayedRefresh > 0) {
+    return;
+  }
+
+  const list = [...objectSet];
+  objectSet.clear();
+  list.forEach(o => o.refresh());
+}
+
+async function asyncRefresh(f) {
+  try {
+    delayedRefresh++;
+    return await f();
+  } finally {
+    delayedRefresh--;
+    run();
+  }
+}
+
+function refresh(f, async) {
+  if (async) {
+    return asyncRefresh(f);
+  }
+
+  try {
+    delayedRefresh++;
+    return f();
+  } finally {
+    delayedRefresh--;
+    run();
   }
 }
 
@@ -286,13 +396,15 @@ class EventEmitter {
           return true;
         }
 
-        let res = true;
+        return refresh(() => {
+          let res = true;
 
-        for (const fn of [...event]) {
-          res = fn(...p) && res;
-        }
+          for (const fn of [...event]) {
+            res = fn(...p) && res;
+          }
 
-        return res;
+          return res;
+        });
       }
 
       emit.omit = (...names) => createEmit(...omitNames, ...names);
@@ -314,8 +426,8 @@ class EventEmitter {
         try {
           return listener(...p) !== false;
         } catch (e) {
-          console.error(e);
-          return false;
+          printError(e);
+          return true;
         }
       }
 
@@ -384,114 +496,6 @@ const Container = 'Neep:Container';
 const Deliver = 'Neep:Deliver';
 const Template = 'template';
 const Fragment = Template;
-
-let current;
-function setCurrent(fn, entity) {
-  const oldEntity = current;
-  current = entity;
-
-  try {
-    current.$_valueIndex = 0;
-    current.$_serviceIndex = 0;
-    const ret = fn();
-
-    if (current.$_valueIndex !== current.$_values.length) {
-      throw new NeepError('Inconsistent number of useValue executions', 'life');
-    }
-
-    if (current.$_serviceIndex && current.$_serviceIndex !== current.$_services.length) {
-      throw new NeepError('Inconsistent number of useService executions', 'life');
-    }
-
-    return ret;
-  } finally {
-    current = oldEntity;
-  }
-}
-function checkCurrent(name, initOnly = false) {
-  if (!current) {
-    throw new NeepError(`Function \`${name}\` can only be called within a cycle.`, 'life');
-  }
-
-  if (!initOnly) {
-    return current;
-  }
-
-  if (!current.created) {
-    return current;
-  }
-
-  throw new NeepError(`Function \`${name}\` can only be called at initialization time.`, 'life');
-}
-
-const constructors = [];
-function initContext(context, entity) {
-  for (const constructor of constructors) {
-    constructor(context, entity);
-  }
-
-  return context;
-}
-function addContextConstructor(constructor) {
-  constructors.push(safeify(constructor));
-}
-
-const constructors$1 = [];
-function initEntity(entity) {
-  for (const constructor of constructors$1) {
-    constructor(entity);
-  }
-
-  return entity;
-}
-function addEntityConstructor(constructor) {
-  constructors$1.push(safeify(constructor));
-}
-
-let delayedRefresh = 0;
-const objectSet = new Set();
-function wait(obj) {
-  if (delayedRefresh <= 0) {
-    return false;
-  }
-
-  objectSet.add(obj);
-  return true;
-}
-
-function run() {
-  if (delayedRefresh > 0) {
-    return;
-  }
-
-  const list = [...objectSet];
-  objectSet.clear();
-  list.forEach(o => o.refresh());
-}
-
-async function asyncRefresh(f) {
-  try {
-    delayedRefresh++;
-    return await f();
-  } finally {
-    delayedRefresh--;
-    run();
-  }
-}
-
-function refresh(f, async) {
-  if (async) {
-    return asyncRefresh(f);
-  }
-
-  try {
-    delayedRefresh++;
-    return f();
-  } finally {
-    delayedRefresh--;
-    run();
-  }
-}
 
 const hooks = Object.create(null);
 function setHook(id, hook, entity) {
@@ -634,7 +638,7 @@ function deliver(name, value, opt) {
   setValue(checkCurrent('deliver', true).delivered, name, value, opt);
 }
 
-const isElementSymbol = Symbol.for('isNeepElement');
+const isElementSymbol = Symbol.for('------isNeepElement------');
 const typeSymbol = Symbol.for('type');
 const nameSymbol = Symbol.for('name');
 const renderSymbol = Symbol.for('render');
@@ -659,7 +663,8 @@ function createElement(tag, attrs, ...children) {
     [isElementSymbol]: true,
     tag,
     key: undefined,
-    children: []
+    props: attrs,
+    children
   };
 
   if ('n:key' in attrs) {
@@ -672,48 +677,16 @@ function createElement(tag, attrs, ...children) {
     node.slot = attrs.slot;
   }
 
-  if (typeof attrs.ref === 'function') {
+  if (typeof attrs['n:ref'] === 'function') {
+    node.ref = attrs['n:ref'];
+  } else if (typeof attrs['n-ref'] === 'function') {
+    node.ref = attrs['n-ref'];
+  } else if (typeof attrs.ref === 'function') {
     node.ref = attrs.ref;
   }
 
   if (tag === Value) {
     node.value = attrs.value;
-    return node;
-  }
-
-  node.children = children;
-
-  if (tag === Template) {
-    return node;
-  }
-
-  if (tag === SlotRender) {
-    node.render = attrs.render;
-    return node;
-  }
-
-  if (tag === ScopeSlot || tag === Slot) {
-    const {
-      render,
-      argv,
-      args,
-      name
-    } = attrs;
-    node.render = render;
-    node.args = argv && [argv] || Array.isArray(args) && args.length && args || [{}];
-
-    if (tag === ScopeSlot) {
-      node.props = {
-        name
-      };
-      return node;
-    }
-  }
-
-  node.props = {};
-
-  for (let k in attrs) {
-    node.props[k] = attrs[k];
   }
 
   return node;
@@ -772,6 +745,127 @@ function elements(node, opt = {}) {
   }
 
   return elements(node.children, opt);
+}
+function equalProps(a, b) {
+  if (a === b) {
+    return true;
+  }
+
+  if (!a) {
+    return false;
+  }
+
+  if (!b) {
+    return false;
+  }
+
+  if (typeof a !== 'object') {
+    return false;
+  }
+
+  if (typeof b !== 'object') {
+    return false;
+  }
+
+  const aKeys = new Set(Reflect.ownKeys(a));
+  const bKeys = Reflect.ownKeys(b);
+
+  if (aKeys.size !== bKeys.length) {
+    return false;
+  }
+
+  for (const k of bKeys) {
+    if (!aKeys.has(k)) {
+      return false;
+    }
+
+    if (a[k] !== b[k]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+function equal(a, b) {
+  if (typeof a !== typeof b) {
+    return false;
+  }
+
+  if (a === b) {
+    return true;
+  }
+
+  if (typeof a === 'function') {
+    return false;
+  }
+
+  if (!a) {
+    return false;
+  }
+
+  if (!b) {
+    return false;
+  }
+
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b)) {
+      return false;
+    }
+
+    if (a.length !== b.length) {
+      return false;
+    }
+
+    for (let i = a.length - 1; i >= 0; i--) {
+      if (!equal(a[i], b[i])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  if (Array.isArray(b)) {
+    return false;
+  }
+
+  if (!isElement(a)) {
+    return false;
+  }
+
+  if (!isElement(b)) {
+    return false;
+  }
+
+  if (a.tag !== b.tag) {
+    return false;
+  }
+
+  if (a.execed !== b.execed) {
+    return false;
+  }
+
+  if (a.inserted !== b.inserted) {
+    return false;
+  }
+
+  if (a.ref !== b.ref) {
+    return false;
+  }
+
+  if (a.value !== b.value) {
+    return false;
+  }
+
+  if (a.key !== b.key) {
+    return false;
+  }
+
+  if (a.slot !== b.slot) {
+    return false;
+  }
+
+  return equalProps(a.props, b.props) && equal(a.children, b.children);
 }
 
 let label;
@@ -843,10 +937,6 @@ function createMountedNode(n, id) {
       id
     };
   }
-
-  return { ...n,
-    id: 0
-  };
 }
 function recoveryMountedNode(node) {
   {
@@ -1396,6 +1486,27 @@ function getSlots(iRender, children, slots, native = false) {
       continue;
     }
 
+    if (isElement(it) && it.slot === undefined) {
+      if (typeof it.tag === 'function' && it.tag[typeSymbol] === 'simple' && it.execed || it.tag === Template) {
+        const list = Object.create(null);
+        nativeList.push(getSlots(iRender, it.children, list, native));
+
+        for (const k of Reflect.ownKeys(list)) {
+          const node = { ...it,
+            children: list[k]
+          };
+
+          if (k in slots) {
+            slots[k].push(node);
+          } else {
+            slots[k] = [node];
+          }
+        }
+
+        continue;
+      }
+    }
+
     if (native) {
       if (iRender.isNode(it)) {
         nativeList.push(it);
@@ -1407,7 +1518,7 @@ function getSlots(iRender, children, slots, native = false) {
         continue;
       }
 
-      if (it.tag !== SlotRender) {
+      if (it.tag !== SlotRender && it.tag !== Template) {
         nativeList.push(it);
         continue;
       }
@@ -1447,11 +1558,21 @@ function renderSlots(list, ...props) {
       };
     }
 
-    if (typeof it.render === 'function') {
-      return it.render(...props);
+    const {
+      children
+    } = it;
+
+    if ((children === null || children === void 0 ? void 0 : children.length) !== 1) {
+      return children;
     }
 
-    return it.children;
+    const [render] = children;
+
+    if (isValue(render) || typeof render !== 'function') {
+      return children;
+    }
+
+    return render(...props);
   });
 }
 
@@ -1468,15 +1589,31 @@ function createSlots(name, list) {
   return slot;
 }
 
-function setSlots(children, slots = Object.create(null)) {
+function setSlots(children, slots = Object.create(null), oldChildren) {
   for (const k of Reflect.ownKeys(slots)) {
-    if (!(k in children)) {
-      delete slots[k];
+    if (k in children) {
+      continue;
     }
+
+    delete slots[k];
+  }
+
+  if (!oldChildren) {
+    for (const k of Reflect.ownKeys(children)) {
+      slots[k] = createSlots(k, children[k]);
+    }
+
+    return slots;
   }
 
   for (const k of Reflect.ownKeys(children)) {
-    slots[k] = createSlots(k, children[k]);
+    const list = children[k];
+
+    if (equal(list, oldChildren[k])) {
+      continue;
+    }
+
+    slots[k] = createSlots(k, list);
   }
 
   return slots;
@@ -1561,6 +1698,102 @@ function register(name, component) {
   components[name] = component;
 }
 
+function findComponent(tag, components$1) {
+  if (!tag) {
+    return null;
+  }
+
+  if (typeof tag !== 'string') {
+    return tag;
+  }
+
+  if (tag === 'template') {
+    return tag;
+  }
+
+  if (/^neep:.+/i.test(tag)) {
+    return tag;
+  }
+
+  for (const list of components$1) {
+    const component = list[tag];
+
+    if (component) {
+      return component;
+    }
+  }
+
+  return components[tag] || tag;
+}
+
+function getChildren(children, args) {
+  if (children.length !== 1) {
+    return children;
+  }
+
+  const [fn] = children;
+
+  if (typeof fn !== 'function') {
+    return children;
+  }
+
+  return fn(...args);
+}
+
+function replaceNode(node, slots, components, native, isRoot) {
+  var _node$props;
+
+  if (Array.isArray(node)) {
+    return node.map(n => replaceNode(n, slots, components, native, isRoot));
+  }
+
+  if (!isElement(node)) {
+    return node;
+  }
+
+  let {
+    children,
+    props
+  } = node;
+  let tag = findComponent(node.tag, components);
+
+  if (tag === SlotRender && isRoot) {
+    return null;
+  }
+
+  if (tag === Slot) {
+    tag = native ? 'slot' : ScopeSlot;
+  }
+
+  if (tag !== ScopeSlot) {
+    return { ...node,
+      tag,
+      children: replaceNode(children, slots, components, native, isRoot)
+    };
+  }
+
+  if (node.tag === ScopeSlot && node.inserted) {
+    return node;
+  }
+
+  const args = (props === null || props === void 0 ? void 0 : props.argv) && [props.argv] || Array.isArray(props === null || props === void 0 ? void 0 : props.args) && (props === null || props === void 0 ? void 0 : props.args.length) && props.args || [{}];
+  const slotName = ((_node$props = node.props) === null || _node$props === void 0 ? void 0 : _node$props.name) || 'default';
+  const slot = slots[slotName];
+
+  if (typeof slot === 'function') {
+    return { ...node,
+      ...slot(...args)
+    };
+  }
+
+  const label =  [`[${slotName}]`, '#00F'];
+  return { ...node,
+    tag: ScopeSlot,
+    label,
+    children: replaceNode(getChildren(children, args), slots, components, native, false)
+  };
+}
+
 function getComponents(...components) {
   return components.filter(Boolean);
 }
@@ -1615,9 +1848,37 @@ function execSimple(nObject, delivered, node, tag, components, children) {
   };
 }
 
-function exec$1(nObject, delivered, node, components) {
+function getSlotRenderFn(nObject, delivered, children, slots, components, native) {
+  if (children.length !== 1) {
+    return null;
+  }
+
+  const [renderFn] = children;
+
+  if (isValue(renderFn) || typeof renderFn !== 'function') {
+    return null;
+  }
+
+  const {
+    slotRenderFnList
+  } = nObject;
+  const fn = slotRenderFnList.get(renderFn);
+
+  if (fn) {
+    return fn;
+  }
+
+  const newFn = function (...p) {
+    return init(nObject, delivered, renderFn.call(this, ...p), slots, components, native);
+  };
+
+  slotRenderFnList.set(renderFn, newFn);
+  return newFn;
+}
+
+function exec$1(nObject, delivered, node, slots, components, native) {
   if (Array.isArray(node)) {
-    return node.map(n => exec$1(nObject, delivered, n, components));
+    return node.map(n => exec$1(nObject, delivered, n, slots, components, native));
   }
 
   if (!isElement(node)) {
@@ -1637,98 +1898,28 @@ function exec$1(nObject, delivered, node, components) {
     delete props.key;
     return { ...node,
       tag,
-      children: children.map(n => exec$1(nObject, updateProps(Object.create(delivered), props || {}, {}, true), n, components))
+      children: children.map(n => exec$1(nObject, updateProps(Object.create(delivered), props || {}, {}, true), n, slots, components, native))
     };
+  }
+
+  if (tag === SlotRender) {
+    const slotRenderFn = getSlotRenderFn(nObject, delivered, children, slots, components, native);
+
+    if (slotRenderFn) {
+      return { ...node,
+        children: [slotRenderFn]
+      };
+    }
   }
 
   if (typeof tag !== 'function' || tag[typeSymbol] !== 'simple') {
     return { ...node,
       tag,
-      children: children.map(n => exec$1(nObject, delivered, n, components))
+      children: children.map(n => exec$1(nObject, delivered, n, slots, components, native))
     };
   }
 
   return execSimple(nObject, delivered, node, tag, components, children);
-}
-
-function findComponent(tag, components$1) {
-  if (!tag) {
-    return null;
-  }
-
-  if (typeof tag !== 'string') {
-    return tag;
-  }
-
-  if (tag === 'template') {
-    return tag;
-  }
-
-  if (/^neep:.+/i.test(tag)) {
-    return tag;
-  }
-
-  for (const list of components$1) {
-    const component = list[tag];
-
-    if (component) {
-      return component;
-    }
-  }
-
-  return components[tag] || tag;
-}
-
-function replaceNode(node, slots, components, native) {
-  var _node$props;
-
-  if (Array.isArray(node)) {
-    return node.map(n => replaceNode(n, slots, components, native));
-  }
-
-  if (!isElement(node)) {
-    return node;
-  }
-
-  let {
-    children,
-    args = [{}]
-  } = node;
-  let tag = findComponent(node.tag, components);
-
-  if (tag === Slot) {
-    tag = native ? 'slot' : ScopeSlot;
-  }
-
-  if (tag !== ScopeSlot) {
-    return { ...node,
-      tag,
-      children: replaceNode(children, slots, components, native)
-    };
-  }
-
-  if (node.tag === ScopeSlot && node.inserted) {
-    return node;
-  }
-
-  const slotName = ((_node$props = node.props) === null || _node$props === void 0 ? void 0 : _node$props.name) || 'default';
-  const slot = slots[slotName];
-
-  if (typeof slot === 'function') {
-    return { ...node,
-      ...slot(...args)
-    };
-  }
-
-  const {
-    render
-  } = node;
-  const label =  [`[${slotName}]`, '#00F'];
-  return { ...node,
-    tag: ScopeSlot,
-    label,
-    children: replaceNode(typeof render !== 'function' ? children : render(...args), slots, components, native)
-  };
 }
 
 function renderNode(iRender, node, context, render) {
@@ -1776,7 +1967,7 @@ function renderNode(iRender, node, context, render) {
 }
 
 function init(nObject, delivered, node, slots, components, native) {
-  return exec$1(nObject, delivered, replaceNode(node, slots, components, native), components);
+  return exec$1(nObject, delivered, replaceNode(node, slots, components, native, true), slots, components, native);
 }
 function normalize(nObject, result) {
   const {
@@ -1939,6 +2130,8 @@ function createEntity(obj) {
 
 class EntityObject {
   constructor(iRender, parent, delivered = (parent === null || parent === void 0 ? void 0 : parent.delivered) || Object.create(null), container) {
+    _defineProperty(this, "slotRenderFnList", new WeakMap());
+
     _defineProperty(this, "events", new EventEmitter());
 
     _defineProperty(this, "emit", this.events.emit);
@@ -2211,7 +2404,8 @@ function update(nObject, props, children) {
     native
   } = nObject;
   const childNodes = getSlots(nObject.iRender, children, slots, Boolean(native));
-  setSlots(slots, nObject.slots);
+  setSlots(slots, nObject.slots, nObject.lastSlots);
+  nObject.lastSlots = slots;
 
   if (!native) {
     return;
@@ -2311,6 +2505,8 @@ class ComponentEntity extends EntityObject {
     _defineProperty(this, "props", encase(Object.create(null)));
 
     _defineProperty(this, "slots", encase(Object.create(null)));
+
+    _defineProperty(this, "lastSlots", void 0);
 
     _defineProperty(this, "_stopRender", void 0);
 
@@ -2458,7 +2654,6 @@ function toElement(t) {
     children: []
   };
 }
-
 function destroy(tree) {
   if (Array.isArray(tree)) {
     tree.forEach(t => destroy(t));
@@ -2550,6 +2745,23 @@ function createItem$1(nObject, delivered, source) {
   return { ...source,
     children: createAll$1(nObject, delivered, source.children)
   };
+}
+function createAll$1(nObject, delivered, source) {
+  if (!Array.isArray(source)) {
+    source = [source];
+  }
+
+  if (!source.length) {
+    return [];
+  }
+
+  return source.map(item => {
+    if (!Array.isArray(item)) {
+      return createItem$1(nObject, delivered, toElement(item));
+    }
+
+    return [...recursive2iterable(item)].map(it => createItem$1(nObject, delivered, toElement(it)));
+  });
 }
 
 function updateList$1(nObject, delivered, source, tree) {
@@ -2654,7 +2866,7 @@ function updateItem$1(nObject, delivered, source, tree) {
   const ltag = tag.toLowerCase();
 
   if (ltag === 'neep:container') {
-    var _source$props2;
+    var _source$props;
 
     const {
       component
@@ -2664,7 +2876,7 @@ function updateItem$1(nObject, delivered, source, tree) {
       return createItem$1(nObject, delivered, source);
     }
 
-    const type = source === null || source === void 0 ? void 0 : (_source$props2 = source.props) === null || _source$props2 === void 0 ? void 0 : _source$props2.type;
+    const type = source === null || source === void 0 ? void 0 : (_source$props = source.props) === null || _source$props === void 0 ? void 0 : _source$props.type;
     const iRender = type ? getRender(type) : nObject.iRender;
 
     if (iRender !== component.iRender) {
@@ -2706,24 +2918,6 @@ function updateItem$1(nObject, delivered, source, tree) {
   return { ...source,
     children: [...updateAll$1(nObject, delivered, source.children, tree.children)]
   };
-}
-
-function createAll$1(nObject, delivered, source) {
-  if (!Array.isArray(source)) {
-    source = [source];
-  }
-
-  if (!source.length) {
-    return [];
-  }
-
-  return source.map(item => {
-    if (!Array.isArray(item)) {
-      return createItem$1(nObject, delivered, toElement(item));
-    }
-
-    return [...recursive2iterable(item)].map(it => createItem$1(nObject, delivered, toElement(it)));
-  });
 }
 
 function* updateAll$1(nObject, delivered, source, tree) {
@@ -3270,4 +3464,4 @@ function lazy(component, Placeholder) {
   return mark(Lazy, mSimple, mName('Lazy'));
 }
 
-export { Container, Deliver, NeepError as Error, EventEmitter, Fragment, ScopeSlot, Slot, SlotRender, Template, Value, addContextConstructor, addEntityConstructor, asValue, byService, callHook, checkCurrent, componentsSymbol, computed, configSymbol, create, createElement, current, deliver, elements, encase, expose, getRect, hook, install, isElement, isElementSymbol, isProduction, isValue, label$1 as label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, recover, refresh, register, render, renderSymbol, setHook, typeSymbol, useService, useValue, value, valueify, version, watch };
+export { Container, Deliver, NeepError as Error, EventEmitter, Fragment, ScopeSlot, Slot, SlotRender, Template, Value, addContextConstructor, addEntityConstructor, asValue, byService, callHook, checkCurrent, componentsSymbol, computed, configSymbol, create, createElement, current, deliver, elements, encase, equal, equalProps, expose, getRect, hook, install, isElement, isElementSymbol, isProduction, isValue, label$1 as label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, recover, refresh, register, render, renderSymbol, setHook, typeSymbol, useService, useValue, value, valueify, version, watch };

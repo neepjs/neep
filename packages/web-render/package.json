@@ -1,6 +1,6 @@
 {
   "name": "@neep/web-render",
-  "version": "0.1.0-alpha.12",
+  "version": "0.1.0-alpha.14",
   "main": "dist/neep.web.render.js",
   "module": "dist/neep.web.render.mjs",
   "browser": "dist/neep.web.render.browser.min.js",

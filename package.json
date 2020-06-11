@@ -1,7 +1,7 @@
 {
   "name": "neep",
   "private": true,
-  "version": "0.1.0-alpha.13",
+  "version": "0.1.0-alpha.14",
   "main": "dist/neep.common.js",
   "module": "dist/neep.esm.js",
   "scripts": {
@@ -52,7 +52,6 @@
     "@types/node": "^12.12.43",
     "@typescript-eslint/eslint-plugin": "^1.13.0",
     "@typescript-eslint/parser": "^2.30.0",
-    "babel-eslint": "^11.0.0-beta.2",
     "eslint": "^6.8.0",
     "eslint-plugin-react": "^7.20.0",
     "monitorable": "0.1.0-beta.0",

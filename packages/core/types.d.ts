@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.13
+ * Neep v0.1.0-alpha.14
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -16,24 +16,24 @@ declare const Deliver = "Neep:Deliver";
 declare const Template = "template";
 declare const Fragment = "template";
 
-declare const _mp_rt9___auxiliary_tags___ScopeSlot: typeof ScopeSlot;
-declare const _mp_rt9___auxiliary_tags___SlotRender: typeof SlotRender;
-declare const _mp_rt9___auxiliary_tags___Slot: typeof Slot;
-declare const _mp_rt9___auxiliary_tags___Value: typeof Value;
-declare const _mp_rt9___auxiliary_tags___Container: typeof Container;
-declare const _mp_rt9___auxiliary_tags___Deliver: typeof Deliver;
-declare const _mp_rt9___auxiliary_tags___Template: typeof Template;
-declare const _mp_rt9___auxiliary_tags___Fragment: typeof Fragment;
-declare namespace _mp_rt9___auxiliary_tags__ {
+declare const _mp_rt27__auxiliary_tags___ScopeSlot: typeof ScopeSlot;
+declare const _mp_rt27__auxiliary_tags___SlotRender: typeof SlotRender;
+declare const _mp_rt27__auxiliary_tags___Slot: typeof Slot;
+declare const _mp_rt27__auxiliary_tags___Value: typeof Value;
+declare const _mp_rt27__auxiliary_tags___Container: typeof Container;
+declare const _mp_rt27__auxiliary_tags___Deliver: typeof Deliver;
+declare const _mp_rt27__auxiliary_tags___Template: typeof Template;
+declare const _mp_rt27__auxiliary_tags___Fragment: typeof Fragment;
+declare namespace _mp_rt27__auxiliary_tags__ {
   export {
-    _mp_rt9___auxiliary_tags___ScopeSlot as ScopeSlot,
-    _mp_rt9___auxiliary_tags___SlotRender as SlotRender,
-    _mp_rt9___auxiliary_tags___Slot as Slot,
-    _mp_rt9___auxiliary_tags___Value as Value,
-    _mp_rt9___auxiliary_tags___Container as Container,
-    _mp_rt9___auxiliary_tags___Deliver as Deliver,
-    _mp_rt9___auxiliary_tags___Template as Template,
-    _mp_rt9___auxiliary_tags___Fragment as Fragment,
+    _mp_rt27__auxiliary_tags___ScopeSlot as ScopeSlot,
+    _mp_rt27__auxiliary_tags___SlotRender as SlotRender,
+    _mp_rt27__auxiliary_tags___Slot as Slot,
+    _mp_rt27__auxiliary_tags___Value as Value,
+    _mp_rt27__auxiliary_tags___Container as Container,
+    _mp_rt27__auxiliary_tags___Deliver as Deliver,
+    _mp_rt27__auxiliary_tags___Template as Template,
+    _mp_rt27__auxiliary_tags___Fragment as Fragment,
   };
 }
 
@@ -55,6 +55,7 @@ declare class EventEmitter<T extends Record<string, any[]> = Record<string, any[
 }
 
 declare class EntityObject {
+    readonly slotRenderFnList: WeakMap<Function, Function>;
     readonly events: EventEmitter<Record<string, any[]>>;
     readonly emit: Emit<Record<string, any[]>>;
     readonly on: On<Record<string, any[]>>;
@@ -164,6 +165,7 @@ declare class ComponentEntity<P extends object = object, R extends object = obje
     readonly props: P;
     /** 组件槽 */
     readonly slots: Slots;
+    lastSlots: Record<string | symbol, any[]> | undefined;
     /** 结果渲染函数 */
     private readonly _stopRender;
     /** 原生子代 */
@@ -227,7 +229,7 @@ declare global {
 			[k: string]: any;
 		}
 	}
-};
+}
 
 declare const isElementSymbol: unique symbol;
 declare const typeSymbol: unique symbol;
@@ -235,23 +237,6 @@ declare const nameSymbol: unique symbol;
 declare const renderSymbol: unique symbol;
 declare const componentsSymbol: unique symbol;
 declare const configSymbol: unique symbol;
-
-declare const symbols_isElementSymbol: typeof isElementSymbol;
-declare const symbols_typeSymbol: typeof typeSymbol;
-declare const symbols_nameSymbol: typeof nameSymbol;
-declare const symbols_renderSymbol: typeof renderSymbol;
-declare const symbols_componentsSymbol: typeof componentsSymbol;
-declare const symbols_configSymbol: typeof configSymbol;
-declare namespace symbols {
-  export {
-    symbols_isElementSymbol as isElementSymbol,
-    symbols_typeSymbol as typeSymbol,
-    symbols_nameSymbol as nameSymbol,
-    symbols_renderSymbol as renderSymbol,
-    symbols_componentsSymbol as componentsSymbol,
-    symbols_configSymbol as configSymbol,
-  };
-}
 
 declare type EntityObject$1 = InstanceType<typeof EntityObject>;
 declare type ComponentEntity$1 = InstanceType<typeof ComponentEntity>;
@@ -366,24 +351,24 @@ interface Service<T, P extends any[]> {
 /** 组件标记 */
 interface Marks {
     /** 组件名称 */
-    [symbols.nameSymbol]?: string;
+    [nameSymbol]?: string;
     /** 是否为原生组件 */
-    [symbols.typeSymbol]?: 'native' | 'simple' | 'standard';
-    [symbols.renderSymbol]?: Render;
-    [symbols.configSymbol]?: Record<string, any>;
-    [symbols.componentsSymbol]?: Record<string, Component>;
+    [typeSymbol]?: 'native' | 'simple' | 'standard';
+    [renderSymbol]?: Render;
+    [configSymbol]?: Record<string, any>;
+    [componentsSymbol]?: Record<string, Component>;
 }
 /** 构造函数 */
 interface Component<P extends object = object, R extends object = object> extends Marks {
     (props: P, context: Context): undefined | null | NeepNode | NeepNode[] | R | (() => undefined | null | NeepNode | NeepNode[] | R);
 }
-declare type Tags = typeof _mp_rt9___auxiliary_tags__;
+declare type Tags = typeof _mp_rt27__auxiliary_tags__;
 declare type Tag = null | string | Tags[keyof Tags] | Component<any, any>;
 interface Ref {
     (node: NativeNode | Exposed, isRemove?: boolean): void;
 }
 interface NeepElement {
-    [symbols.isElementSymbol]: true;
+    [isElementSymbol]: true;
     /** 标签名 */
     tag: Tag;
     execed?: boolean;
@@ -401,10 +386,6 @@ interface NeepElement {
     key?: any;
     /** Value 类型值 */
     value?: any;
-    /** Slot 相关的渲染函数 */
-    render?(...props: any[]): any;
-    /** 槽渲染参数 */
-    args?: any[];
     /** 是否是已插入的 */
     inserted?: boolean;
     /** 标注 */
@@ -486,6 +467,9 @@ interface IRender {
     insertNode(parent: NativeContainer, node: NativeNode, next?: NativeNode | null): void;
     removeNode(n: NativeNode): void;
     getRect(n: NativeNode): Rect | null;
+}
+interface ElementIteratorOptions {
+    simple?: boolean | Component[] | ((c: Component) => boolean);
 }
 
 interface InstallOptions {
@@ -623,10 +607,9 @@ declare function isElement(v: any): v is NeepElement;
 declare function createElement(tag: Tag, attrs?: {
     [key: string]: any;
 }, ...children: any[]): NeepElement;
-interface elementIteratorOptions {
-    simple?: boolean | Component[] | ((c: Component) => boolean);
-}
-declare function elements(node: any, opt?: elementIteratorOptions): any[];
+declare function elements(node: any, opt?: ElementIteratorOptions): any[];
+declare function equalProps(a?: any, b?: any): boolean;
+declare function equal(a: any, b: any): boolean;
 
 declare function label(text: string, color?: string): void;
 
@@ -678,4 +661,4 @@ declare function setHook(id: string, hook: Hook, entity?: Entity): () => void;
 declare function callHook<H extends Hooks>(id: H, exposed: Entity): void;
 declare function callHook(id: string, exposed: Entity): void;
 
-export { Component, ComponentEntity$1 as ComponentEntity, Container, ContainerEntity$1 as ContainerEntity, Context, ContextConstructor, Deliver, Delivered, Devtools, Emit, Entity, EntityConstructor, EntityObject$1 as EntityObject, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, MountedNode, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Rect, Ref, Render, RootExposed, ScopeSlot, Service, Slot, SlotFn, SlotRender, Slots, Tag, Template, TreeNode, Value, addContextConstructor, addEntityConstructor, byService, callHook, checkCurrent, componentsSymbol, configSymbol, create, createElement, current, deliver, elementIteratorOptions, elements, expose, getRect, hook, install, isElement, isElementSymbol, isProduction, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, refresh, register, render, renderSymbol, setHook, typeSymbol, useService, useValue, version, watch };
+export { Component, ComponentEntity$1 as ComponentEntity, Container, ContainerEntity$1 as ContainerEntity, Context, ContextConstructor, Deliver, Delivered, Devtools, ElementIteratorOptions, Emit, Entity, EntityConstructor, EntityObject$1 as EntityObject, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, MountedNode, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Rect, Ref, Render, RootExposed, ScopeSlot, Service, Slot, SlotFn, SlotRender, Slots, Tag, Template, TreeNode, Value, addContextConstructor, addEntityConstructor, byService, callHook, checkCurrent, componentsSymbol, configSymbol, create, createElement, current, deliver, elements, equal, equalProps, expose, getRect, hook, install, isElement, isElementSymbol, isProduction, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, refresh, register, render, renderSymbol, setHook, typeSymbol, useService, useValue, version, watch };

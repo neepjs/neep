@@ -1,5 +1,5 @@
 /*!
- * NeepWebRender v0.1.0-alpha.12
+ * NeepWebRender v0.1.0-alpha.14
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -208,11 +208,77 @@ function setAttrs(el, attrs) {
     }
   }
 
-  if ((el instanceof HTMLSelectElement || el instanceof HTMLInputElement) && 'value' in attrs) {
+  if ((el instanceof HTMLSelectElement || el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) && 'value' in attrs) {
     const value = attrs.value || '';
 
     if (el.value !== value) {
       el.value = value;
+    }
+  }
+
+  if (el instanceof HTMLDetailsElement && 'open' in attrs) {
+    const value = attrs.open !== null;
+
+    if (el.open !== value) {
+      el.open = value;
+    }
+  }
+
+  if (el instanceof HTMLMediaElement) {
+    if ('muted' in attrs) {
+      const value = attrs.muted !== null;
+
+      if (el.muted !== value) {
+        el.muted = value;
+      }
+    }
+
+    if ('paused' in attrs) {
+      const value = attrs.paused !== null;
+
+      if (el.paused !== value) {
+        if (value) {
+          el.pause();
+        } else {
+          el.play();
+        }
+      }
+    }
+
+    if ('currentTime' in attrs) {
+      const value = attrs.currentTime;
+
+      if (value && /^\d+(\.\d+)?$/.test(value)) {
+        const num = Number(value);
+
+        if (el.currentTime !== num) {
+          el.currentTime = num;
+        }
+      }
+    }
+
+    if ('playbackRate' in attrs) {
+      const value = attrs.playbackRate;
+
+      if (value && /^\d+(\.\d+)?$/.test(value)) {
+        const num = Number(value);
+
+        if (el.playbackRate !== num) {
+          el.playbackRate = num;
+        }
+      }
+    }
+
+    if ('volume' in attrs) {
+      const value = attrs.volume;
+
+      if (value && /^\d+(\.\d+)?$/.test(value)) {
+        const num = Number(value);
+
+        if (el.volume !== num) {
+          el.volume = num;
+        }
+      }
     }
   }
 }
@@ -325,6 +391,9 @@ function* getElementModel(el) {
   if (el instanceof HTMLInputElement) {
     switch (el.type.toLowerCase()) {
       case 'checkbox':
+        yield ['indeterminate', 'change', e => e.currentTarget.indeterminate];
+        return yield ['checked', 'change', e => e.currentTarget.checked];
+
       case 'radio':
         return yield ['checked', 'change', e => e.currentTarget.checked];
     }
@@ -332,8 +401,25 @@ function* getElementModel(el) {
     return yield ['value', 'input', e => e.currentTarget.value];
   }
 
+  if (el instanceof HTMLTextAreaElement) {
+    return yield ['value', 'input', e => e.currentTarget.value];
+  }
+
   if (el instanceof HTMLSelectElement) {
     return yield ['value', 'select', e => e.currentTarget.value];
+  }
+
+  if (el instanceof HTMLDetailsElement) {
+    return yield ['open', 'toggle', e => e.currentTarget.open];
+  }
+
+  if (el instanceof HTMLMediaElement) {
+    yield ['currentTime', 'timeupdate', e => e.currentTarget.currentTime];
+    yield ['playbackRate', 'ratechange', e => e.currentTarget.playbackRate];
+    yield ['volume', 'volumechange', e => e.currentTarget.volume];
+    yield ['muted', 'volumechange', e => e.currentTarget.muted];
+    yield ['paused', 'playing', e => e.currentTarget.paused];
+    return yield ['paused', 'pause', e => e.currentTarget.paused];
   }
 }
 
