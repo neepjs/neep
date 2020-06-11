@@ -1,5 +1,6 @@
-import { markRead, markChange } from './install';
+import { markRead, markChange, printError } from './install';
 import { Emit, On } from './type';
+import { refresh } from './extends';
 
 function getEventName(k: string): string {
 	if (k[0] === '@') { return k.substr(1); }
@@ -96,7 +97,7 @@ export default class EventEmitter<
 	readonly emit: Emit<T>;
 	readonly on: On<T>;
 	constructor() {
-		const events: Record<keyof T, Set<Function>> = Object.create(null);
+		const events: Record<keyof T, Set<(...p: any) => boolean>> = Object.create(null);
 		const names = this._names;
 
 		function createEmit(
@@ -105,11 +106,13 @@ export default class EventEmitter<
 			function emit<N extends keyof T>(name: N, ...p: T[N]): boolean {
 				const event = events[name];
 				if (!event) { return true; }
-				let res = true;
-				for (const fn of [...event]) {
-					res = fn(...p) && res;
-				}
-				return res;
+				return refresh(() => {
+					let res = true;
+					for (const fn of [...event]) {
+						res = fn(...p) && res;
+					}
+					return res;
+				});
 			}
 			emit.omit = (...names: string[]) =>
 				createEmit(...omitNames, ...names);
@@ -128,8 +131,8 @@ export default class EventEmitter<
 				try {
 					return listener(...p) !== false;
 				} catch (e) {
-					console.error(e);
-					return false;
+					printError(e);
+					return true;
 				}
 			}
 			let event = events[name];
