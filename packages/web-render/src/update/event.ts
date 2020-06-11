@@ -15,6 +15,14 @@ function *getElementModel(el: Element): Iterable<[string, string, (e: any) => an
 	if (el instanceof HTMLInputElement) {
 		switch (el.type.toLowerCase()) {
 			case 'checkbox':
+				yield [
+					'indeterminate', 'change',
+					(e: any) => (e.currentTarget as HTMLInputElement).indeterminate,
+				];
+				return yield [
+					'checked', 'change',
+					(e: any) => (e.currentTarget as HTMLInputElement).checked,
+				];
 			case 'radio':
 				return yield [
 					'checked', 'change',
@@ -26,12 +34,51 @@ function *getElementModel(el: Element): Iterable<[string, string, (e: any) => an
 			(e: any) => (e.currentTarget as HTMLInputElement).value,
 		];
 	}
+	if (el instanceof HTMLTextAreaElement) {
+		return yield [
+			'value', 'input',
+			(e: any) => (e.currentTarget as HTMLTextAreaElement).value,
+		];
+	}
 	if (el instanceof HTMLSelectElement) {
 		return yield [
 			'value', 'select',
 			(e: any) => (e.currentTarget as HTMLSelectElement).value,
 		];
 	}
+	if (el instanceof HTMLDetailsElement) {
+		return yield [
+			'open', 'toggle',
+			(e: any) => (e.currentTarget as HTMLDetailsElement).open,
+		];
+	}
+	if (el instanceof HTMLMediaElement) {
+		yield [
+			'currentTime', 'timeupdate',
+			(e: any) => (e.currentTarget as HTMLMediaElement).currentTime,
+		];
+		yield [
+			'playbackRate', 'ratechange',
+			(e: any) => (e.currentTarget as HTMLMediaElement).playbackRate,
+		];
+		yield [
+			'volume', 'volumechange',
+			(e: any) => (e.currentTarget as HTMLMediaElement).volume,
+		];
+		yield [
+			'muted', 'volumechange',
+			(e: any) => (e.currentTarget as HTMLMediaElement).muted,
+		];
+		yield [
+			'paused', 'playing',
+			(e: any) => (e.currentTarget as HTMLMediaElement).paused,
+		];
+		return yield [
+			'paused', 'pause',
+			(e: any) => (e.currentTarget as HTMLMediaElement).paused,
+		];
+	}
+
 }
 
 function getEventName(k: string): string {

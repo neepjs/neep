@@ -8,7 +8,6 @@ export function setAttrs(
 	attrs: Record<string, string | null>,
 ): void {
 	if (el instanceof HTMLInputElement && 'checked' in attrs) {
-
 		switch (el.type.toLowerCase()) {
 			case 'checkbox':
 			case 'radio':
@@ -20,10 +19,62 @@ export function setAttrs(
 	if ((
 		el instanceof HTMLSelectElement
 		|| el instanceof HTMLInputElement
+		|| el instanceof HTMLTextAreaElement
 	) && 'value' in attrs) {
 		const value = attrs.value || '';
 		if (el.value !== value) {
 			el.value = value;
+		}
+	}
+	if ((el instanceof HTMLDetailsElement) && 'open' in attrs) {
+		const value = attrs.open !== null;
+		if (el.open !== value) {
+			el.open = value;
+		}
+	}
+	if (el instanceof HTMLMediaElement) {
+		if ('muted' in attrs) {
+			const value = attrs.muted !== null;
+			if (el.muted !== value) {
+				el.muted = value;
+			}
+		}
+		if ('paused' in attrs) {
+			const value = attrs.paused !== null;
+			if (el.paused !== value) {
+				if (value) {
+					el.pause();
+				} else {
+					el.play();
+				}
+			}
+		}
+		if ('currentTime' in attrs) {
+			const value = attrs.currentTime;
+			if (value && /^\d+(\.\d+)?$/.test(value)) {
+				const num = Number(value);
+				if (el.currentTime !== num) {
+					el.currentTime = num;
+				}
+			}
+		}
+		if ('playbackRate' in attrs) {
+			const value = attrs.playbackRate;
+			if (value && /^\d+(\.\d+)?$/.test(value)) {
+				const num = Number(value);
+				if (el.playbackRate !== num) {
+					el.playbackRate = num;
+				}
+			}
+		}
+		if ('volume' in attrs) {
+			const value = attrs.volume;
+			if (value && /^\d+(\.\d+)?$/.test(value)) {
+				const num = Number(value);
+				if (el.volume !== num) {
+					el.volume = num;
+				}
+			}
 		}
 	}
 }
