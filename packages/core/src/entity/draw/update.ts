@@ -107,7 +107,7 @@ export function updateAll(
 	tree: (MountedNode | MountedNode[])[],
 ): (MountedNode | MountedNode[])[] {
 	let index = 0;
-	let length = Math.min(source.length, source.length || 1);
+	let length = Math.min(source.length, tree.length);
 	const list: (MountedNode | MountedNode[])[] = [];
 	for (; index < length; index++) {
 		const src = source[index];
@@ -118,13 +118,13 @@ export function updateAll(
 		}
 	}
 	length = Math.max(source.length, tree.length);
-	if (tree.length > length) {
+	if (tree.length > index) {
 		// 销毁多余项
 		for (; index < length; index++) {
 			unmount(iRender, tree[index]);
 		}
 	}
-	if (source.length > length) {
+	if (source.length > index) {
 		// 创建多余项
 		const last = getLastNode(list[list.length - 1]);
 		const parent = iRender.getParent(last);

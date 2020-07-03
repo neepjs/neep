@@ -165,7 +165,7 @@ export function *updateAll(
 	if (!Array.isArray(source)) { source = [source]; }
 
 	let index = 0;
-	let length = Math.min(source.length, source.length);
+	let length = Math.min(source.length || 1, tree.length);
 	for (; index < length; index++) {
 		const src = source[index];
 		if (Array.isArray(src)) {
@@ -175,13 +175,13 @@ export function *updateAll(
 		}
 	}
 	length = Math.max(source.length, source.length);
-	if (tree.length > length) {
+	if (tree.length > index) {
 		// 销毁多余项
 		for (; index < length; index++) {
 			destroy(tree[index]);
 		}
 	}
-	if (source.length > length) {
+	if (source.length > index) {
 		// 创建多余项
 		for (; index < length; index++) {
 			const src = toElement(source[index]);
