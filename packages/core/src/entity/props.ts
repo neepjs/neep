@@ -22,6 +22,9 @@ export function updateProps(
 	const keys = Reflect.ownKeys(props);
 	const newKeys = new Set(isProps ? keys.filter(filter) : keys);
 	for (const k of Reflect.ownKeys(obj)) {
+		if (isProps && !filter(k)) {
+			continue;
+		}
 		if (!newKeys.has(k)) {
 			delete obj[k];
 		}
