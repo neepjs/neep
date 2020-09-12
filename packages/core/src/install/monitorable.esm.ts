@@ -11,6 +11,7 @@ export let asValue: typeof import('monitorable').asValue;
 export let exec: typeof import('monitorable').exec;
 export let monitor: typeof import('monitorable').monitor;
 export let printError: typeof import('monitorable').printError;
+export let postpone: typeof import('monitorable').postpone;
 
 export default function installMonitorable(
 	api?: typeof import('monitorable'),
@@ -30,5 +31,6 @@ export default function installMonitorable(
 		exec,
 		monitor,
 		printError,
+		postpone,
 	} = api);
 }

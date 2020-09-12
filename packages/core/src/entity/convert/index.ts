@@ -2,6 +2,8 @@ import { TreeNode } from '../../type';
 import EntityObject from '../EntityObject';
 import { createAll } from './create';
 import { updateAll } from './update';
+import { refresh } from '../../extends';
+import { postpone } from 'monitorable';
 
 export { destroy } from './utils';
 
@@ -16,10 +18,12 @@ function convert(
 	source: any,
 	tree?: (TreeNode | TreeNode[])[],
 ): (TreeNode | TreeNode[])[] {
-	if (!tree) {
-		return createAll(nObject, nObject.delivered, source);
-	}
-	return [...updateAll(nObject, nObject.delivered, source, tree)];
+	return refresh(() => postpone(() => {
+		if (!tree) {
+			return createAll(nObject, nObject.delivered, source);
+		}
+		return [...updateAll(nObject, nObject.delivered, source, tree)];
+	}));
 }
 
 

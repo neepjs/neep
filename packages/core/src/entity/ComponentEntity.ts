@@ -13,7 +13,7 @@ import {
 	configSymbol,
 	componentsSymbol,
 } from '../symbols';
-import { exec, monitor, encase } from '../install';
+import { exec, monitor, encase, postpone } from '../install';
 import { setCurrent } from '../extends/current';
 import convert, { destroy } from './convert';
 import draw, { unmount, getNodes } from './draw';
@@ -175,7 +175,7 @@ export default class ComponentEntity<
 		this.callHook('beforeCreate');
 		// 更新属性
 		this.childNodes = children;
-		refresh(() => update(this, props, children));
+		refresh(() => postpone(() => update(this, props, children)));
 		// 获取渲染函数及初始渲染
 		const { render, nodes, stopRender } = initRender(this);
 		this._render = render;
@@ -190,7 +190,7 @@ export default class ComponentEntity<
 	_update(props: object, children: any[]): void {
 		if (this.destroyed) { return; }
 		this.childNodes = children;
-		refresh(() => update(this, props, children));
+		refresh(() => postpone(() => update(this, props, children)));
 	}
 	_destroy(): void {
 		if (this._stopRender) {

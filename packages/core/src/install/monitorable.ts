@@ -1,6 +1,6 @@
 export {
 	value, computed, isValue, encase, recover, valueify, asValue,
-	markRead, markChange, safeify, exec, monitor, printError,
+	markRead, markChange, safeify, exec, monitor, printError, postpone,
 } from 'monitorable';
 
 

@@ -14,7 +14,8 @@ import { initContext } from '../../extends/context';
 import { updateProps } from '../props';
 import EventEmitter from '../../EventEmitter';
 import replaceNode from './replaceNode';
-import { isValue } from '../../install';
+import { isValue, postpone } from '../../install';
+import { refresh } from '../../extends';
 
 
 function getComponents(
@@ -234,7 +235,7 @@ export function init(
 	components: Record<string, Component>[],
 	native: boolean,
 ): any {
-	return exec(
+	return refresh(() => postpone(() => exec(
 		nObject,
 		delivered,
 		replaceNode(
@@ -247,7 +248,7 @@ export function init(
 		slots,
 		components,
 		native,
-	);
+	)));
 }
 
 
