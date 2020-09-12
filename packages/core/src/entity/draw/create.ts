@@ -130,7 +130,7 @@ export function createItem(
 			children: createAll(iRender, source.children),
 		});
 	}
-	const node = iRender.createElement(tag, source.props || {});
+	const node = iRender.createElement(tag);
 	setRef(ref, node);
 	let children: (MountedNode | MountedNode[])[] = [];
 	if (source.children?.length) {
@@ -139,6 +139,7 @@ export function createItem(
 			iRender.insertNode(node, it);
 		}
 	}
+	iRender.updateProps(node, source.props || {});
 	return createMountedNode({
 		...source,
 		node,

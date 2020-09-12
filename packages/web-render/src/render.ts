@@ -22,8 +22,8 @@ const render: IRender = {
 	mount({target, class: className, style, tag}, parent) {
 		if (!isTagName(tag)) { tag = 'div'; }
 
-		const container =
-			render.createElement(tag, { class: className, style });
+		const container = render.createElement(tag);
+		render.updateProps(container, { class: className, style });
 
 		if (typeof target === 'string') {
 			target = document.querySelector(target);
@@ -85,8 +85,8 @@ const render: IRender = {
 	},
 	drawNode() {},
 
-	createElement(tag, props) {
-		return update(createElement(tag), props) as any;
+	createElement(tag) {
+		return createElement(tag) as any;
 	},
 	createText(text: string): NativeText {
 		return document.createTextNode(text) as any;
@@ -123,18 +123,18 @@ const render: IRender = {
 	getRect(node: NativeNode) {
 		if (node instanceof Element) {
 			const {
-				top, right, bottom, left, width, height
+				top, right, bottom, left, width, height,
 			} = node.getBoundingClientRect();
 			return { top, right, bottom, left, width, height };
 		}
 		if (node instanceof ShadowRoot) {
 			const {
-				top, right, bottom, left, width, height
+				top, right, bottom, left, width, height,
 			} = node.host.getBoundingClientRect();
 			return { top, right, bottom, left, width, height };
 		}
 		return null;
-	}
+	},
 };
 
 export default render;

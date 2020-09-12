@@ -222,41 +222,18 @@ function updateItem(
 		}, tree.id);
 	}
 	const { node } = tree;
-	iRender.updateProps(
-		node as NativeElement,
-		source.props || {},
-	);
 	setRef(ref, node);
-	if (!source.children.length && !tree.children.length) {
-		return createMountedNode(
-			{
-				...tree,
-				...source,
-				children: [],
-			},
-			tree.id,
-		);
-	}
+	let children: (MountedNode | MountedNode[])[] = [];
 	if (!source.children.length && tree.children.length) {
 		unmount(iRender, tree.children);
-	}
-	if (source.children.length && !tree.children.length) {
-		const children = createAll(iRender, source.children);
+	} else if (source.children.length && tree.children.length) {
+		children = updateAll(iRender, source.children, tree.children);
+	} else if (source.children.length && !tree.children.length) {
+		children = createAll(iRender, source.children);
 		for (const it of getNodes(children)) {
 			iRender.insertNode(node as NativeElement, it);
 		}
-		return createMountedNode({
-			...tree,
-			...source,
-			children,
-		}, tree.id);
 	}
-	return createMountedNode({
-		...tree, ...source,
-		children: updateAll(
-			iRender,
-			source.children,
-			tree.children,
-		),
-	}, tree.id);
+	iRender.updateProps(node as NativeElement, source.props || {});
+	return createMountedNode({...tree, ...source, children}, tree.id);
 }

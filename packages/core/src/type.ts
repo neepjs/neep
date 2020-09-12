@@ -278,10 +278,7 @@ export interface IRender {
 	): [NativeContainer, NativeNode];
 
 	isNode(v: any): v is NativeNode;
-	createElement(
-		tag: string,
-		props: Record<string, any>,
-	): NativeElement;
+	createElement(tag: string): NativeElement;
 	updateProps(
 		node: NativeElement,
 		props: Record<string, any>,
