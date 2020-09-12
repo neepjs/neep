@@ -10,36 +10,46 @@ export function isElement(v: any): v is NeepElement {
 	if (typeof v !== 'object') { return false; }
 	return v[isElementSymbol] === true;
 }
+export function isSimpleTag(tag: Tag): boolean {
+	if (!tag) { return false; }
+	if (typeof tag !== 'function') { return false; }
+	return tag[typeSymbol] === 'simple';
+}
+export function isSimpleElement(v: any): boolean {
+	return isElement(v) && isSimpleTag(v.tag);
+}
 
 export function createElement(
 	tag: Tag,
 	attrs?: {[key: string]: any},
 	...children: any[]
 ): NeepElement {
-	attrs = attrs ? {...attrs} : {};
+	const props = attrs ? {...attrs} : {};
 	const node: NeepElement = {
 		[isElementSymbol]: true,
 		tag,
 		key: undefined,
-		props: attrs,
+		props,
 		children,
 	};
-	if ('n:key' in attrs) { node.key = attrs.key; }
-	else if ('n-key' in attrs) { node.key = attrs.key; }
-	if ('slot' in attrs) { node.slot = attrs.slot; }
-	if (typeof attrs['n:ref'] === 'function') {
-		node.ref = attrs['n:ref'];
-	} else if (typeof attrs['n-ref'] === 'function') {
-		node.ref = attrs['n-ref'];
-	} else if (typeof attrs.ref === 'function') {
-		node.ref = attrs.ref;
+	if ('n:key' in props) { node.key = props['n:key']; }
+	else if ('n-key' in props) { node.key = props['n-key']; }
+	else if ('key' in props) { node.key = props.key; }
+	if ('n:slot' in props) { node.slot = props['n:slot']; }
+	else if ('n-slot' in props) { node.slot = props['n-slot']; }
+	else if ('slot' in props) { node.slot = props.slot; }
+	if (typeof props['n:ref'] === 'function') {
+		node.ref = props['n:ref'];
+	} else if (typeof props['n-ref'] === 'function') {
+		node.ref = props['n-ref'];
+	} else if (typeof props.ref === 'function') {
+		node.ref = props.ref;
 	}
 	if (tag === Value) {
-		node.value = attrs.value;
+		node.value = props.value;
 	}
 	return node;
 }
-
 
 export function elements(
 	node: any,
@@ -71,8 +81,8 @@ export function elements(
 	return elements(node.children, opt);
 }
 
-export function equalProps(a?: any, b?: any): boolean {
-	if (a === b) { return true; }
+function equalProps(a: any, b: any): boolean {
+	if (Object.is(a, b)) { return true; }
 	if (!a) { return false; }
 	if (!b) { return false; }
 	if (typeof a !== 'object') { return false; }
@@ -87,11 +97,11 @@ export function equalProps(a?: any, b?: any): boolean {
 	return true;
 }
 export function equal(a: any, b: any): boolean {
-	if (typeof a !== typeof b) { return false; }
-	if (a === b) { return true; }
-	if (typeof a === 'function') { return false; }
+	if (Object.is(a, b)) { return true; }
 	if (!a) { return false; }
 	if (!b) { return false; }
+	if (typeof a !== 'object') { return false; }
+	if (typeof b !== 'object') { return false; }
 	if (Array.isArray(a)) {
 		if (!Array.isArray(b)) { return false; }
 		if (a.length !== b.length) { return false; }
@@ -100,9 +110,7 @@ export function equal(a: any, b: any): boolean {
 		}
 		return true;
 	}
-	if (Array.isArray(b)) {
-		return false;
-	}
+	if (Array.isArray(b)) { return false; }
 	if (!isElement(a)) { return false; }
 	if (!isElement(b)) { return false; }
 	if (a.tag !== b.tag) { return false; }
