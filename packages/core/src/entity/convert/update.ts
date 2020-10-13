@@ -6,6 +6,7 @@ import EntityObject from '../EntityObject';
 import { toElement, destroy } from './utils';
 import { createItem } from './create';
 import { isDeliver } from '../../auxiliary/deliver';
+import { Container, Value } from '../../auxiliary';
 
 /**
  * 更新树节点
@@ -120,7 +121,7 @@ function updateItem(
 		return { ...source, children: [], component };
 	}
 	const ltag = tag.toLowerCase();
-	if (ltag === 'neep:container') {
+	if (ltag === Container) {
 		const { component } = tree;
 		if (!component) { return createItem(nObject, delivered, source); }
 		const type = source?.props?.type;
@@ -131,7 +132,7 @@ function updateItem(
 		component.update(source.props || {}, source.children);
 		return { ...source, children: [], component };
 	}
-	if (ltag === 'neep:value') {
+	if (ltag === Value) {
 		return { ...source, children: [] };
 	}
 	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {

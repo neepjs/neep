@@ -1,4 +1,4 @@
-import { isValue } from '../../auxiliary';
+import { isValue, Value, Container } from '../../auxiliary';
 import { IRender, NativeNode, NativeElement, MountedNode, TreeNode } from '../../type';
 import { createMountedNode } from '../id';
 import { createItem, createAll, createValue, createList } from './create';
@@ -188,7 +188,7 @@ function updateItem(
 	if (!tag) { return tree; }
 
 	const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
-	if (typeof tag !== 'string' || ltag === 'neep:container') {
+	if (typeof tag !== 'string' || ltag === Container) {
 		if (!component) {
 			// TODO: ref
 			return createMountedNode({
@@ -210,7 +210,7 @@ function updateItem(
 			children: [],
 		}, tree.id);
 	}
-	if (ltag === 'neep:value') {
+	if (ltag === Value) {
 		let {value} = source;
 		if (isValue(value)) { value = value(); }
 		if (tree.value === value) {

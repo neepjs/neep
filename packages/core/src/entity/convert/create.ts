@@ -7,6 +7,7 @@ import ComponentEntity from '../ComponentEntity';
 import ContainerEntity from '../ContainerEntity';
 import { toElement } from './utils';
 import { isDeliver } from '../../auxiliary/deliver';
+import { Container, Value } from '../../auxiliary/tags';
 
 export function createItem(
 	nObject: EntityObject,
@@ -69,7 +70,7 @@ export function createItem(
 		};
 	}
 	const ltag = tag.toLowerCase();
-	if (ltag === 'neep:container') {
+	if (ltag === Container) {
 		const type = source?.props?.type;
 		const iRender = type ? getRender(type) : nObject.iRender;
 		return {
@@ -83,7 +84,7 @@ export function createItem(
 			),
 		};
 	}
-	if (ltag === 'neep:value') {
+	if (ltag === Value) {
 		return { ...source, children: [] };
 	}
 
