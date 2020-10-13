@@ -65,15 +65,20 @@ export interface Exposed {
 	readonly $label?: [string, string];
 	[name: string]: any;
 }
-export interface Delivered {
-	[name: string]: any;
-}
+export type Delivered = Record<any, any>;
+
 export interface RootExposed extends Exposed {
 	$update(node?: NeepElement | Component): RootExposed;
 	$mount(target?: any): RootExposed;
 	$unmount(): void;
 }
 
+export interface Deliver<T> {
+	(props: { value?: T }, context: Context): NeepNode[];
+	[symbols.objectTypeSymbol]: typeof symbols.objectTypeSymbolDeliver;
+	[symbols.deliverKeySymbol]: symbol;
+	[symbols.deliverDefaultSymbol]: T;
+}
 /** 上下文环境 */
 export interface Context {
 	/** 作用域槽 */
@@ -82,7 +87,7 @@ export interface Context {
 	created: boolean;
 	/** 父组件 */
 	parent?: Exposed;
-	delivered: Delivered;
+	delivered<T>(d: Deliver<T>): T;
 	/** 子组件集合 */
 	children: Set<Exposed>;
 	childNodes: any[];
@@ -92,7 +97,6 @@ export interface Context {
 
 export interface Entity {
 	readonly exposed: Exposed;
-	readonly delivered: Delivered;
 	readonly component: Component<any, any> | null;
 	readonly parent?: Entity;
 	readonly isContainer: boolean;

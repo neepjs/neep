@@ -3,6 +3,7 @@ import { IRender, NativeNode, NativeElement, MountedNode, TreeNode } from '../..
 import { createMountedNode } from '../id';
 import { createItem, createAll, createValue, createList } from './create';
 import { getNodes, unmount, setRef } from './utils';
+import { isDeliver } from '../../auxiliary/deliver';
 
 
 type MountedNodes = MountedNode | MountedNode[]
@@ -170,7 +171,22 @@ function updateItem(
 	if (tag !== tree.tag || component !== tree.component) {
 		return replace(iRender, createItem(iRender, source), tree);
 	}
+
+	if (isDeliver(tag)) {
+		// TODO: ref
+		return createMountedNode({
+			...source,
+			node: undefined,
+			component: undefined,
+			children: updateAll(
+				iRender,
+				source.children,
+				tree.children,
+			),
+		}, tree.id);
+	}
 	if (!tag) { return tree; }
+
 	const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
 	if (typeof tag !== 'string' || ltag === 'neep:container') {
 		if (!component) {

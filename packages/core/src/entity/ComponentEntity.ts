@@ -7,6 +7,7 @@ import {
 	NativeShadow,
 	TreeNode,
 	MountedNode,
+	Deliver,
 } from '../type';
 import {
 	typeSymbol,
@@ -21,15 +22,42 @@ import normalize from './normalize';
 import { getSlots, setSlots } from './slot';
 import EntityObject from './EntityObject';
 import { initContext } from '../extends/context';
-import { updateProps } from './props';
 import { refresh } from '../extends';
+import { RecursiveArray } from './recursive';
+import { Value } from '../auxiliary/tags';
+import { getDelivered } from '../auxiliary/deliver';
+
+
+const disabledKey = new Set([
+	':', '@', '#', '*',
+	'!', '%', '^', '~',
+	'&', '=', '+', '.',
+	'(', ')', '[', ']', '{', '}', '<', '>',
+]);
+function filter(k: string | number | symbol): boolean {
+	if (typeof k !== 'string') { return true; }
+	if (disabledKey.has(k[0])) { return false; }
+	if (/^n[:-]/.test(k)) { return false; }
+	if (/^on[:-]/.test(k)) { return false; }
+	return true;
+}
 
 function update(
 	nObject: ComponentEntity<any, any>,
 	props: any,
 	children: any[],
 ): void {
-	updateProps(nObject.props, props, {}, false, true);
+	const propsObj = nObject.props;
+	const newKeys = new Set(Reflect.ownKeys(props).filter(filter));
+	for (const k of Reflect.ownKeys(propsObj)) {
+		if (filter(k) && !newKeys.has(k)) {
+			delete propsObj[k];
+		}
+	}
+	for (const k of newKeys) {
+		propsObj[k] = props[k];
+	}
+
 	nObject.events.updateInProps(props);
 	const slots = Object.create(null);
 	const { native } = nObject;
@@ -56,18 +84,25 @@ function createContext<
 		slots: nObject.slots,
 		get created() { return nObject.created; },
 		get parent() { return nObject.parent.exposed; },
-		get delivered() { return nObject.parentDelivered; },
 		get children() { return nObject.children; },
 		get childNodes() { return nObject.childNodes; },
 		get emit() { return nObject.emit; },
+		delivered<T>(deliver: Deliver<T>): T{
+			return getDelivered(nObject.parentDelivered, deliver);
+		},
 		refresh(f) { nObject.refresh(f); },
 	}, nObject.entity);
 }
 
+interface RenderInterface {
+	render(): any;
+	nodes: RecursiveArray<NeepNode>;
+	stopRender(): void;
+}
 /** 初始化渲染 */
 function initRender<R extends object = object>(
 	nObject: ComponentEntity<any, R>,
-): { render(): any, nodes: any, stopRender(): void } {
+): RenderInterface {
 	const {
 		component,
 		props,
@@ -237,7 +272,13 @@ export default class ComponentEntity<
 			this.tree = draw(iRender, _nodes);
 			return;
 		}
-		this.tree = draw(iRender, convert(this, native));
+
+		this.tree = draw(iRender, [{
+			tag: Value,
+			key: native,
+			value: native,
+			children: [],
+		}]);
 		this.shadowTree = draw(iRender, _nodes);
 		for (const it of getNodes(this.shadowTree)) {
 			iRender.insertNode(_shadow, it);

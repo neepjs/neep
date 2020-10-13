@@ -6,3 +6,7 @@ export const configSymbol = Symbol.for('config');
 
 export const objectTypeSymbol = Symbol.for('$$$objectType$$$');
 export const objectTypeSymbolElement = '$$$objectType$$$Element';
+export const objectTypeSymbolDeliver = '$$$objectType$$$Deliver';
+
+export const deliverKeySymbol = Symbol.for('$$$deliverKey$$$');
+export const deliverDefaultSymbol = Symbol.for('$$$deliverDefault$$$');

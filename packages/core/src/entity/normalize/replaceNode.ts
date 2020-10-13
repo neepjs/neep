@@ -1,7 +1,8 @@
-import { NeepElement, Slots, Component } from '../../type';
+import { NeepElement, Slots, Component, NeepNode } from '../../type';
 import { isProduction } from '../../constant';
 import { isElement, ScopeSlot, Slot, SlotRender } from '../../auxiliary';
 import { components as globalComponents } from '../../register';
+import { RecursiveItem, RecursiveArray } from '../recursive';
 
 
 function findComponent(
@@ -25,14 +26,28 @@ function getChildren(children: any[], args: any[]): any {
 	if (typeof fn !== 'function') { return children; }
 	return fn(...args);
 }
-
-export default function replaceNode(
-	node: any,
+function replaceNode<T>(
+	node: RecursiveArray<T>,
 	slots: Slots,
 	components: Record<string, Component>[],
 	native: boolean,
 	isRoot: boolean,
-): any {
+): RecursiveArray<T | NeepNode>;
+function replaceNode<T>(
+	node: RecursiveItem<T>,
+	slots: Slots,
+	components: Record<string, Component>[],
+	native: boolean,
+	isRoot: boolean,
+): RecursiveItem<T | NeepNode>;
+
+function replaceNode<T>(
+	node: RecursiveItem<T>,
+	slots: Slots,
+	components: Record<string, Component>[],
+	native: boolean,
+	isRoot: boolean,
+): RecursiveItem<T | NeepNode> {
 	if (Array.isArray(node)) {
 		return node.map(n =>
 			replaceNode( n, slots, components, native, isRoot));
@@ -92,3 +107,4 @@ export default function replaceNode(
 		),
 	} as NeepElement;
 }
+export default replaceNode;

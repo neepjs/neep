@@ -1,11 +1,11 @@
 import { NeepNode, TreeNode, Delivered } from '../../type';
 import { getRender } from '../../install';
-import { typeSymbol } from '../../symbols';
+import { typeSymbol, deliverKeySymbol } from '../../symbols';
 import { recursive2iterable } from '../recursive';
 import EntityObject from '../EntityObject';
-import { updateProps } from '../props';
 import { toElement, destroy } from './utils';
 import { createItem } from './create';
+import { isDeliver } from '../../auxiliary/deliver';
 
 /**
  * 更新树节点
@@ -80,6 +80,27 @@ function updateItem(
 		return createItem(nObject, delivered, source);
 	}
 	if (!tag) { return { tag: null, key: undefined, children: [] }; }
+
+
+	if (isDeliver(tag)) {
+		const newDelivered = tree.delivered || Object.create(delivered);
+		Reflect.defineProperty(newDelivered, tag[deliverKeySymbol], {
+			configurable: true,
+			enumerable: true,
+			value: source.props ? source.props.value : undefined,
+		});
+		return {
+			...source,
+			delivered: newDelivered,
+			children: [...updateAll(
+				nObject,
+				newDelivered,
+				source.children,
+				tree.children,
+			)],
+		};
+	}
+
 	if (typeof tag !== 'string') {
 		if (tag[typeSymbol] === 'simple') {
 			return {
@@ -112,28 +133,6 @@ function updateItem(
 	}
 	if (ltag === 'neep:value') {
 		return { ...source, children: [] };
-	}
-	if (ltag === 'neep:deliver') {
-		const props = { ...source.props };
-		delete props.ref;
-		delete props.slot;
-		delete props.key;
-		const newDelivered = updateProps(
-			tree.delivered || Object.create(delivered),
-			props,
-			tree.props,
-			true,
-		);
-		return {
-			...source,
-			delivered: newDelivered,
-			children: [...updateAll(
-				nObject,
-				newDelivered,
-				source.children,
-				tree.children,
-			)],
-		};
 	}
 	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
 		return {

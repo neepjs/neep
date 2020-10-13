@@ -2,6 +2,7 @@ import { isValue } from '../../auxiliary';
 import { IRender, NativeNode, MountedNode, TreeNode } from '../../type';
 import { createMountedNode } from '../id';
 import { setRef, getNodes } from './utils';
+import { isDeliver } from '../../auxiliary/deliver';
 
 export function createValue(
 	iRender: IRender,
@@ -94,6 +95,16 @@ export function createItem(
 			node,
 			component: undefined,
 			children: [],
+		});
+	}
+
+	if (isDeliver(tag)) {
+		// TODO: ref
+		return createMountedNode({
+			...source,
+			node: undefined,
+			component: undefined,
+			children: createAll(iRender, source.children),
 		});
 	}
 

@@ -1,12 +1,12 @@
 import { NeepNode, TreeNode, Delivered } from '../../type';
 import { getRender } from '../../install';
-import { typeSymbol } from '../../symbols';
+import { typeSymbol, deliverKeySymbol } from '../../symbols';
 import { recursive2iterable } from '../recursive';
 import EntityObject from '../EntityObject';
 import ComponentEntity from '../ComponentEntity';
 import ContainerEntity from '../ContainerEntity';
-import { updateProps } from '../props';
 import { toElement } from './utils';
+import { isDeliver } from '../../auxiliary/deliver';
 
 export function createItem(
 	nObject: EntityObject,
@@ -19,11 +19,32 @@ export function createItem(
 		children: [],
 	}; }
 	const { tag } = source;
-	if (!tag) { return {
-		tag: null,
-		key: undefined,
-		children: [],
-	}; }
+	if (!tag) {
+		return {
+			tag: null,
+			key: undefined,
+			children: [],
+		};
+	}
+
+	if (isDeliver(tag)) {
+		const newDelivered = Object.create(delivered);
+		Reflect.defineProperty(newDelivered, tag[deliverKeySymbol], {
+			configurable: true,
+			enumerable: true,
+			value: source.props ? source.props.value : undefined,
+		});
+		return {
+			...source,
+			delivered: newDelivered,
+			children: createAll(
+				nObject,
+				newDelivered,
+				source.children,
+			),
+		};
+	}
+
 	if (typeof tag !== 'string') {
 		if (tag[typeSymbol] === 'simple') {
 			return {
@@ -64,27 +85,6 @@ export function createItem(
 	}
 	if (ltag === 'neep:value') {
 		return { ...source, children: [] };
-	}
-	if (ltag === 'neep:deliver') {
-		const props = { ...source.props };
-		delete props.ref;
-		delete props.slot;
-		delete props.key;
-		const newDelivered = updateProps(
-			Object.create(delivered),
-			props,
-			{},
-			true,
-		);
-		return {
-			...source,
-			delivered: newDelivered,
-			children: createAll(
-				nObject,
-				newDelivered,
-				source.children,
-			),
-		};
 	}
 
 	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {

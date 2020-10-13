@@ -11,6 +11,7 @@ import { wait } from '../extends/refresh';
 import { exec } from '../install';
 import EventEmitter from '../EventEmitter';
 import { initEntity } from '../extends/entity';
+import { RecursiveArray } from './recursive';
 
 function createExposed(obj: EntityObject): Exposed {
 	const cfg: { [K in Exclude<keyof Exposed, '$label'>]-?:
@@ -47,7 +48,6 @@ function createEntity(obj: EntityObject): Entity {
 		| { configurable: true, get(): Entity[K] }
 	} = {
 		exposed: { configurable: true, get: () => obj.exposed },
-		delivered: { configurable: true, get: () => obj.delivered },
 		parent: { configurable: true, get: () => obj.parent?.entity },
 		component: { configurable: true, value: null },
 		isContainer: { configurable: true, value: false },
@@ -125,7 +125,7 @@ export default class EntityObject {
 		this.container = container || this as any as ContainerEntity;
 	}
 	/** 结果渲染函数 */
-	protected _render: () => NeepNode[] = () => [];
+	protected _render: () => RecursiveArray<NeepNode> = () => [];
 
 	get canRefresh(): boolean {
 		if (wait(this)) { return false; }
@@ -189,7 +189,7 @@ export default class EntityObject {
 		if (this._refreshing) { return; }
 		this._refreshing = true;
 
-		let nodes: NeepNode[] | undefined;
+		let nodes: RecursiveArray<NeepNode> | undefined;
 		while (this.needRefresh) {
 			nodes = this._render();
 			if (this.destroyed) { return; }
