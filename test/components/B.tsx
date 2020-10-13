@@ -3,6 +3,7 @@ import Compute from './Compute';
 import Compute2 from './Compute2';
 import Sync from './Sync';
 import Sync2 from './Sync2';
+import { DeliverValue, DeliverNumber } from './delivers';
 
 const B = create((
 	props: {  a?: any, onset?: () => void },
@@ -14,8 +15,9 @@ const B = create((
 	hook('mounted', () => console.log('Hook', 'B', 'mounted'), true);
 	hook('beforeUpdate', () => console.log('Hook', 'B', 'beforeUpdate'), true);
 	hook('updated', () => console.log('Hook', 'B', 'updated'), true);
+	const a = delivered(DeliverValue);
 	return <Template>
-		<div>B: {delivered.a}</div>
+		<div>B: {a}|{delivered(DeliverNumber)}</div>
 		{slots.name?.()}
 		<br />
 		{slots.default?.()}

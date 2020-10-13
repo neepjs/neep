@@ -1027,6 +1027,108 @@
 	  }
 	}
 
+	let current;
+	function setCurrent(fn, entity) {
+	  const oldEntity = current;
+	  current = entity;
+
+	  try {
+	    current.$_valueIndex = 0;
+	    current.$_serviceIndex = 0;
+	    const ret = fn();
+
+	    if (current.$_valueIndex !== current.$_values.length) {
+	      throw new NeepError('Inconsistent number of useValue executions', 'life');
+	    }
+
+	    if (current.$_serviceIndex && current.$_serviceIndex !== current.$_services.length) {
+	      throw new NeepError('Inconsistent number of useService executions', 'life');
+	    }
+
+	    return ret;
+	  } finally {
+	    current = oldEntity;
+	  }
+	}
+	function checkCurrent(name, initOnly = false) {
+	  if (!current) {
+	    throw new NeepError(`Function \`${name}\` can only be called within a cycle.`, 'life');
+	  }
+
+	  if (!initOnly) {
+	    return current;
+	  }
+
+	  if (!current.created) {
+	    return current;
+	  }
+
+	  throw new NeepError(`Function \`${name}\` can only be called at initialization time.`, 'life');
+	}
+
+	const constructors = [];
+	function initContext(context, entity) {
+	  for (const constructor of constructors) {
+	    constructor(context, entity);
+	  }
+
+	  return context;
+	}
+
+	const constructors$1 = [];
+	function initEntity(entity) {
+	  for (const constructor of constructors$1) {
+	    constructor(entity);
+	  }
+
+	  return entity;
+	}
+
+	let delayedRefresh = 0;
+	const objectSet = new Set();
+	function wait$1(obj) {
+	  if (delayedRefresh <= 0) {
+	    return false;
+	  }
+
+	  objectSet.add(obj);
+	  return true;
+	}
+
+	function run$2() {
+	  if (delayedRefresh > 0) {
+	    return;
+	  }
+
+	  const list = [...objectSet];
+	  objectSet.clear();
+	  list.forEach(o => o.refresh());
+	}
+
+	async function asyncRefresh(f) {
+	  try {
+	    delayedRefresh++;
+	    return await f();
+	  } finally {
+	    delayedRefresh--;
+	    run$2();
+	  }
+	}
+
+	function refresh(f, async) {
+	  if (async) {
+	    return asyncRefresh(f);
+	  }
+
+	  try {
+	    delayedRefresh++;
+	    return f();
+	  } finally {
+	    delayedRefresh--;
+	    run$2();
+	  }
+	}
+
 	function getEventName(k) {
 	  if (k[0] === '@') {
 	    return k.substr(1);
@@ -1173,13 +1275,15 @@
 	          return true;
 	        }
 
-	        let res = true;
+	        return refresh(() => {
+	          let res = true;
 
-	        for (const fn of [...event]) {
-	          res = fn(...p) && res;
-	        }
+	          for (const fn of [...event]) {
+	            res = fn(...p) && res;
+	          }
 
-	        return res;
+	          return res;
+	        });
 	      }
 
 	      emit.omit = (...names) => createEmit(...omitNames, ...names);
@@ -1201,8 +1305,8 @@
 	        try {
 	          return listener(...p) !== false;
 	        } catch (e) {
-	          console.error(e);
-	          return false;
+	          printError(e);
+	          return true;
 	        }
 	      }
 
@@ -1263,114 +1367,13 @@
 
 	}
 
-	const ScopeSlot = 'Neep:ScopeSlot';
-	const SlotRender = 'Neep:SlotRender';
-	const Slot = 'Neep:Slot';
-	const Value = 'Neep:Value';
-	const Deliver = 'Neep:Deliver';
+	const ScopeSlot = 'neep:ScopeSlot';
+	const SlotRender = 'neep:SlotRender';
+	const Slot = 'neep:slot';
+	const Value = 'neep:value';
+	const Container = 'neep:container';
 	const Template = 'template';
-
-	let current;
-	function setCurrent(fn, entity) {
-	  const oldEntity = current;
-	  current = entity;
-
-	  try {
-	    current.$_valueIndex = 0;
-	    current.$_serviceIndex = 0;
-	    const ret = fn();
-
-	    if (current.$_valueIndex !== current.$_values.length) {
-	      throw new NeepError('Inconsistent number of useValue executions', 'life');
-	    }
-
-	    if (current.$_serviceIndex && current.$_serviceIndex !== current.$_services.length) {
-	      throw new NeepError('Inconsistent number of useService executions', 'life');
-	    }
-
-	    return ret;
-	  } finally {
-	    current = oldEntity;
-	  }
-	}
-	function checkCurrent(name, initOnly = false) {
-	  if (!current) {
-	    throw new NeepError(`Function \`${name}\` can only be called within a cycle.`, 'life');
-	  }
-
-	  if (!initOnly) {
-	    return current;
-	  }
-
-	  if (!current.created) {
-	    return current;
-	  }
-
-	  throw new NeepError(`Function \`${name}\` can only be called at initialization time.`, 'life');
-	}
-
-	const constructors = [];
-	function initContext(context, entity) {
-	  for (const constructor of constructors) {
-	    constructor(context, entity);
-	  }
-
-	  return context;
-	}
-
-	const constructors$1 = [];
-	function initEntity(entity) {
-	  for (const constructor of constructors$1) {
-	    constructor(entity);
-	  }
-
-	  return entity;
-	}
-
-	let delayedRefresh = 0;
-	const objectSet = new Set();
-	function wait$1(obj) {
-	  if (delayedRefresh <= 0) {
-	    return false;
-	  }
-
-	  objectSet.add(obj);
-	  return true;
-	}
-
-	function run$2() {
-	  if (delayedRefresh > 0) {
-	    return;
-	  }
-
-	  const list = [...objectSet];
-	  objectSet.clear();
-	  list.forEach(o => o.refresh());
-	}
-
-	async function asyncRefresh(f) {
-	  try {
-	    delayedRefresh++;
-	    return await f();
-	  } finally {
-	    delayedRefresh--;
-	    run$2();
-	  }
-	}
-
-	function refresh(f, async) {
-	  if (async) {
-	    return asyncRefresh(f);
-	  }
-
-	  try {
-	    delayedRefresh++;
-	    return f();
-	  } finally {
-	    delayedRefresh--;
-	    run$2();
-	  }
-	}
+	const Fragment = Template;
 
 	const hooks = Object.create(null);
 	function setHook(id, hook, entity) {
@@ -1432,56 +1435,16 @@
 	  return setHook(name, () => hook(), entity);
 	}
 
-	function setValue(obj, name, value, opt) {
-	  if (typeof name === 'string' && ['$', '_'].includes(name[0])) {
-	    return;
-	  }
-
-	  if (isValue(value) && opt) {
-	    Reflect.defineProperty(obj, name, {
-	      get() {
-	        return value();
-	      },
-
-	      set(v) {
-	        value(v);
-	      },
-
-	      configurable: true,
-	      enumerable: true
-	    });
-	    return;
-	  }
-
-	  if (typeof value === 'function' && opt) {
-	    Reflect.defineProperty(obj, name, {
-	      get: value,
-	      set: typeof opt === 'function' ? opt : undefined,
-	      configurable: true,
-	      enumerable: true
-	    });
-	    return;
-	  }
-
-	  Reflect.defineProperty(obj, name, {
-	    get() {
-	      return value;
-	    },
-
-	    configurable: true,
-	    enumerable: true
-	  });
-	}
-	function deliver(name, value, opt) {
-	  setValue(checkCurrent('deliver', true).delivered, name, value, opt);
-	}
-
-	const isElementSymbol = Symbol.for('------isNeepElement------');
 	const typeSymbol = Symbol.for('type');
 	const nameSymbol = Symbol.for('name');
 	const renderSymbol = Symbol.for('render');
 	const componentsSymbol = Symbol.for('components');
 	const configSymbol = Symbol.for('config');
+	const objectTypeSymbol = Symbol.for('$$$objectType$$$');
+	const objectTypeSymbolElement = '$$$objectType$$$Element';
+	const objectTypeSymbolDeliver = '$$$objectType$$$Deliver';
+	const deliverKeySymbol = Symbol.for('$$$deliverKey$$$');
+	const deliverDefaultSymbol = Symbol.for('$$$deliverDefault$$$');
 
 	function isElement(v) {
 	  if (!v) {
@@ -1492,45 +1455,52 @@
 	    return false;
 	  }
 
-	  return v[isElementSymbol] === true;
+	  return v[objectTypeSymbol] === objectTypeSymbolElement;
 	}
 	function createElement(tag, attrs, ...children) {
-	  attrs = attrs ? { ...attrs
+	  const props = attrs ? { ...attrs
 	  } : {};
 	  const node = {
-	    [isElementSymbol]: true,
+	    [objectTypeSymbol]: objectTypeSymbolElement,
 	    tag,
 	    key: undefined,
-	    props: attrs,
+	    props,
 	    children
 	  };
 
-	  if ('n:key' in attrs) {
-	    node.key = attrs.key;
-	  } else if ('n-key' in attrs) {
-	    node.key = attrs.key;
+	  if ('n:key' in props) {
+	    node.key = props['n:key'];
+	  } else if ('n-key' in props) {
+	    node.key = props['n-key'];
+	  } else if ('key' in props) {
+	    node.key = props.key;
 	  }
 
-	  if ('slot' in attrs) {
-	    node.slot = attrs.slot;
+	  if ('n:slot' in props) {
+	    node.slot = props['n:slot'];
+	  } else if ('n-slot' in props) {
+	    node.slot = props['n-slot'];
+	  } else if ('slot' in props) {
+	    node.slot = props.slot;
 	  }
 
-	  if (typeof attrs['n:ref'] === 'function') {
-	    node.ref = attrs['n:ref'];
-	  } else if (typeof attrs['n-ref'] === 'function') {
-	    node.ref = attrs['n-ref'];
-	  } else if (typeof attrs.ref === 'function') {
-	    node.ref = attrs.ref;
+	  if (typeof props['n:ref'] === 'function') {
+	    node.ref = props['n:ref'];
+	  } else if (typeof props['n-ref'] === 'function') {
+	    node.ref = props['n-ref'];
+	  } else if (typeof props.ref === 'function') {
+	    node.ref = props.ref;
 	  }
 
 	  if (tag === Value) {
-	    node.value = attrs.value;
+	    node.value = props.value;
 	  }
 
 	  return node;
 	}
+
 	function equalProps(a, b) {
-	  if (a === b) {
+	  if (Object.is(a, b)) {
 	    return true;
 	  }
 
@@ -1569,17 +1539,10 @@
 
 	  return true;
 	}
+
 	function equal(a, b) {
-	  if (typeof a !== typeof b) {
-	    return false;
-	  }
-
-	  if (a === b) {
+	  if (Object.is(a, b)) {
 	    return true;
-	  }
-
-	  if (typeof a === 'function') {
-	    return false;
 	  }
 
 	  if (!a) {
@@ -1587,6 +1550,14 @@
 	  }
 
 	  if (!b) {
+	    return false;
+	  }
+
+	  if (typeof a !== 'object') {
+	    return false;
+	  }
+
+	  if (typeof b !== 'object') {
 	    return false;
 	  }
 
@@ -1673,6 +1644,39 @@
 	      configurable: true
 	    });
 	  }
+	}
+
+	function createDeliver(def) {
+	  const symbol = Symbol();
+
+	  function Provider(_, {
+	    childNodes
+	  }) {
+	    return childNodes;
+	  }
+
+	  Reflect.defineProperty(Provider, objectTypeSymbol, {
+	    value: objectTypeSymbolDeliver
+	  });
+	  Reflect.defineProperty(Provider, deliverKeySymbol, {
+	    value: symbol
+	  });
+	  Reflect.defineProperty(Provider, deliverDefaultSymbol, {
+	    value: def
+	  });
+	  return Provider;
+	}
+	function isDeliver(d) {
+	  if (typeof d !== 'function') {
+	    return false;
+	  }
+
+	  return d[objectTypeSymbol] === objectTypeSymbolDeliver;
+	}
+	function getDelivered(delivered, Deliver) {
+	  assert(isDeliver(Deliver), '');
+	  const value = delivered[Deliver[deliverKeySymbol]];
+	  return value === undefined ? Deliver[deliverDefaultSymbol] : value;
 	}
 
 	let ids = 0;
@@ -1872,9 +1876,17 @@
 	    });
 	  }
 
+	  if (isDeliver(tag)) {
+	    return createMountedNode({ ...source,
+	      node: undefined,
+	      component: undefined,
+	      children: createAll(iRender, source.children)
+	    });
+	  }
+
 	  const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
 
-	  if (typeof tag !== 'string' || ltag === 'neep:container') {
+	  if (typeof tag !== 'string' || ltag === Container) {
 	    if (!component) {
 	      return createMountedNode({ ...source,
 	        node: undefined,
@@ -1892,7 +1904,7 @@
 	    });
 	  }
 
-	  if (ltag === 'neep:value') {
+	  if (ltag === Value) {
 	    let {
 	      value
 	    } = source;
@@ -1912,7 +1924,7 @@
 	    });
 	  }
 
-	  const node = iRender.createElement(tag, source.props || {});
+	  const node = iRender.createElement(tag);
 	  setRef(ref, node);
 	  let children = [];
 
@@ -1924,6 +1936,7 @@
 	    }
 	  }
 
+	  iRender.updateProps(node, source.props || {});
 	  return createMountedNode({ ...source,
 	    node,
 	    component: undefined,
@@ -2065,7 +2078,7 @@
 
 	function updateAll(iRender, source, tree) {
 	  let index = 0;
-	  let length = Math.min(source.length, source.length || 1);
+	  let length = Math.min(source.length, tree.length);
 	  const list = [];
 
 	  for (; index < length; index++) {
@@ -2080,13 +2093,13 @@
 
 	  length = Math.max(source.length, tree.length);
 
-	  if (tree.length > length) {
+	  if (tree.length > index) {
 	    for (; index < length; index++) {
 	      unmount(iRender, tree[index]);
 	    }
 	  }
 
-	  if (source.length > length) {
+	  if (source.length > index) {
 	    const last = getLastNode(list[list.length - 1]);
 	    const parent = iRender.getParent(last);
 	    const next = iRender.nextNode(last);
@@ -2132,13 +2145,21 @@
 	    return replace(iRender, createItem(iRender, source), tree);
 	  }
 
+	  if (isDeliver(tag)) {
+	    return createMountedNode({ ...source,
+	      node: undefined,
+	      component: undefined,
+	      children: updateAll(iRender, source.children, tree.children)
+	    }, tree.id);
+	  }
+
 	  if (!tag) {
 	    return tree;
 	  }
 
 	  const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
 
-	  if (typeof tag !== 'string' || ltag === 'neep:container') {
+	  if (typeof tag !== 'string' || ltag === Container) {
 	    if (!component) {
 	      return createMountedNode({ ...source,
 	        node: undefined,
@@ -2155,7 +2176,7 @@
 	    }, tree.id);
 	  }
 
-	  if (ltag === 'neep:value') {
+	  if (ltag === Value) {
 	    let {
 	      value
 	    } = source;
@@ -2187,36 +2208,25 @@
 	  const {
 	    node
 	  } = tree;
-	  iRender.updateProps(node, source.props || {});
 	  setRef(ref, node);
-
-	  if (!source.children.length && !tree.children.length) {
-	    return createMountedNode({ ...tree,
-	      ...source,
-	      children: []
-	    }, tree.id);
-	  }
+	  let children = [];
 
 	  if (!source.children.length && tree.children.length) {
 	    unmount(iRender, tree.children);
-	  }
-
-	  if (source.children.length && !tree.children.length) {
-	    const children = createAll(iRender, source.children);
+	  } else if (source.children.length && tree.children.length) {
+	    children = updateAll(iRender, source.children, tree.children);
+	  } else if (source.children.length && !tree.children.length) {
+	    children = createAll(iRender, source.children);
 
 	    for (const it of getNodes(children)) {
 	      iRender.insertNode(node, it);
 	    }
-
-	    return createMountedNode({ ...tree,
-	      ...source,
-	      children
-	    }, tree.id);
 	  }
 
+	  iRender.updateProps(node, source.props || {});
 	  return createMountedNode({ ...tree,
 	    ...source,
-	    children: updateAll(iRender, source.children, tree.children)
+	    children
 	  }, tree.id);
 	}
 
@@ -2339,7 +2349,7 @@
 
 	function createSlots(name, list) {
 	  const slot = (...props) => ({
-	    [isElementSymbol]: true,
+	    [objectTypeSymbol]: objectTypeSymbolElement,
 	    tag: ScopeSlot,
 	    children: renderSlots(list, ...props),
 	    inserted: true,
@@ -2378,80 +2388,6 @@
 	  }
 
 	  return slots;
-	}
-
-	const disabledKey = new Set([':', '@', '#', '*', '!', '%', '^', '~', '&', '=', '+', '.', '(', ')', '[', ']', '{', '}', '<', '>']);
-
-	function filter(k) {
-	  if (typeof k !== 'string') {
-	    return true;
-	  }
-
-	  if (disabledKey.has(k[0])) {
-	    return false;
-	  }
-
-	  if (/^n[:-]/.test(k)) {
-	    return false;
-	  }
-
-	  if (/^on[:-]/.test(k)) {
-	    return false;
-	  }
-
-	  return true;
-	}
-
-	function updateProps(obj, props, oldProps = {}, define = false, isProps = false) {
-	  const keys = Reflect.ownKeys(props);
-	  const newKeys = new Set(isProps ? keys.filter(filter) : keys);
-
-	  for (const k of Reflect.ownKeys(obj)) {
-	    if (!newKeys.has(k)) {
-	      delete obj[k];
-	    }
-	  }
-
-	  if (!define) {
-	    for (const k of newKeys) {
-	      obj[k] = props[k];
-	    }
-
-	    return obj;
-	  }
-
-	  for (const k of newKeys) {
-	    const value = props[k];
-
-	    if (k in oldProps && oldProps[k] === value) {
-	      continue;
-	    }
-
-	    if (isValue(value)) {
-	      Reflect.defineProperty(obj, k, {
-	        configurable: true,
-	        enumerable: true,
-
-	        get() {
-	          return value();
-	        },
-
-	        set(v) {
-	          value(v);
-	        }
-
-	      });
-	      continue;
-	    }
-
-	    Reflect.defineProperty(obj, k, {
-	      configurable: true,
-	      enumerable: true,
-	      value
-	    });
-	  }
-
-	  return obj;
 	}
 
 	const components = Object.create(null);
@@ -2578,7 +2514,11 @@
 	    slots,
 	    created: false,
 	    parent: nObject.exposed,
-	    delivered,
+
+	    delivered(deliver) {
+	      return getDelivered(delivered, deliver);
+	    },
+
 	    children: new Set(),
 	    childNodes: children,
 
@@ -2651,15 +2591,16 @@
 	    children
 	  } = node;
 
-	  if (tag === Deliver) {
-	    const props = { ...node.props
-	    };
-	    delete props.ref;
-	    delete props.slot;
-	    delete props.key;
+	  if (isDeliver(tag)) {
+	    const newDelivered = Object.create(delivered);
+	    Reflect.defineProperty(newDelivered, tag[deliverKeySymbol], {
+	      configurable: true,
+	      enumerable: true,
+	      value: node.props ? node.props.value : undefined
+	    });
 	    return { ...node,
 	      tag,
-	      children: children.map(n => exec$1(nObject, updateProps(Object.create(delivered), props || {}, {}, true), n, slots, components, native))
+	      children: children.map(child => exec$1(nObject, newDelivered, child, slots, components, native))
 	    };
 	  }
 
@@ -2683,52 +2624,65 @@
 	  return execSimple(nObject, delivered, node, tag, components, children);
 	}
 
+	function getItem(node) {
+	  if (Array.isArray(node)) {
+	    return node.map(getItem);
+	  }
+
+	  if (isElement(node)) {
+	    return node;
+	  }
+
+	  if (node === undefined || node === null) {
+	    return {
+	      [objectTypeSymbol]: objectTypeSymbolElement,
+	      tag: null,
+	      key: undefined,
+	      children: []
+	    };
+	  }
+
+	  return {
+	    [objectTypeSymbol]: objectTypeSymbolElement,
+	    key: undefined,
+	    tag: Value,
+	    value: node,
+	    children: []
+	  };
+	}
+
 	function renderNode(iRender, node, context, render) {
 	  if (Array.isArray(node)) {
 	    return node;
 	  }
 
 	  if (isElement(node)) {
+	    if (node.tag === Fragment) {
+	      return node.children.map(getItem);
+	    }
+
 	    return [node];
 	  }
 
-	  if (node === undefined || node === null) {
-	    return [{
-	      [isElementSymbol]: true,
-	      tag: null,
-	      key: undefined,
-	      children: []
-	    }];
-	  }
-
-	  if (!iRender.isNode(node) && node && typeof node === 'object' && render) {
-	    node = render(node, context);
-	  }
-
-	  if (isElement(node)) {
+	  if (!node || !render || iRender.isNode(node)) {
 	    return [node];
 	  }
 
-	  if (node === undefined || node === null) {
-	    return [{
-	      [isElementSymbol]: true,
-	      tag: null,
-	      key: undefined,
-	      children: []
-	    }];
+	  if (typeof node !== 'object') {
+	    return [node];
 	  }
 
-	  return [{
-	    [isElementSymbol]: true,
-	    key: undefined,
-	    tag: Value,
-	    value: node,
-	    children: []
-	  }];
+	  const list = render(node, context);
+
+	  if (Array.isArray(list)) {
+	    return list;
+	  }
+
+	  return [list];
 	}
 
 	function init(nObject, delivered, node, slots, components, native) {
-	  return exec$1(nObject, delivered, replaceNode(node, slots, components, native, true), slots, components, native);
+	  return refresh(() => postpone(() => exec$1(nObject, delivered, replaceNode(node, slots, components, native, true).map(getItem), slots, components, native)));
 	}
 	function normalize(nObject, result) {
 	  const {
@@ -2793,10 +2747,6 @@
 	    exposed: {
 	      configurable: true,
 	      get: () => obj.exposed
-	    },
-	    delivered: {
-	      configurable: true,
-	      get: () => obj.delivered
 	    },
 	    parent: {
 	      configurable: true,
@@ -3157,8 +3107,42 @@
 
 	}
 
+	const disabledKey = new Set([':', '@', '#', '*', '!', '%', '^', '~', '&', '=', '+', '.', '(', ')', '[', ']', '{', '}', '<', '>']);
+
+	function filter(k) {
+	  if (typeof k !== 'string') {
+	    return true;
+	  }
+
+	  if (disabledKey.has(k[0])) {
+	    return false;
+	  }
+
+	  if (/^n[:-]/.test(k)) {
+	    return false;
+	  }
+
+	  if (/^on[:-]/.test(k)) {
+	    return false;
+	  }
+
+	  return true;
+	}
+
 	function update(nObject, props, children) {
-	  updateProps(nObject.props, props, {}, false, true);
+	  const propsObj = nObject.props;
+	  const newKeys = new Set(Reflect.ownKeys(props).filter(filter));
+
+	  for (const k of Reflect.ownKeys(propsObj)) {
+	    if (filter(k) && !newKeys.has(k)) {
+	      delete propsObj[k];
+	    }
+	  }
+
+	  for (const k of newKeys) {
+	    propsObj[k] = props[k];
+	  }
+
 	  nObject.events.updateInProps(props);
 	  const slots = Object.create(null);
 	  const {
@@ -3193,10 +3177,6 @@
 	      return nObject.parent.exposed;
 	    },
 
-	    get delivered() {
-	      return nObject.parentDelivered;
-	    },
-
 	    get children() {
 	      return nObject.children;
 	    },
@@ -3207,6 +3187,10 @@
 
 	    get emit() {
 	      return nObject.emit;
+	    },
+
+	    delivered(deliver) {
+	      return getDelivered(nObject.parentDelivered, deliver);
 	    },
 
 	    refresh(f) {
@@ -3298,7 +3282,7 @@
 	    this.context = context;
 	    this.callHook('beforeCreate');
 	    this.childNodes = children;
-	    refresh(() => update(this, props, children));
+	    refresh(() => postpone(() => update(this, props, children)));
 	    const {
 	      render,
 	      nodes,
@@ -3321,7 +3305,7 @@
 	    }
 
 	    this.childNodes = children;
-	    refresh(() => update(this, props, children));
+	    refresh(() => postpone(() => update(this, props, children)));
 	  }
 
 	  _destroy() {
@@ -3368,7 +3352,12 @@
 	      return;
 	    }
 
-	    this.tree = draw(iRender, convert(this, native));
+	    this.tree = draw(iRender, [{
+	      tag: Value,
+	      key: native,
+	      value: native,
+	      children: []
+	    }]);
 	    this.shadowTree = draw(iRender, _nodes);
 
 	    for (const it of getNodes(this.shadowTree)) {
@@ -3408,8 +3397,8 @@
 	  }
 
 	  return {
-	    [isElementSymbol]: true,
-	    tag: 'Neep:Value',
+	    [objectTypeSymbol]: objectTypeSymbolElement,
+	    tag: Value,
 	    key: t,
 	    value: t,
 	    children: []
@@ -3451,6 +3440,19 @@
 	    };
 	  }
 
+	  if (isDeliver(tag)) {
+	    const newDelivered = Object.create(delivered);
+	    Reflect.defineProperty(newDelivered, tag[deliverKeySymbol], {
+	      configurable: true,
+	      enumerable: true,
+	      value: source.props ? source.props.value : undefined
+	    });
+	    return { ...source,
+	      delivered: newDelivered,
+	      children: createAll$1(nObject, newDelivered, source.children)
+	    };
+	  }
+
 	  if (typeof tag !== 'string') {
 	    if (tag[typeSymbol] === 'simple') {
 	      return { ...source,
@@ -3467,7 +3469,7 @@
 
 	  const ltag = tag.toLowerCase();
 
-	  if (ltag === 'neep:container') {
+	  if (ltag === Container) {
 	    var _source$props;
 
 	    const type = source === null || source === void 0 ? void 0 : (_source$props = source.props) === null || _source$props === void 0 ? void 0 : _source$props.type;
@@ -3478,22 +3480,9 @@
 	    };
 	  }
 
-	  if (ltag === 'neep:value') {
+	  if (ltag === Value) {
 	    return { ...source,
 	      children: []
-	    };
-	  }
-
-	  if (ltag === 'neep:deliver') {
-	    const props = { ...source.props
-	    };
-	    delete props.ref;
-	    delete props.slot;
-	    delete props.key;
-	    const newDelivered = updateProps(Object.create(delivered), props, {}, true);
-	    return { ...source,
-	      delivered: newDelivered,
-	      children: createAll$1(nObject, newDelivered, source.children)
 	    };
 	  }
 
@@ -3601,6 +3590,19 @@
 	    };
 	  }
 
+	  if (isDeliver(tag)) {
+	    const newDelivered = tree.delivered || Object.create(delivered);
+	    Reflect.defineProperty(newDelivered, tag[deliverKeySymbol], {
+	      configurable: true,
+	      enumerable: true,
+	      value: source.props ? source.props.value : undefined
+	    });
+	    return { ...source,
+	      delivered: newDelivered,
+	      children: [...updateAll$1(nObject, newDelivered, source.children, tree.children)]
+	    };
+	  }
+
 	  if (typeof tag !== 'string') {
 	    if (tag[typeSymbol] === 'simple') {
 	      return { ...source,
@@ -3626,7 +3628,7 @@
 
 	  const ltag = tag.toLowerCase();
 
-	  if (ltag === 'neep:container') {
+	  if (ltag === Container) {
 	    var _source$props;
 
 	    const {
@@ -3651,22 +3653,9 @@
 	    };
 	  }
 
-	  if (ltag === 'neep:value') {
+	  if (ltag === Value) {
 	    return { ...source,
 	      children: []
-	    };
-	  }
-
-	  if (ltag === 'neep:deliver') {
-	    const props = { ...source.props
-	    };
-	    delete props.ref;
-	    delete props.slot;
-	    delete props.key;
-	    const newDelivered = updateProps(tree.delivered || Object.create(delivered), props, tree.props, true);
-	    return { ...source,
-	      delivered: newDelivered,
-	      children: [...updateAll$1(nObject, newDelivered, source.children, tree.children)]
 	    };
 	  }
 
@@ -3687,7 +3676,7 @@
 	  }
 
 	  let index = 0;
-	  let length = Math.min(source.length, source.length);
+	  let length = Math.min(source.length || 1, tree.length);
 
 	  for (; index < length; index++) {
 	    const src = source[index];
@@ -3701,13 +3690,13 @@
 
 	  length = Math.max(source.length, source.length);
 
-	  if (tree.length > length) {
+	  if (tree.length > index) {
 	    for (; index < length; index++) {
 	      destroy(tree[index]);
 	    }
 	  }
 
-	  if (source.length > length) {
+	  if (source.length > index) {
 	    for (; index < length; index++) {
 	      const src = toElement(source[index]);
 
@@ -3721,11 +3710,13 @@
 	}
 
 	function convert(nObject, source, tree) {
-	  if (!tree) {
-	    return createAll$1(nObject, nObject.delivered, source);
-	  }
+	  return refresh(() => postpone(() => {
+	    if (!tree) {
+	      return createAll$1(nObject, nObject.delivered, source);
+	    }
 
-	  return [...updateAll$1(nObject, nObject.delivered, source, tree)];
+	    return [...updateAll$1(nObject, nObject.delivered, source, tree)];
+	  }));
 	}
 
 	let awaitDraw = new Set();
@@ -3764,6 +3755,10 @@
 	    _defineProperty(this, "_drawChildren", false);
 
 	    _defineProperty(this, "_drawContainer", false);
+
+	    _defineProperty(this, "_cancelDrawContainerMonitor", void 0);
+
+	    _defineProperty(this, "_cancelDrawChildrenMonitor", void 0);
 
 	    _defineProperty(this, "_awaitDraw", new Set());
 
@@ -3879,10 +3874,18 @@
 	    } = this;
 	    this._drawContainer = false;
 
-	    if (drawContainer) {
-	      var _this$parent;
+	    if (this._cancelDrawContainerMonitor) {
+	      this._cancelDrawContainerMonitor();
+	    }
 
-	      this.iRender.drawContainer(this._container, this._node, this.props, (_this$parent = this.parent) === null || _this$parent === void 0 ? void 0 : _this$parent.iRender);
+	    if (drawContainer) {
+	      const result = exec(c => c && [this._drawContainer = true, this.requestDraw()], () => {
+	        var _this$parent;
+
+	        return this.iRender.drawContainer(this._container, this._node, this.props, (_this$parent = this.parent) === null || _this$parent === void 0 ? void 0 : _this$parent.iRender);
+	      });
+	      [this._container, this._node] = result.result;
+	      this._cancelDrawContainerMonitor = result.stop;
 	    }
 
 	    if (this.parent && this.parent.iRender !== this.iRender) {
@@ -3891,8 +3894,14 @@
 
 	    this._drawChildren = false;
 
+	    if (this._cancelDrawChildrenMonitor) {
+	      this._cancelDrawChildrenMonitor();
+	    }
+
 	    if (drawChildren) {
-	      this.content = draw(this.iRender, this._nodes, this.content);
+	      const result = exec(c => c && [this._drawChildren = true, this.requestDraw()], () => this.content = draw(this.iRender, this._nodes, this.content));
+	      this.content = result.result;
+	      this._cancelDrawChildrenMonitor = result.stop;
 	    }
 	  }
 
@@ -3926,7 +3935,7 @@
 	    }
 
 	    this.callHook('beforeDraw');
-	    exec(c => c && this.markDraw(this), () => this._drawSelf());
+	    exec(c => c && this.requestDraw(), () => this._drawSelf());
 	    complete(() => this.callHook('drawn'));
 	  }
 
@@ -3993,13 +4002,13 @@
 	      return;
 	    }
 
+	    const list = [...containers];
+	    containers.clear();
 	    this.callHook('beforeDrawAll');
 	    const refs = [];
 	    const completeList = [];
 	    setCompleteList(completeList);
 	    setRefList(refs);
-	    const list = [...containers];
-	    containers.clear();
 	    list.forEach(c => c.drawContainer());
 	    setRefList();
 	    refs.forEach(r => r());
@@ -4230,7 +4239,45 @@
 	  return classes;
 	}
 
+	const unit = {
+	  'width': 'px',
+	  'height': 'px',
+	  'top': 'px',
+	  'right': 'px',
+	  'bottom': 'px',
+	  'left': 'px',
+	  'border': 'px',
+	  'border-top': 'px',
+	  'border-right': 'px',
+	  'border-left': 'px',
+	  'border-bottom': 'px',
+	  'border-width': 'px',
+	  'border-top-width': 'px',
+	  'border-right-width': 'px',
+	  'border-left-width': 'px',
+	  'border-bottom-width': 'px',
+	  'border-radius': 'px',
+	  'border-top-left-radius': 'px',
+	  'border-top-right-radius': 'px',
+	  'border-bottom-left-radius': 'px',
+	  'border-bottom-right-radius': 'px',
+	  'padding': 'px',
+	  'padding-top': 'px',
+	  'padding-right': 'px',
+	  'padding-left': 'px',
+	  'padding-bottom': 'px',
+	  'margin': 'px',
+	  'margin-top': 'px',
+	  'margin-right': 'px',
+	  'margin-left': 'px',
+	  'margin-bottom': 'px'
+	};
+
 	function getStyle(style) {
+	  if (isValue(style)) {
+	    style = style();
+	  }
+
 	  if (typeof style === 'string') {
 	    return style;
 	  }
@@ -4247,13 +4294,19 @@
 
 	  for (let k in style) {
 	    let value = style[k];
+
+	    if (isValue(value)) {
+	      value = value();
+	    }
+
 	    const key = k.substr(0, 2) === '--' ? k : k.replace(/[A-Z]/g, '-$1').replace(/-+/g, '-').toLowerCase();
 
 	    if (typeof value === 'number') {
-	      css[key] = [value === 0 ? '0' : `${value}px`, null];
+	      const str = value && k in unit ? `${value}${unit[k]}` : `${value}`;
+	      css[key] = [str, undefined];
 	    } else if (value && typeof value === 'string') {
 	      const v = value.replace(/!important\s*$/, '');
-	      css[key] = [v, v === value ? null : 'important'];
+	      css[key] = [v, v === value ? undefined : 'important'];
 	    }
 	  }
 
@@ -4335,11 +4388,77 @@
 	    }
 	  }
 
-	  if ((el instanceof HTMLSelectElement || el instanceof HTMLInputElement) && 'value' in attrs) {
+	  if ((el instanceof HTMLSelectElement || el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) && 'value' in attrs) {
 	    const value = attrs.value || '';
 
 	    if (el.value !== value) {
 	      el.value = value;
+	    }
+	  }
+
+	  if (el instanceof HTMLDetailsElement && 'open' in attrs) {
+	    const value = attrs.open !== null;
+
+	    if (el.open !== value) {
+	      el.open = value;
+	    }
+	  }
+
+	  if (el instanceof HTMLMediaElement) {
+	    if ('muted' in attrs) {
+	      const value = attrs.muted !== null;
+
+	      if (el.muted !== value) {
+	        el.muted = value;
+	      }
+	    }
+
+	    if ('paused' in attrs) {
+	      const value = attrs.paused !== null;
+
+	      if (el.paused !== value) {
+	        if (value) {
+	          el.pause();
+	        } else {
+	          el.play();
+	        }
+	      }
+	    }
+
+	    if ('currentTime' in attrs) {
+	      const value = attrs.currentTime;
+
+	      if (value && /^\d+(\.\d+)?$/.test(value)) {
+	        const num = Number(value);
+
+	        if (el.currentTime !== num) {
+	          el.currentTime = num;
+	        }
+	      }
+	    }
+
+	    if ('playbackRate' in attrs) {
+	      const value = attrs.playbackRate;
+
+	      if (value && /^\d+(\.\d+)?$/.test(value)) {
+	        const num = Number(value);
+
+	        if (el.playbackRate !== num) {
+	          el.playbackRate = num;
+	        }
+	      }
+	    }
+
+	    if ('volume' in attrs) {
+	      const value = attrs.volume;
+
+	      if (value && /^\d+(\.\d+)?$/.test(value)) {
+	        const num = Number(value);
+
+	        if (el.volume !== num) {
+	          el.volume = num;
+	        }
+	      }
 	    }
 	  }
 	}
@@ -4452,6 +4571,9 @@
 	  if (el instanceof HTMLInputElement) {
 	    switch (el.type.toLowerCase()) {
 	      case 'checkbox':
+	        yield ['indeterminate', 'change', e => e.currentTarget.indeterminate];
+	        return yield ['checked', 'change', e => e.currentTarget.checked];
+
 	      case 'radio':
 	        return yield ['checked', 'change', e => e.currentTarget.checked];
 	    }
@@ -4459,8 +4581,25 @@
 	    return yield ['value', 'input', e => e.currentTarget.value];
 	  }
 
+	  if (el instanceof HTMLTextAreaElement) {
+	    return yield ['value', 'input', e => e.currentTarget.value];
+	  }
+
 	  if (el instanceof HTMLSelectElement) {
-	    return yield ['value', 'select', e => e.currentTarget.value];
+	    return yield ['value', 'change', e => e.currentTarget.value];
+	  }
+
+	  if (el instanceof HTMLDetailsElement) {
+	    return yield ['open', 'toggle', e => e.currentTarget.open];
+	  }
+
+	  if (el instanceof HTMLMediaElement) {
+	    yield ['currentTime', 'timeupdate', e => e.currentTarget.currentTime];
+	    yield ['playbackRate', 'ratechange', e => e.currentTarget.playbackRate];
+	    yield ['volume', 'volumechange', e => e.currentTarget.volume];
+	    yield ['muted', 'volumechange', e => e.currentTarget.muted];
+	    yield ['paused', 'playing', e => e.currentTarget.paused];
+	    return yield ['paused', 'pause', e => e.currentTarget.paused];
 	  }
 	}
 
@@ -4621,14 +4760,27 @@
 	    style,
 	    tag
 	  }, parent) {
+	    if (isValue(target)) {
+	      target = target.value;
+	    }
+
 	    if (!isTagName(tag)) {
 	      tag = 'div';
 	    }
 
-	    const container = render$1.createElement(tag, {
+	    const container = render$1.createElement(tag);
+	    render$1.updateProps(container, {
 	      class: className,
 	      style
 	    });
+
+	    if (target === null) {
+	      if (!parent) {
+	        return [container, container];
+	      }
+
+	      return [container, parent.createPlaceholder()];
+	    }
 
 	    if (typeof target === 'string') {
 	      target = document.querySelector(target);
@@ -4671,6 +4823,29 @@
 	      style
 	    });
 
+	    if (isValue(target)) {
+	      console.log(target);
+	      target = target.value;
+	    }
+
+	    const oldTarget = parent === render$1 && container === node ? undefined : render$1.getParent(node);
+
+	    if (target === null) {
+	      if (oldTarget === null) {
+	        return [container, node];
+	      }
+
+	      if (container !== node) {
+	        container.remove();
+	      }
+
+	      if (!parent) {
+	        return [container, container];
+	      }
+
+	      return [container, parent.createPlaceholder()];
+	    }
+
 	    if (typeof target === 'string') {
 	      target = document.querySelector(target);
 	    }
@@ -4678,8 +4853,6 @@
 	    if (parent !== render$1 && !(target instanceof Element)) {
 	      target = document.body;
 	    }
-
-	    const oldTarget = parent === render$1 && container === node ? undefined : render$1.getParent(node);
 
 	    if (oldTarget === target) {
 	      return [container, node];
@@ -4699,6 +4872,7 @@
 	        render$1.removeNode(node);
 	      }
 
+	      target.appendChild(container);
 	      return [container, newNode];
 	    }
 
@@ -4713,14 +4887,14 @@
 	      return [container, container];
 	    }
 
-	    target.appendChild(node);
+	    target.appendChild(container);
 	    return [container, node];
 	  },
 
 	  drawNode() {},
 
-	  createElement(tag, props) {
-	    return update$4(createElement$1(tag), props);
+	  createElement(tag) {
+	    return createElement$1(tag);
 	  },
 
 	  createText(text) {
@@ -4934,6 +5108,9 @@
 	});
 	var Sync2$1 = mark(Sync2, mName('Sync2'));
 
+	const DeliverValue = createDeliver(value(0));
+	const DeliverNumber = createDeliver(0);
+
 	const B = create$1((props, {
 	  slots,
 	  delivered,
@@ -4947,7 +5124,8 @@
 	  hook('mounted', () => console.log('Hook', 'B', 'mounted'), true);
 	  hook('beforeUpdate', () => console.log('Hook', 'B', 'beforeUpdate'), true);
 	  hook('updated', () => console.log('Hook', 'B', 'updated'), true);
-	  return createElement(Template, null, createElement("div", null, "B: ", delivered.a), (_slots$name = slots.name) === null || _slots$name === void 0 ? void 0 : _slots$name.call(slots), createElement("br", null), (_slots$default = slots.default) === null || _slots$default === void 0 ? void 0 : _slots$default.call(slots), createElement("button", {
+	  const a = delivered(DeliverValue);
+	  return createElement(Template, null, createElement("div", null, "B: ", a, "|", delivered(DeliverNumber)), (_slots$name = slots.name) === null || _slots$name === void 0 ? void 0 : _slots$name.call(slots), createElement("br", null), (_slots$default = slots.default) === null || _slots$default === void 0 ? void 0 : _slots$default.call(slots), createElement("button", {
 	    onclick: props.onset
 	  }, "[onclick]+1"), createElement("button", {
 	    "on-click": props.onset
@@ -4972,11 +5150,15 @@
 	  delivered
 	}) => {
 	  label$1('{E}', '#F00');
-	  return createElement(Deliver, {
-	    a: delivered.a + 1
-	  }, createElement("div", null, "E: ", delivered.a), createElement("tb", _extends({}, props, {
+	  const a = delivered(DeliverValue);
+	  const newA = computed(() => a.value + 1);
+	  return createElement(DeliverValue, {
+	    value: newA
+	  }, createElement(DeliverNumber, {
+	    value: delivered(DeliverNumber) + 1
+	  }, createElement("div", null, "E: ", a, "|", delivered(DeliverNumber)), createElement("tb", _extends({}, props, {
 	    '@set': props.onset
-	  }), childNodes));
+	  }), childNodes)));
 	});
 	var E$1 = mark(E, mName('E'), mSimple);
 
@@ -4993,13 +5175,33 @@
 	  delivered
 	}) => {
 	  label$1('{C}', '#F00');
-	  return createElement(Deliver, {
-	    a: delivered.a + 1
-	  }, createElement("div", null, "C: ", delivered.a), createElement("td", props, childNodes));
+	  const a = delivered(DeliverValue);
+	  const newA = computed(() => a.value + 1);
+	  return createElement(DeliverValue, {
+	    value: newA
+	  }, createElement(DeliverNumber, {
+	    value: delivered(DeliverNumber) + 1
+	  }, createElement("div", null, "C: ", a, "|", delivered(DeliverNumber)), createElement("td", props, childNodes)));
 	});
 	var C$1 = mark(C, mName('C'), mSimple, mComponent('td', D$1));
 
+	function createItem$2(bg) {
+	  const div = document.createElement('div');
+	  div.style.minHeight = '40px';
+	  div.style.background = bg;
+	  document.body.appendChild(div);
+	  return div;
+	}
+
+	const divs = [createItem$2('#F00'), createItem$2('#FF0'), createItem$2('#F0F'), createItem$2('#0F0'), createItem$2('#0FF'), createItem$2('#00F')];
 	const A = create$1(props => {
+	  const divIndex = value(6);
+	  const div = computed(() => divs[divIndex.value]);
+
+	  function moveDiv() {
+	    divIndex.value = (divIndex.value + 1) % (divs.length + 1);
+	  }
+
 	  label$1('{自定义标签文本}', '#F00');
 	  hook('beforeCreate', () => console.log('Hook', 'A', 'beforeCreate'));
 	  hook('created', () => console.log('Hook', 'A', 'created'));
@@ -5008,11 +5210,18 @@
 	  hook('beforeUpdate', () => console.log('Hook', 'A', 'beforeUpdate'));
 	  hook('updated', () => console.log('Hook', 'A', 'updated'));
 	  const v = value(1);
-	  deliver('a', v, true);
 
 	  const ref = x => console.log('Ref', 'B', x);
 
-	  return () => createElement("tc", {
+	  return () => createElement(DeliverValue, {
+	    value: v
+	  }, createElement(DeliverNumber, {
+	    value: v.value
+	  }, createElement(Container, {
+	    target: div
+	  }, createElement("button", {
+	    "on-click": moveDiv
+	  }, "\u79FB\u52A8")), createElement("tc", {
 	    a: "1",
 	    onset: () => v.value++,
 	    ref: ref
@@ -5020,10 +5229,10 @@
 	    ref: ref
 	  }, "\u4F60\u597D"), createElement("i", {
 	    ref: ref
-	  }, v()), createElement("u", {
+	  }, v), createElement("u", {
 	    ref: ref,
 	    slot: "name"
-	  }, props.name));
+	  }, props.name))));
 	});
 	var A$1 = mark(A, mName('A'), mComponent('tc', C$1));
 
