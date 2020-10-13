@@ -161,8 +161,24 @@ export interface Component<
 type Tags = typeof import('./auxiliary/tags');
 export type Tag = null | string | Tags[keyof Tags] | Component<any, any>;
 
-export interface Ref {
-	(node: NativeNode | Exposed, isRemove?: boolean): void;
+
+export interface Ref<
+	T extends NativeNode | Exposed = NativeNode | Exposed
+> {
+	(node: T, isRemove?: boolean): void;
+}
+
+export interface RefSet<
+	T extends NativeNode | Exposed = NativeNode | Exposed
+> {
+	add(value: T): void;
+	delete(value: T): void;
+}
+
+export interface RefValue<
+	T extends NativeNode | Exposed = NativeNode | Exposed
+> extends Ref<T> {
+	readonly value: T | null
 }
 
 export interface NeepElement {
