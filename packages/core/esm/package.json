@@ -1,0 +1,4 @@
+{
+  "main": "../dist/neep.core.mjs",
+  "typings": "../types"
+}
