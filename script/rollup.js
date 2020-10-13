@@ -16,12 +16,11 @@ const bYear = 2019;
 const year = new Date().getFullYear();
 const date = bYear === year ? bYear : `${ bYear }-${ year }`;
 
-const isRender = /-render$/.test(name);
 const isCore = name === 'core';
-const GlobalName = isCore ? 'Neep' : `Neep${name.replace(
+const GlobalName = isCore ? 'Neep' : `Neep${ name.replace(
 	/(?:^|-)([a-z])/g,
-	(_, s) => s.toUpperCase()
-)}`;
+	(_, s) => s.toUpperCase(),
+) }`;
 const banner = `\
 /*!
  * ${ GlobalName } v${ version }
@@ -48,7 +47,7 @@ const createOutput = (format, prod) => ({
 		'monitorable': 'Monitorable',
 		'@neep/core': 'Neep',
 	},
-	exports: isRender ? 'default' : 'named',
+	exports: 'named',
 });
 
 const input = `${ dir }/src/index.ts`;

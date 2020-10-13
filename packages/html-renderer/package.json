@@ -1,11 +1,11 @@
 {
-  "name": "@neep/web-render",
+  "name": "@neep/html-renderer",
   "version": "0.1.0-alpha.14",
-  "main": "dist/neep.web.render.js",
-  "module": "dist/neep.web.render.mjs",
-  "browser": "dist/neep.web.render.browser.min.js",
-  "unpkg": "dist/neep.web.render.browser.js",
-  "jsdelivr": "dist/neep.web.render.browser.js",
+  "main": "dist/neep.html.renderer.js",
+  "module": "dist/neep.html.renderer.mjs",
+  "browser": "dist/neep.html.renderer.browser.min.js",
+  "unpkg": "dist/neep.html.renderer.browser.js",
+  "jsdelivr": "dist/neep.html.renderer.browser.js",
   "typings": "./types",
   "keywords": [
     "neep",
@@ -27,8 +27,5 @@
   "bugs": {
     "url": "https://github.com/neepjs/neep/issues"
   },
-  "homepage": "https://github.com/neepjs/neep#readme",
-  "optionalDependencies": {
-    "@neep/core": "^0.1.0-alpha.12"
-  }
+  "homepage": "https://github.com/neepjs/neep#readme"
 }

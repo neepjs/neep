@@ -2,12 +2,10 @@
   "name": "neep",
   "private": true,
   "version": "0.1.0-alpha.14",
-  "main": "dist/neep.common.js",
-  "module": "dist/neep.esm.js",
   "scripts": {
-    "build": "npm run build:core && npm run build:web-render",
+    "build": "npm run build:core && npm run build:html-renderer",
     "build:core": "rollup -c script/rollup.js",
-    "build:web-render": "NAME=web-render rollup -c script/rollup.js",
+    "build:html-renderer": "NAME=html-renderer rollup -c script/rollup.js",
     "test": "rollup -c script/test.rollup.js --watch",
     "lint": "eslint --ext .ts src",
     "lint-fix": "eslint --fix --ext .ts src"
