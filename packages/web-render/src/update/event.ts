@@ -42,7 +42,7 @@ function *getElementModel(el: Element): Iterable<[string, string, (e: any) => an
 	}
 	if (el instanceof HTMLSelectElement) {
 		return yield [
-			'value', 'select',
+			'value', 'change',
 			(e: any) => (e.currentTarget as HTMLSelectElement).value,
 		];
 	}
