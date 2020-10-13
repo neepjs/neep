@@ -1,7 +1,7 @@
 import {
 	ScopeSlot, Slot, SlotRender,
 	NeepNode, Ref, Emit, EventSet,
-} from '.';
+} from './exports';
 
 interface Attributes {
 	slot?: string;

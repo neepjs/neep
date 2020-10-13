@@ -103,7 +103,7 @@ export function mRender<N extends Component<any, any>>(
 	return component;
 }
 
-/** 标记组件类型 */
+/** 标记组件配置 */
 export function mConfig(name: string, config: any): Mark;
 export function mConfig<N extends Component<any, any>>(
 	name: string, config: any,

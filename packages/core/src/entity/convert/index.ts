@@ -15,7 +15,7 @@ export { destroy } from './utils';
  */
 function convert(
 	nObject: EntityObject,
-	source: any,
+	source: any[],
 	tree?: (TreeNode | TreeNode[])[],
 ): (TreeNode | TreeNode[])[] {
 	return refresh(() => postpone(() => {
