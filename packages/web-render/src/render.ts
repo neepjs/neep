@@ -12,6 +12,7 @@ import update from './update';
 import nextFrame from './nextFrame';
 import createElement from './createElement';
 import { isTagName } from './utils';
+import { isValue } from './install/neep';
 
 const render: IRender = {
 	type: 'web',
@@ -20,11 +21,20 @@ const render: IRender = {
 		return v instanceof Node;
 	},
 	mount({target, class: className, style, tag}, parent) {
+		if (isValue(target)){
+			target = target.value;
+		}
 		if (!isTagName(tag)) { tag = 'div'; }
 
 		const container = render.createElement(tag);
 		render.updateProps(container, { class: className, style });
 
+		if (target === null) {
+			if (!parent) {
+				return [container, container];
+			}
+			return [container, parent.createPlaceholder()];
+		}
 		if (typeof target === 'string') {
 			target = document.querySelector(target);
 		}
@@ -47,14 +57,30 @@ const render: IRender = {
 	},
 	drawContainer(container, node, {target, class: className, style, tag}, parent) {
 		render.updateProps(container as NativeElement, { class: className, style });
+		if (isValue(target)){
+			console.log(target);
+			target = target.value;
+		}
+		const oldTarget = parent === render && container === node
+			? undefined : render.getParent(node);
+		if (target === null) {
+			if (oldTarget === null) {
+				return [container, node];
+			}
+			if (container !== node) {
+				(container as any).remove();
+			}
+			if (!parent) {
+				return [container, container];
+			}
+			return [container, parent.createPlaceholder()];
+		}
 		if (typeof target === 'string') {
 			target = document.querySelector(target);
 		}
 		if (parent !== render && !(target instanceof Element)) {
 			target = document.body;
 		}
-		const oldTarget = parent === render && container === node
-			? undefined : render.getParent(node);
 		if (oldTarget === target) {
 			return [container, node];
 		}
@@ -69,6 +95,7 @@ const render: IRender = {
 				render.insertNode(pNode, newNode as any, node);
 				render.removeNode(node);
 			}
+			target.appendChild(container);
 			return [container, newNode];
 		}
 		if (!target) {
@@ -80,7 +107,7 @@ const render: IRender = {
 			return [container, container];
 
 		}
-		target.appendChild(node);
+		target.appendChild(container);
 		return [container, node];
 	},
 	drawNode() {},
