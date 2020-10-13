@@ -1,4 +1,7 @@
 {
-  "main": "../dist/neep.core.mjs",
+  "main": "../dist/neep.core.esm.js",
+  "browser": "../dist/neep.core.esm.min.js",
+  "unpkg": "../dist/neep.core.esm.js",
+  "jsdelivr": "../dist/neep.core.esm.js",
   "typings": "../types"
 }
