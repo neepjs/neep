@@ -136,30 +136,49 @@ export default class ContainerEntity extends EntityObject {
 		);
 		unmount(this.iRender, this.content);
 	}
+	_cancelDrawContainerMonitor?: () => void;
+	_cancelDrawChildrenMonitor?: () => void;
 	_draw(): void {
 		const {
 			_drawChildren: drawChildren,
 			_drawContainer: drawContainer,
 		} = this;
 		this._drawContainer = false;
+		if (this._cancelDrawContainerMonitor) {
+			this._cancelDrawContainerMonitor();
+		}
 		if (drawContainer) {
-			this.iRender.drawContainer(
-				this._container!,
-				this._node!,
-				this.props,
-				this.parent?.iRender,
+			const result = exec(
+				c => c && [this._drawContainer = true, this.requestDraw()],
+				() => this.iRender.drawContainer(
+					this._container!,
+					this._node!,
+					this.props,
+					this.parent?.iRender,
+				),
 			);
+			[this._container, this._node] = result.result;
+			this._cancelDrawContainerMonitor = result.stop;
 		}
 		if (this.parent && this.parent.iRender !== this.iRender) {
 			return;
 		}
 		this._drawChildren = false;
+		if (this._cancelDrawChildrenMonitor) {
+			this._cancelDrawChildrenMonitor();
+		}
 		if (drawChildren) {
-			this.content = draw(
-				this.iRender,
-				this._nodes,
-				this.content,
+			const result = exec(
+				c => c && [this._drawChildren = true, this.requestDraw()],
+				() => this.content = draw(
+					this.iRender,
+					this._nodes,
+					this.content,
+				),
 			);
+			this.content = result.result;
+			this._cancelDrawChildrenMonitor = result.stop;
+
 		}
 	}
 	_drawSelf(): void {
@@ -192,7 +211,7 @@ export default class ContainerEntity extends EntityObject {
 		if (this.destroyed) { return; }
 		this.callHook('beforeDraw');
 		exec(
-			c => c && this.markDraw(this),
+			c => c && this.requestDraw(),
 			() => this._drawSelf(),
 		);
 		complete(() => this.callHook('drawn'));
@@ -256,13 +275,13 @@ export default class ContainerEntity extends EntityObject {
 	drawAll(): void {
 		const containers = this._containers;
 		if (!containers.size) { return; }
+		const list = [...containers];
+		containers.clear();
 		this.callHook('beforeDrawAll');
 		const refs: (() => void)[] = [];
 		const completeList: (() => void)[] = [];
 		setCompleteList(completeList);
 		setRefList(refs);
-		const list = [...containers];
-		containers.clear();
 		list.forEach(c => c.drawContainer());
 		setRefList();
 		refs.forEach(r => r());
