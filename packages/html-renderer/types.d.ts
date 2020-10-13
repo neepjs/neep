@@ -1,14 +1,20 @@
 /*!
- * NeepWebRender v0.1.0-alpha.14
+ * NeepHtmlRenderer v0.1.0-alpha.15
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
-import * as core from '@neep/core';
-import { IRender } from '@neep/core';
+import * as _mp_rt1__neep_core__ from '@neep/core';
 
-interface Render extends IRender {
-    install(Neep: typeof core): void;
+declare function install(Neep: typeof _mp_rt1__neep_core__): void;
+
+
+
+declare const NeepWebRender_install: typeof install;
+declare namespace NeepWebRender {
+  export {
+    NeepWebRender_install as install,
+  };
 }
-declare const _default: Render;
 
-export default _default;
+export default NeepWebRender;
+export { install };

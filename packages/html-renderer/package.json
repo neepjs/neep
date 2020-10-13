@@ -1,6 +1,6 @@
 {
   "name": "@neep/html-renderer",
-  "version": "0.1.0-alpha.14",
+  "version": "0.1.0-alpha.15",
   "main": "dist/neep.html.renderer.js",
   "module": "dist/neep.html.renderer.mjs",
   "browser": "dist/neep.html.renderer.browser.min.js",
@@ -16,6 +16,7 @@
     "types.d.ts",
     "README.md",
     "LICENSE",
+    "esm/package.json",
     "dist"
   ],
   "author": "Fierflame",

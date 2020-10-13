@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.14
+ * Neep v0.1.0-alpha.15
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
@@ -9,7 +9,7 @@
 	(global = global || self, factory(global.Neep = {}, global.Monitorable));
 }(this, (function (exports, monitorable) { 'use strict';
 
-	const version = '0.1.0-alpha.14';
+	const version = '0.1.0-alpha.15';
 	const isProduction = "development" === 'production';
 
 	const devtools = {
@@ -460,14 +460,59 @@
 
 	}
 
-	const ScopeSlot = 'Neep:ScopeSlot';
-	const SlotRender = 'Neep:SlotRender';
-	const Slot = 'Neep:Slot';
-	const Value = 'Neep:Value';
-	const Container = 'Neep:Container';
-	const Deliver = 'Neep:Deliver';
+	const ScopeSlot = 'neep:ScopeSlot';
+	const SlotRender = 'neep:SlotRender';
+	const Slot = 'neep:slot';
+	const Value = 'neep:value';
+	const Container = 'neep:container';
 	const Template = 'template';
 	const Fragment = Template;
+
+	function ref(set) {
+	  if (set && (typeof set === 'function' || typeof set === 'object')) {
+	    return function refValue(node, isRemove) {
+	      if (isRemove) {
+	        set.delete(node);
+	      } else {
+	        set.add(node);
+	      }
+	    };
+	  }
+
+	  if (set) {
+	    const obj = monitorable.value(null);
+
+	    function refValue(node, isRemove) {
+	      obj.value = isRemove ? null : node;
+	    }
+
+	    Reflect.defineProperty(refValue, 'value', {
+	      get() {
+	        return obj.value;
+	      },
+
+	      enumerable: true,
+	      configurable: true
+	    });
+	    return refValue;
+	  }
+
+	  let obj = null;
+
+	  function refValue(node, isRemove) {
+	    obj = isRemove ? null : node;
+	  }
+
+	  Reflect.defineProperty(refValue, 'value', {
+	    get() {
+	      return obj;
+	    },
+
+	    enumerable: true,
+	    configurable: true
+	  });
+	  return refValue;
+	}
 
 	const hooks = Object.create(null);
 	function setHook(id, hook, entity) {
@@ -606,16 +651,17 @@
 	function expose(name, value, opt) {
 	  setValue(checkCurrent('expose', true).exposed, name, value, opt);
 	}
-	function deliver(name, value, opt) {
-	  setValue(checkCurrent('deliver', true).delivered, name, value, opt);
-	}
 
-	const isElementSymbol = Symbol.for('------isNeepElement------');
 	const typeSymbol = Symbol.for('type');
 	const nameSymbol = Symbol.for('name');
 	const renderSymbol = Symbol.for('render');
 	const componentsSymbol = Symbol.for('components');
 	const configSymbol = Symbol.for('config');
+	const objectTypeSymbol = Symbol.for('$$$objectType$$$');
+	const objectTypeSymbolElement = '$$$objectType$$$Element';
+	const objectTypeSymbolDeliver = '$$$objectType$$$Deliver';
+	const deliverKeySymbol = Symbol.for('$$$deliverKey$$$');
+	const deliverDefaultSymbol = Symbol.for('$$$deliverDefault$$$');
 
 	function isElement(v) {
 	  if (!v) {
@@ -626,39 +672,59 @@
 	    return false;
 	  }
 
-	  return v[isElementSymbol] === true;
+	  return v[objectTypeSymbol] === objectTypeSymbolElement;
+	}
+	function isSimpleTag(tag) {
+	  if (!tag) {
+	    return false;
+	  }
+
+	  if (typeof tag !== 'function') {
+	    return false;
+	  }
+
+	  return tag[typeSymbol] === 'simple';
+	}
+	function isSimpleElement(v) {
+	  return isElement(v) && isSimpleTag(v.tag);
 	}
 	function createElement(tag, attrs, ...children) {
-	  attrs = attrs ? { ...attrs
+	  const props = attrs ? { ...attrs
 	  } : {};
 	  const node = {
-	    [isElementSymbol]: true,
+	    [objectTypeSymbol]: objectTypeSymbolElement,
 	    tag,
 	    key: undefined,
-	    props: attrs,
+	    props,
 	    children
 	  };
 
-	  if ('n:key' in attrs) {
-	    node.key = attrs.key;
-	  } else if ('n-key' in attrs) {
-	    node.key = attrs.key;
+	  if ('n:key' in props) {
+	    node.key = props['n:key'];
+	  } else if ('n-key' in props) {
+	    node.key = props['n-key'];
+	  } else if ('key' in props) {
+	    node.key = props.key;
 	  }
 
-	  if ('slot' in attrs) {
-	    node.slot = attrs.slot;
+	  if ('n:slot' in props) {
+	    node.slot = props['n:slot'];
+	  } else if ('n-slot' in props) {
+	    node.slot = props['n-slot'];
+	  } else if ('slot' in props) {
+	    node.slot = props.slot;
 	  }
 
-	  if (typeof attrs['n:ref'] === 'function') {
-	    node.ref = attrs['n:ref'];
-	  } else if (typeof attrs['n-ref'] === 'function') {
-	    node.ref = attrs['n-ref'];
-	  } else if (typeof attrs.ref === 'function') {
-	    node.ref = attrs.ref;
+	  if (typeof props['n:ref'] === 'function') {
+	    node.ref = props['n:ref'];
+	  } else if (typeof props['n-ref'] === 'function') {
+	    node.ref = props['n-ref'];
+	  } else if (typeof props.ref === 'function') {
+	    node.ref = props.ref;
 	  }
 
 	  if (tag === Value) {
-	    node.value = attrs.value;
+	    node.value = props.value;
 	  }
 
 	  return node;
@@ -718,8 +784,9 @@
 
 	  return elements(node.children, opt);
 	}
+
 	function equalProps(a, b) {
-	  if (a === b) {
+	  if (Object.is(a, b)) {
 	    return true;
 	  }
 
@@ -758,17 +825,10 @@
 
 	  return true;
 	}
+
 	function equal(a, b) {
-	  if (typeof a !== typeof b) {
-	    return false;
-	  }
-
-	  if (a === b) {
+	  if (Object.is(a, b)) {
 	    return true;
-	  }
-
-	  if (typeof a === 'function') {
-	    return false;
 	  }
 
 	  if (!a) {
@@ -776,6 +836,14 @@
 	  }
 
 	  if (!b) {
+	    return false;
+	  }
+
+	  if (typeof a !== 'object') {
+	    return false;
+	  }
+
+	  if (typeof b !== 'object') {
 	    return false;
 	  }
 
@@ -865,9 +933,7 @@
 	}
 
 	function getRect(n) {
-	  for (const t of Object.keys(renders)) {
-	    const render = renders[t];
-
+	  for (const render of [...Object.values(renders)]) {
 	    if (!render) {
 	      continue;
 	    }
@@ -884,6 +950,39 @@
 	  }
 
 	  return null;
+	}
+
+	function createDeliver(def) {
+	  const symbol = Symbol();
+
+	  function Provider(_, {
+	    childNodes
+	  }) {
+	    return childNodes;
+	  }
+
+	  Reflect.defineProperty(Provider, objectTypeSymbol, {
+	    value: objectTypeSymbolDeliver
+	  });
+	  Reflect.defineProperty(Provider, deliverKeySymbol, {
+	    value: symbol
+	  });
+	  Reflect.defineProperty(Provider, deliverDefaultSymbol, {
+	    value: def
+	  });
+	  return Provider;
+	}
+	function isDeliver(d) {
+	  if (typeof d !== 'function') {
+	    return false;
+	  }
+
+	  return d[objectTypeSymbol] === objectTypeSymbolDeliver;
+	}
+	function getDelivered(delivered, Deliver) {
+	  assert(isDeliver(Deliver), '');
+	  const value = delivered[Deliver[deliverKeySymbol]];
+	  return value === undefined ? Deliver[deliverDefaultSymbol] : value;
 	}
 
 	let ids = 0;
@@ -1083,9 +1182,17 @@
 	    });
 	  }
 
+	  if (isDeliver(tag)) {
+	    return createMountedNode({ ...source,
+	      node: undefined,
+	      component: undefined,
+	      children: createAll(iRender, source.children)
+	    });
+	  }
+
 	  const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
 
-	  if (typeof tag !== 'string' || ltag === 'neep:container') {
+	  if (typeof tag !== 'string' || ltag === Container) {
 	    if (!component) {
 	      return createMountedNode({ ...source,
 	        node: undefined,
@@ -1103,7 +1210,7 @@
 	    });
 	  }
 
-	  if (ltag === 'neep:value') {
+	  if (ltag === Value) {
 	    let {
 	      value
 	    } = source;
@@ -1123,7 +1230,7 @@
 	    });
 	  }
 
-	  const node = iRender.createElement(tag, source.props || {});
+	  const node = iRender.createElement(tag);
 	  setRef(ref, node);
 	  let children = [];
 
@@ -1135,6 +1242,7 @@
 	    }
 	  }
 
+	  iRender.updateProps(node, source.props || {});
 	  return createMountedNode({ ...source,
 	    node,
 	    component: undefined,
@@ -1276,7 +1384,7 @@
 
 	function updateAll(iRender, source, tree) {
 	  let index = 0;
-	  let length = Math.min(source.length, source.length || 1);
+	  let length = Math.min(source.length, tree.length);
 	  const list = [];
 
 	  for (; index < length; index++) {
@@ -1291,13 +1399,13 @@
 
 	  length = Math.max(source.length, tree.length);
 
-	  if (tree.length > length) {
+	  if (tree.length > index) {
 	    for (; index < length; index++) {
 	      unmount(iRender, tree[index]);
 	    }
 	  }
 
-	  if (source.length > length) {
+	  if (source.length > index) {
 	    const last = getLastNode(list[list.length - 1]);
 	    const parent = iRender.getParent(last);
 	    const next = iRender.nextNode(last);
@@ -1343,13 +1451,21 @@
 	    return replace(iRender, createItem(iRender, source), tree);
 	  }
 
+	  if (isDeliver(tag)) {
+	    return createMountedNode({ ...source,
+	      node: undefined,
+	      component: undefined,
+	      children: updateAll(iRender, source.children, tree.children)
+	    }, tree.id);
+	  }
+
 	  if (!tag) {
 	    return tree;
 	  }
 
 	  const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
 
-	  if (typeof tag !== 'string' || ltag === 'neep:container') {
+	  if (typeof tag !== 'string' || ltag === Container) {
 	    if (!component) {
 	      return createMountedNode({ ...source,
 	        node: undefined,
@@ -1366,7 +1482,7 @@
 	    }, tree.id);
 	  }
 
-	  if (ltag === 'neep:value') {
+	  if (ltag === Value) {
 	    let {
 	      value
 	    } = source;
@@ -1398,36 +1514,25 @@
 	  const {
 	    node
 	  } = tree;
-	  iRender.updateProps(node, source.props || {});
 	  setRef(ref, node);
-
-	  if (!source.children.length && !tree.children.length) {
-	    return createMountedNode({ ...tree,
-	      ...source,
-	      children: []
-	    }, tree.id);
-	  }
+	  let children = [];
 
 	  if (!source.children.length && tree.children.length) {
 	    unmount(iRender, tree.children);
-	  }
-
-	  if (source.children.length && !tree.children.length) {
-	    const children = createAll(iRender, source.children);
+	  } else if (source.children.length && tree.children.length) {
+	    children = updateAll(iRender, source.children, tree.children);
+	  } else if (source.children.length && !tree.children.length) {
+	    children = createAll(iRender, source.children);
 
 	    for (const it of getNodes(children)) {
 	      iRender.insertNode(node, it);
 	    }
-
-	    return createMountedNode({ ...tree,
-	      ...source,
-	      children
-	    }, tree.id);
 	  }
 
+	  iRender.updateProps(node, source.props || {});
 	  return createMountedNode({ ...tree,
 	    ...source,
-	    children: updateAll(iRender, source.children, tree.children)
+	    children
 	  }, tree.id);
 	}
 
@@ -1550,7 +1655,7 @@
 
 	function createSlots(name, list) {
 	  const slot = (...props) => ({
-	    [isElementSymbol]: true,
+	    [objectTypeSymbol]: objectTypeSymbolElement,
 	    tag: ScopeSlot,
 	    children: renderSlots(list, ...props),
 	    inserted: true,
@@ -1589,80 +1694,6 @@
 	  }
 
 	  return slots;
-	}
-
-	const disabledKey = new Set([':', '@', '#', '*', '!', '%', '^', '~', '&', '=', '+', '.', '(', ')', '[', ']', '{', '}', '<', '>']);
-
-	function filter(k) {
-	  if (typeof k !== 'string') {
-	    return true;
-	  }
-
-	  if (disabledKey.has(k[0])) {
-	    return false;
-	  }
-
-	  if (/^n[:-]/.test(k)) {
-	    return false;
-	  }
-
-	  if (/^on[:-]/.test(k)) {
-	    return false;
-	  }
-
-	  return true;
-	}
-
-	function updateProps(obj, props, oldProps = {}, define = false, isProps = false) {
-	  const keys = Reflect.ownKeys(props);
-	  const newKeys = new Set(isProps ? keys.filter(filter) : keys);
-
-	  for (const k of Reflect.ownKeys(obj)) {
-	    if (!newKeys.has(k)) {
-	      delete obj[k];
-	    }
-	  }
-
-	  if (!define) {
-	    for (const k of newKeys) {
-	      obj[k] = props[k];
-	    }
-
-	    return obj;
-	  }
-
-	  for (const k of newKeys) {
-	    const value = props[k];
-
-	    if (k in oldProps && oldProps[k] === value) {
-	      continue;
-	    }
-
-	    if (monitorable.isValue(value)) {
-	      Reflect.defineProperty(obj, k, {
-	        configurable: true,
-	        enumerable: true,
-
-	        get() {
-	          return value();
-	        },
-
-	        set(v) {
-	          value(v);
-	        }
-
-	      });
-	      continue;
-	    }
-
-	    Reflect.defineProperty(obj, k, {
-	      configurable: true,
-	      enumerable: true,
-	      value
-	    });
-	  }
-
-	  return obj;
 	}
 
 	const components = Object.create(null);
@@ -1789,7 +1820,11 @@
 	    slots,
 	    created: false,
 	    parent: nObject.exposed,
-	    delivered,
+
+	    delivered(deliver) {
+	      return getDelivered(delivered, deliver);
+	    },
+
 	    children: new Set(),
 	    childNodes: children,
 
@@ -1862,15 +1897,16 @@
 	    children
 	  } = node;
 
-	  if (tag === Deliver) {
-	    const props = { ...node.props
-	    };
-	    delete props.ref;
-	    delete props.slot;
-	    delete props.key;
+	  if (isDeliver(tag)) {
+	    const newDelivered = Object.create(delivered);
+	    Reflect.defineProperty(newDelivered, tag[deliverKeySymbol], {
+	      configurable: true,
+	      enumerable: true,
+	      value: node.props ? node.props.value : undefined
+	    });
 	    return { ...node,
 	      tag,
-	      children: children.map(n => exec(nObject, updateProps(Object.create(delivered), props || {}, {}, true), n, slots, components, native))
+	      children: children.map(child => exec(nObject, newDelivered, child, slots, components, native))
 	    };
 	  }
 
@@ -1894,52 +1930,65 @@
 	  return execSimple(nObject, delivered, node, tag, components, children);
 	}
 
+	function getItem(node) {
+	  if (Array.isArray(node)) {
+	    return node.map(getItem);
+	  }
+
+	  if (isElement(node)) {
+	    return node;
+	  }
+
+	  if (node === undefined || node === null) {
+	    return {
+	      [objectTypeSymbol]: objectTypeSymbolElement,
+	      tag: null,
+	      key: undefined,
+	      children: []
+	    };
+	  }
+
+	  return {
+	    [objectTypeSymbol]: objectTypeSymbolElement,
+	    key: undefined,
+	    tag: Value,
+	    value: node,
+	    children: []
+	  };
+	}
+
 	function renderNode(iRender, node, context, render) {
 	  if (Array.isArray(node)) {
 	    return node;
 	  }
 
 	  if (isElement(node)) {
+	    if (node.tag === Fragment) {
+	      return node.children.map(getItem);
+	    }
+
 	    return [node];
 	  }
 
-	  if (node === undefined || node === null) {
-	    return [{
-	      [isElementSymbol]: true,
-	      tag: null,
-	      key: undefined,
-	      children: []
-	    }];
-	  }
-
-	  if (!iRender.isNode(node) && node && typeof node === 'object' && render) {
-	    node = render(node, context);
-	  }
-
-	  if (isElement(node)) {
+	  if (!node || !render || iRender.isNode(node)) {
 	    return [node];
 	  }
 
-	  if (node === undefined || node === null) {
-	    return [{
-	      [isElementSymbol]: true,
-	      tag: null,
-	      key: undefined,
-	      children: []
-	    }];
+	  if (typeof node !== 'object') {
+	    return [node];
 	  }
 
-	  return [{
-	    [isElementSymbol]: true,
-	    key: undefined,
-	    tag: Value,
-	    value: node,
-	    children: []
-	  }];
+	  const list = render(node, context);
+
+	  if (Array.isArray(list)) {
+	    return list;
+	  }
+
+	  return [list];
 	}
 
 	function init(nObject, delivered, node, slots, components, native) {
-	  return exec(nObject, delivered, replaceNode(node, slots, components, native, true), slots, components, native);
+	  return refresh(() => monitorable.postpone(() => exec(nObject, delivered, replaceNode(node, slots, components, native, true).map(getItem), slots, components, native)));
 	}
 	function normalize(nObject, result) {
 	  const {
@@ -2004,10 +2053,6 @@
 	    exposed: {
 	      configurable: true,
 	      get: () => obj.exposed
-	    },
-	    delivered: {
-	      configurable: true,
-	      get: () => obj.delivered
 	    },
 	    parent: {
 	      configurable: true,
@@ -2368,8 +2413,42 @@
 
 	}
 
+	const disabledKey = new Set([':', '@', '#', '*', '!', '%', '^', '~', '&', '=', '+', '.', '(', ')', '[', ']', '{', '}', '<', '>']);
+
+	function filter(k) {
+	  if (typeof k !== 'string') {
+	    return true;
+	  }
+
+	  if (disabledKey.has(k[0])) {
+	    return false;
+	  }
+
+	  if (/^n[:-]/.test(k)) {
+	    return false;
+	  }
+
+	  if (/^on[:-]/.test(k)) {
+	    return false;
+	  }
+
+	  return true;
+	}
+
 	function update(nObject, props, children) {
-	  updateProps(nObject.props, props, {}, false, true);
+	  const propsObj = nObject.props;
+	  const newKeys = new Set(Reflect.ownKeys(props).filter(filter));
+
+	  for (const k of Reflect.ownKeys(propsObj)) {
+	    if (filter(k) && !newKeys.has(k)) {
+	      delete propsObj[k];
+	    }
+	  }
+
+	  for (const k of newKeys) {
+	    propsObj[k] = props[k];
+	  }
+
 	  nObject.events.updateInProps(props);
 	  const slots = Object.create(null);
 	  const {
@@ -2404,10 +2483,6 @@
 	      return nObject.parent.exposed;
 	    },
 
-	    get delivered() {
-	      return nObject.parentDelivered;
-	    },
-
 	    get children() {
 	      return nObject.children;
 	    },
@@ -2418,6 +2493,10 @@
 
 	    get emit() {
 	      return nObject.emit;
+	    },
+
+	    delivered(deliver) {
+	      return getDelivered(nObject.parentDelivered, deliver);
 	    },
 
 	    refresh(f) {
@@ -2509,7 +2588,7 @@
 	    this.context = context;
 	    this.callHook('beforeCreate');
 	    this.childNodes = children;
-	    refresh(() => update(this, props, children));
+	    refresh(() => monitorable.postpone(() => update(this, props, children)));
 	    const {
 	      render,
 	      nodes,
@@ -2532,7 +2611,7 @@
 	    }
 
 	    this.childNodes = children;
-	    refresh(() => update(this, props, children));
+	    refresh(() => monitorable.postpone(() => update(this, props, children)));
 	  }
 
 	  _destroy() {
@@ -2579,7 +2658,12 @@
 	      return;
 	    }
 
-	    this.tree = draw(iRender, convert(this, native));
+	    this.tree = draw(iRender, [{
+	      tag: Value,
+	      key: native,
+	      value: native,
+	      children: []
+	    }]);
 	    this.shadowTree = draw(iRender, _nodes);
 
 	    for (const it of getNodes(this.shadowTree)) {
@@ -2619,8 +2703,8 @@
 	  }
 
 	  return {
-	    [isElementSymbol]: true,
-	    tag: 'Neep:Value',
+	    [objectTypeSymbol]: objectTypeSymbolElement,
+	    tag: Value,
 	    key: t,
 	    value: t,
 	    children: []
@@ -2662,6 +2746,19 @@
 	    };
 	  }
 
+	  if (isDeliver(tag)) {
+	    const newDelivered = Object.create(delivered);
+	    Reflect.defineProperty(newDelivered, tag[deliverKeySymbol], {
+	      configurable: true,
+	      enumerable: true,
+	      value: source.props ? source.props.value : undefined
+	    });
+	    return { ...source,
+	      delivered: newDelivered,
+	      children: createAll$1(nObject, newDelivered, source.children)
+	    };
+	  }
+
 	  if (typeof tag !== 'string') {
 	    if (tag[typeSymbol] === 'simple') {
 	      return { ...source,
@@ -2678,7 +2775,7 @@
 
 	  const ltag = tag.toLowerCase();
 
-	  if (ltag === 'neep:container') {
+	  if (ltag === Container) {
 	    var _source$props;
 
 	    const type = source === null || source === void 0 ? void 0 : (_source$props = source.props) === null || _source$props === void 0 ? void 0 : _source$props.type;
@@ -2689,22 +2786,9 @@
 	    };
 	  }
 
-	  if (ltag === 'neep:value') {
+	  if (ltag === Value) {
 	    return { ...source,
 	      children: []
-	    };
-	  }
-
-	  if (ltag === 'neep:deliver') {
-	    const props = { ...source.props
-	    };
-	    delete props.ref;
-	    delete props.slot;
-	    delete props.key;
-	    const newDelivered = updateProps(Object.create(delivered), props, {}, true);
-	    return { ...source,
-	      delivered: newDelivered,
-	      children: createAll$1(nObject, newDelivered, source.children)
 	    };
 	  }
 
@@ -2812,6 +2896,19 @@
 	    };
 	  }
 
+	  if (isDeliver(tag)) {
+	    const newDelivered = tree.delivered || Object.create(delivered);
+	    Reflect.defineProperty(newDelivered, tag[deliverKeySymbol], {
+	      configurable: true,
+	      enumerable: true,
+	      value: source.props ? source.props.value : undefined
+	    });
+	    return { ...source,
+	      delivered: newDelivered,
+	      children: [...updateAll$1(nObject, newDelivered, source.children, tree.children)]
+	    };
+	  }
+
 	  if (typeof tag !== 'string') {
 	    if (tag[typeSymbol] === 'simple') {
 	      return { ...source,
@@ -2837,7 +2934,7 @@
 
 	  const ltag = tag.toLowerCase();
 
-	  if (ltag === 'neep:container') {
+	  if (ltag === Container) {
 	    var _source$props;
 
 	    const {
@@ -2862,22 +2959,9 @@
 	    };
 	  }
 
-	  if (ltag === 'neep:value') {
+	  if (ltag === Value) {
 	    return { ...source,
 	      children: []
-	    };
-	  }
-
-	  if (ltag === 'neep:deliver') {
-	    const props = { ...source.props
-	    };
-	    delete props.ref;
-	    delete props.slot;
-	    delete props.key;
-	    const newDelivered = updateProps(tree.delivered || Object.create(delivered), props, tree.props, true);
-	    return { ...source,
-	      delivered: newDelivered,
-	      children: [...updateAll$1(nObject, newDelivered, source.children, tree.children)]
 	    };
 	  }
 
@@ -2898,7 +2982,7 @@
 	  }
 
 	  let index = 0;
-	  let length = Math.min(source.length, source.length);
+	  let length = Math.min(source.length || 1, tree.length);
 
 	  for (; index < length; index++) {
 	    const src = source[index];
@@ -2912,13 +2996,13 @@
 
 	  length = Math.max(source.length, source.length);
 
-	  if (tree.length > length) {
+	  if (tree.length > index) {
 	    for (; index < length; index++) {
 	      destroy(tree[index]);
 	    }
 	  }
 
-	  if (source.length > length) {
+	  if (source.length > index) {
 	    for (; index < length; index++) {
 	      const src = toElement(source[index]);
 
@@ -2932,11 +3016,13 @@
 	}
 
 	function convert(nObject, source, tree) {
-	  if (!tree) {
-	    return createAll$1(nObject, nObject.delivered, source);
-	  }
+	  return refresh(() => monitorable.postpone(() => {
+	    if (!tree) {
+	      return createAll$1(nObject, nObject.delivered, source);
+	    }
 
-	  return [...updateAll$1(nObject, nObject.delivered, source, tree)];
+	    return [...updateAll$1(nObject, nObject.delivered, source, tree)];
+	  }));
 	}
 
 	let awaitDraw = new Set();
@@ -2975,6 +3061,10 @@
 	    _defineProperty(this, "_drawChildren", false);
 
 	    _defineProperty(this, "_drawContainer", false);
+
+	    _defineProperty(this, "_cancelDrawContainerMonitor", void 0);
+
+	    _defineProperty(this, "_cancelDrawChildrenMonitor", void 0);
 
 	    _defineProperty(this, "_awaitDraw", new Set());
 
@@ -3090,10 +3180,18 @@
 	    } = this;
 	    this._drawContainer = false;
 
-	    if (drawContainer) {
-	      var _this$parent;
+	    if (this._cancelDrawContainerMonitor) {
+	      this._cancelDrawContainerMonitor();
+	    }
 
-	      this.iRender.drawContainer(this._container, this._node, this.props, (_this$parent = this.parent) === null || _this$parent === void 0 ? void 0 : _this$parent.iRender);
+	    if (drawContainer) {
+	      const result = monitorable.exec(c => c && [this._drawContainer = true, this.requestDraw()], () => {
+	        var _this$parent;
+
+	        return this.iRender.drawContainer(this._container, this._node, this.props, (_this$parent = this.parent) === null || _this$parent === void 0 ? void 0 : _this$parent.iRender);
+	      });
+	      [this._container, this._node] = result.result;
+	      this._cancelDrawContainerMonitor = result.stop;
 	    }
 
 	    if (this.parent && this.parent.iRender !== this.iRender) {
@@ -3102,8 +3200,14 @@
 
 	    this._drawChildren = false;
 
+	    if (this._cancelDrawChildrenMonitor) {
+	      this._cancelDrawChildrenMonitor();
+	    }
+
 	    if (drawChildren) {
-	      this.content = draw(this.iRender, this._nodes, this.content);
+	      const result = monitorable.exec(c => c && [this._drawChildren = true, this.requestDraw()], () => this.content = draw(this.iRender, this._nodes, this.content));
+	      this.content = result.result;
+	      this._cancelDrawChildrenMonitor = result.stop;
 	    }
 	  }
 
@@ -3137,7 +3241,7 @@
 	    }
 
 	    this.callHook('beforeDraw');
-	    monitorable.exec(c => c && this.markDraw(this), () => this._drawSelf());
+	    monitorable.exec(c => c && this.requestDraw(), () => this._drawSelf());
 	    complete(() => this.callHook('drawn'));
 	  }
 
@@ -3204,13 +3308,13 @@
 	      return;
 	    }
 
+	    const list = [...containers];
+	    containers.clear();
 	    this.callHook('beforeDrawAll');
 	    const refs = [];
 	    const completeList = [];
 	    setCompleteList(completeList);
 	    setRefList(refs);
-	    const list = [...containers];
-	    containers.clear();
 	    list.forEach(c => c.drawContainer());
 	    setRefList();
 	    refs.forEach(r => r());
@@ -3436,6 +3540,77 @@
 	  return mark(Lazy, mSimple, mName('Lazy'));
 	}
 
+
+
+	var Neep = /*#__PURE__*/Object.freeze({
+		__proto__: null,
+		install: install,
+		Error: NeepError,
+		EventEmitter: EventEmitter,
+		render: render,
+		register: register,
+		lazy: lazy,
+		version: version,
+		isProduction: isProduction,
+		createDeliver: createDeliver,
+		isDeliver: isDeliver,
+		ScopeSlot: ScopeSlot,
+		SlotRender: SlotRender,
+		Slot: Slot,
+		Value: Value,
+		Container: Container,
+		Template: Template,
+		Fragment: Fragment,
+		ref: ref,
+		value: monitorable.value,
+		computed: monitorable.computed,
+		isValue: monitorable.isValue,
+		encase: monitorable.encase,
+		recover: monitorable.recover,
+		valueify: monitorable.valueify,
+		asValue: monitorable.asValue,
+		watch: watch,
+		useValue: useValue,
+		useService: useService,
+		byService: byService,
+		hook: hook,
+		expose: expose,
+		isElement: isElement,
+		isSimpleTag: isSimpleTag,
+		isSimpleElement: isSimpleElement,
+		createElement: createElement,
+		elements: elements,
+		equal: equal,
+		label: label$1,
+		getRect: getRect,
+		get current () { return exports.current; },
+		checkCurrent: checkCurrent,
+		addContextConstructor: addContextConstructor,
+		addEntityConstructor: addEntityConstructor,
+		refresh: refresh,
+		mName: mName,
+		mType: mType,
+		mSimple: mSimple,
+		mNative: mNative,
+		mRender: mRender,
+		mConfig: mConfig,
+		mComponent: mComponent,
+		create: create,
+		mark: mark,
+		typeSymbol: typeSymbol,
+		nameSymbol: nameSymbol,
+		renderSymbol: renderSymbol,
+		componentsSymbol: componentsSymbol,
+		configSymbol: configSymbol,
+		objectTypeSymbol: objectTypeSymbol,
+		objectTypeSymbolElement: objectTypeSymbolElement,
+		objectTypeSymbolDeliver: objectTypeSymbolDeliver,
+		deliverKeySymbol: deliverKeySymbol,
+		deliverDefaultSymbol: deliverDefaultSymbol,
+		setHook: setHook,
+		callHook: callHook
+	});
+
 	Object.defineProperty(exports, 'asValue', {
 		enumerable: true,
 		get: function () {
@@ -3479,7 +3654,6 @@
 		}
 	});
 	exports.Container = Container;
-	exports.Deliver = Deliver;
 	exports.Error = NeepError;
 	exports.EventEmitter = EventEmitter;
 	exports.Fragment = Fragment;
@@ -3496,18 +3670,22 @@
 	exports.componentsSymbol = componentsSymbol;
 	exports.configSymbol = configSymbol;
 	exports.create = create;
+	exports.createDeliver = createDeliver;
 	exports.createElement = createElement;
-	exports.deliver = deliver;
+	exports.default = Neep;
+	exports.deliverDefaultSymbol = deliverDefaultSymbol;
+	exports.deliverKeySymbol = deliverKeySymbol;
 	exports.elements = elements;
 	exports.equal = equal;
-	exports.equalProps = equalProps;
 	exports.expose = expose;
 	exports.getRect = getRect;
 	exports.hook = hook;
 	exports.install = install;
+	exports.isDeliver = isDeliver;
 	exports.isElement = isElement;
-	exports.isElementSymbol = isElementSymbol;
 	exports.isProduction = isProduction;
+	exports.isSimpleElement = isSimpleElement;
+	exports.isSimpleTag = isSimpleTag;
 	exports.label = label$1;
 	exports.lazy = lazy;
 	exports.mComponent = mComponent;
@@ -3519,6 +3697,10 @@
 	exports.mType = mType;
 	exports.mark = mark;
 	exports.nameSymbol = nameSymbol;
+	exports.objectTypeSymbol = objectTypeSymbol;
+	exports.objectTypeSymbolDeliver = objectTypeSymbolDeliver;
+	exports.objectTypeSymbolElement = objectTypeSymbolElement;
+	exports.ref = ref;
 	exports.refresh = refresh;
 	exports.register = register;
 	exports.render = render;

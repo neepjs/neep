@@ -1,6 +1,6 @@
 {
   "name": "@neep/core",
-  "version": "0.1.0-alpha.14",
+  "version": "0.1.0-alpha.15",
   "main": "dist/neep.core.js",
   "module": "dist/neep.core.mjs",
   "browser": "dist/neep.core.browser.min.js",
@@ -14,6 +14,7 @@
     "types.d.ts",
     "README.md",
     "LICENSE",
+    "esm/package.json",
     "dist"
   ],
   "author": "Fierflame",
@@ -25,8 +26,5 @@
   "bugs": {
     "url": "https://github.com/neepjs/neep/issues"
   },
-  "homepage": "https://github.com/neepjs/neep#readme",
-  "optionalDependencies": {
-    "monitorable": "^0.1.0-beta.0"
-  }
+  "homepage": "https://github.com/neepjs/neep#readme"
 }

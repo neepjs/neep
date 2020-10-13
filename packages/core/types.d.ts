@@ -1,39 +1,36 @@
 /*!
- * Neep v0.1.0-alpha.14
+ * Neep v0.1.0-alpha.15
  * (c) 2019-2020 Fierflame
  * @license MIT
  */
 import * as _mp_rt1_monitorable__ from 'monitorable';
-import { Value as Value$1, WatchCallback } from 'monitorable';
+import { Value as Value$1, WatchCallback, value, computed, isValue, encase, recover, valueify, asValue } from 'monitorable';
 export { asValue, computed, encase, isValue, recover, value, valueify } from 'monitorable';
 
-declare const ScopeSlot = "Neep:ScopeSlot";
-declare const SlotRender = "Neep:SlotRender";
-declare const Slot = "Neep:Slot";
-declare const Value = "Neep:Value";
-declare const Container = "Neep:Container";
-declare const Deliver = "Neep:Deliver";
+declare const ScopeSlot = "neep:ScopeSlot";
+declare const SlotRender = "neep:SlotRender";
+declare const Slot = "neep:slot";
+declare const Value = "neep:value";
+declare const Container = "neep:container";
 declare const Template = "template";
 declare const Fragment = "template";
 
-declare const _mp_rt27__auxiliary_tags___ScopeSlot: typeof ScopeSlot;
-declare const _mp_rt27__auxiliary_tags___SlotRender: typeof SlotRender;
-declare const _mp_rt27__auxiliary_tags___Slot: typeof Slot;
-declare const _mp_rt27__auxiliary_tags___Value: typeof Value;
-declare const _mp_rt27__auxiliary_tags___Container: typeof Container;
-declare const _mp_rt27__auxiliary_tags___Deliver: typeof Deliver;
-declare const _mp_rt27__auxiliary_tags___Template: typeof Template;
-declare const _mp_rt27__auxiliary_tags___Fragment: typeof Fragment;
-declare namespace _mp_rt27__auxiliary_tags__ {
+declare const _mp_rt28__auxiliary_tags___ScopeSlot: typeof ScopeSlot;
+declare const _mp_rt28__auxiliary_tags___SlotRender: typeof SlotRender;
+declare const _mp_rt28__auxiliary_tags___Slot: typeof Slot;
+declare const _mp_rt28__auxiliary_tags___Value: typeof Value;
+declare const _mp_rt28__auxiliary_tags___Container: typeof Container;
+declare const _mp_rt28__auxiliary_tags___Template: typeof Template;
+declare const _mp_rt28__auxiliary_tags___Fragment: typeof Fragment;
+declare namespace _mp_rt28__auxiliary_tags__ {
   export {
-    _mp_rt27__auxiliary_tags___ScopeSlot as ScopeSlot,
-    _mp_rt27__auxiliary_tags___SlotRender as SlotRender,
-    _mp_rt27__auxiliary_tags___Slot as Slot,
-    _mp_rt27__auxiliary_tags___Value as Value,
-    _mp_rt27__auxiliary_tags___Container as Container,
-    _mp_rt27__auxiliary_tags___Deliver as Deliver,
-    _mp_rt27__auxiliary_tags___Template as Template,
-    _mp_rt27__auxiliary_tags___Fragment as Fragment,
+    _mp_rt28__auxiliary_tags___ScopeSlot as ScopeSlot,
+    _mp_rt28__auxiliary_tags___SlotRender as SlotRender,
+    _mp_rt28__auxiliary_tags___Slot as Slot,
+    _mp_rt28__auxiliary_tags___Value as Value,
+    _mp_rt28__auxiliary_tags___Container as Container,
+    _mp_rt28__auxiliary_tags___Template as Template,
+    _mp_rt28__auxiliary_tags___Fragment as Fragment,
   };
 }
 
@@ -53,6 +50,10 @@ declare class EventEmitter<T extends Record<string, any[]> = Record<string, any[
     update(list: any): (() => void)[];
     updateInProps(list: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
 }
+
+interface RecursiveArray<T> extends Array<RecursiveItem<T>> {
+}
+declare type RecursiveItem<T> = T | RecursiveArray<T>;
 
 declare class EntityObject {
     readonly slotRenderFnList: WeakMap<Function, Function>;
@@ -87,7 +88,7 @@ declare class EntityObject {
     readonly container: ContainerEntity;
     constructor(iRender: IRender, parent?: EntityObject, delivered?: Delivered, container?: ContainerEntity);
     /** 结果渲染函数 */
-    protected _render: () => NeepNode[];
+    protected _render: () => RecursiveArray<NeepNode>;
     get canRefresh(): boolean;
     protected get needRefresh(): boolean;
     /** 是否需要继续刷新 */
@@ -143,6 +144,8 @@ declare class ContainerEntity extends EntityObject {
     _mount(): void;
     _destroy(): void;
     _unmount(): void;
+    _cancelDrawContainerMonitor?: () => void;
+    _cancelDrawChildrenMonitor?: () => void;
     _draw(): void;
     _drawSelf(): void;
     drawSelf(): void;
@@ -231,12 +234,16 @@ declare global {
 	}
 }
 
-declare const isElementSymbol: unique symbol;
 declare const typeSymbol: unique symbol;
 declare const nameSymbol: unique symbol;
 declare const renderSymbol: unique symbol;
 declare const componentsSymbol: unique symbol;
 declare const configSymbol: unique symbol;
+declare const objectTypeSymbol: unique symbol;
+declare const objectTypeSymbolElement = "$$$objectType$$$Element";
+declare const objectTypeSymbolDeliver = "$$$objectType$$$Deliver";
+declare const deliverKeySymbol: unique symbol;
+declare const deliverDefaultSymbol: unique symbol;
 
 declare type EntityObject$1 = InstanceType<typeof EntityObject>;
 declare type ComponentEntity$1 = InstanceType<typeof ComponentEntity>;
@@ -289,13 +296,19 @@ interface Exposed {
     readonly $label?: [string, string];
     [name: string]: any;
 }
-interface Delivered {
-    [name: string]: any;
-}
+declare type Delivered = Record<any, any>;
 interface RootExposed extends Exposed {
     $update(node?: NeepElement | Component): RootExposed;
     $mount(target?: any): RootExposed;
     $unmount(): void;
+}
+interface Deliver<T> {
+    (props: {
+        value?: T;
+    }, context: Context): NeepNode[];
+    [objectTypeSymbol]: typeof objectTypeSymbolDeliver;
+    [deliverKeySymbol]: symbol;
+    [deliverDefaultSymbol]: T;
 }
 /** 上下文环境 */
 interface Context {
@@ -305,7 +318,7 @@ interface Context {
     created: boolean;
     /** 父组件 */
     parent?: Exposed;
-    delivered: Delivered;
+    delivered<T>(d: Deliver<T>): T;
     /** 子组件集合 */
     children: Set<Exposed>;
     childNodes: any[];
@@ -314,7 +327,6 @@ interface Context {
 }
 interface Entity {
     readonly exposed: Exposed;
-    readonly delivered: Delivered;
     readonly component: Component<any, any> | null;
     readonly parent?: Entity;
     readonly isContainer: boolean;
@@ -362,16 +374,22 @@ interface Marks {
 interface Component<P extends object = object, R extends object = object> extends Marks {
     (props: P, context: Context): undefined | null | NeepNode | NeepNode[] | R | (() => undefined | null | NeepNode | NeepNode[] | R);
 }
-declare type Tags = typeof _mp_rt27__auxiliary_tags__;
+declare type Tags = typeof _mp_rt28__auxiliary_tags__;
 declare type Tag = null | string | Tags[keyof Tags] | Component<any, any>;
-interface Ref {
-    (node: NativeNode | Exposed, isRemove?: boolean): void;
+interface Ref<T extends NativeNode | Exposed = NativeNode | Exposed> {
+    (node: T, isRemove?: boolean): void;
+}
+interface RefSet<T extends NativeNode | Exposed = NativeNode | Exposed> {
+    add(value: T): void;
+    delete(value: T): void;
+}
+interface RefValue<T extends NativeNode | Exposed = NativeNode | Exposed> extends Ref<T> {
+    readonly value: T | null;
 }
 interface NeepElement {
-    [isElementSymbol]: true;
+    [objectTypeSymbol]: typeof objectTypeSymbolElement;
     /** 标签名 */
     tag: Tag;
-    execed?: boolean;
     /** 属性 */
     props?: {
         [key: string]: any;
@@ -388,10 +406,11 @@ interface NeepElement {
     value?: any;
     /** 是否是已插入的 */
     inserted?: boolean;
+    execed?: boolean;
     /** 标注 */
     label?: [string, string];
 }
-interface TreeNode extends Omit<NeepElement, 'children' | typeof isElementSymbol> {
+interface TreeNode extends Omit<NeepElement, 'children' | typeof objectTypeSymbol> {
     children: (this | this[])[];
     delivered?: Delivered;
     mounted?: boolean;
@@ -457,7 +476,7 @@ interface IRender {
      */
     isSelf?: boolean): [NativeContainer, NativeNode];
     isNode(v: any): v is NativeNode;
-    createElement(tag: string, props: Record<string, any>): NativeElement;
+    createElement(tag: string): NativeElement;
     updateProps(node: NativeElement, props: Record<string, any>): void;
     createText(text: string): NativeText;
     createPlaceholder(): NativePlaceholder;
@@ -508,6 +527,9 @@ declare const version: string;
  * @description Support tree shaking
  */
 declare const isProduction: boolean;
+
+declare function ref<T extends NativeNode | Exposed = NativeNode | Exposed>(watch?: boolean): RefValue<T>;
+declare function ref<T extends NativeNode | Exposed = NativeNode | Exposed>(set: RefSet<T>): Ref<T>;
 
 /**********************************
  * 状态管理类 API
@@ -574,46 +596,27 @@ declare function expose<T>(name: string | number | symbol, getter: () => T, nonM
  * @param setter
  */
 declare function expose<T>(name: string | number | symbol, getter: () => T, setter: (value: T) => void): void;
-/**
- * 将 Value 传递给子组件
- * @param name 导出用的名称
- */
-declare function deliver<T>(name: string | number | symbol, value: Value$1<T>, mix?: boolean): void;
-/**
- * 将普通值导出
- * @param name
- * @param value
- */
-declare function deliver<T>(name: string | number | symbol, value: T): void;
-/**
- * 设置基于 getter 的传递
- * @param name
- * @param getter
- * @param nonModifiable
- */
-declare function deliver<T>(name: string | number | symbol, getter: () => T, nonModifiable: true): void;
-/**
- * 设置基于 getter/setter 的传递
- * @param name
- * @param getter
- * @param setter
- */
-declare function deliver<T>(name: string | number | symbol, getter: () => T, setter: (value: T) => void): void;
 
 /**
  * 判读是否为元素
  */
 declare function isElement(v: any): v is NeepElement;
+declare function isSimpleTag(tag: Tag): boolean;
+declare function isSimpleElement(v: any): boolean;
 declare function createElement(tag: Tag, attrs?: {
     [key: string]: any;
 }, ...children: any[]): NeepElement;
 declare function elements(node: any, opt?: ElementIteratorOptions): any[];
-declare function equalProps(a?: any, b?: any): boolean;
 declare function equal(a: any, b: any): boolean;
 
 declare function label(text: string, color?: string): void;
 
 declare function getRect(n: NativeNode): Rect | null;
+
+declare function createDeliver<T>(def: T): Deliver<T>;
+declare function createDeliver<T>(def?: T): Deliver<T | undefined>;
+declare function createDeliver<T, D>(def: D): Deliver<T | D>;
+declare function isDeliver(d: any): d is Deliver<any>;
 
 /** 当前正在执行的对象 */
 declare let current: Entity | undefined;
@@ -646,7 +649,7 @@ declare function mNative<N extends Component<any, any>>(component: N): N;
 /** 标记独立的渲染函数 */
 declare function mRender(fn?: Marks[typeof renderSymbol]): Mark;
 declare function mRender<N extends Component<any, any>>(fn: Marks[typeof renderSymbol] | undefined, component: N): N;
-/** 标记组件类型 */
+/** 标记组件配置 */
 declare function mConfig(name: string, config: any): Mark;
 declare function mConfig<N extends Component<any, any>>(name: string, config: any, component: N): N;
 /** 标记组件类型 */
@@ -661,4 +664,225 @@ declare function setHook(id: string, hook: Hook, entity?: Entity): () => void;
 declare function callHook<H extends Hooks>(id: H, exposed: Entity): void;
 declare function callHook(id: string, exposed: Entity): void;
 
-export { Component, ComponentEntity$1 as ComponentEntity, Container, ContainerEntity$1 as ContainerEntity, Context, ContextConstructor, Deliver, Delivered, Devtools, ElementIteratorOptions, Emit, Entity, EntityConstructor, EntityObject$1 as EntityObject, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, MountedNode, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Rect, Ref, Render, RootExposed, ScopeSlot, Service, Slot, SlotFn, SlotRender, Slots, Tag, Template, TreeNode, Value, addContextConstructor, addEntityConstructor, byService, callHook, checkCurrent, componentsSymbol, configSymbol, create, createElement, current, deliver, elements, equal, equalProps, expose, getRect, hook, install, isElement, isElementSymbol, isProduction, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, refresh, register, render, renderSymbol, setHook, typeSymbol, useService, useValue, version, watch };
+
+
+declare const Neep_install: typeof install;
+type Neep_EventEmitter = EventEmitter;
+declare const Neep_EventEmitter: typeof EventEmitter;
+declare const Neep_render: typeof render;
+declare const Neep_register: typeof register;
+declare const Neep_lazy: typeof lazy;
+declare const Neep_version: typeof version;
+declare const Neep_isProduction: typeof isProduction;
+declare const Neep_createDeliver: typeof createDeliver;
+declare const Neep_isDeliver: typeof isDeliver;
+declare const Neep_ScopeSlot: typeof ScopeSlot;
+declare const Neep_SlotRender: typeof SlotRender;
+declare const Neep_Slot: typeof Slot;
+declare const Neep_Value: typeof Value;
+declare const Neep_Container: typeof Container;
+declare const Neep_Template: typeof Template;
+declare const Neep_Fragment: typeof Fragment;
+declare const Neep_ref: typeof ref;
+declare const Neep_value: typeof value;
+declare const Neep_computed: typeof computed;
+declare const Neep_isValue: typeof isValue;
+declare const Neep_encase: typeof encase;
+declare const Neep_recover: typeof recover;
+declare const Neep_valueify: typeof valueify;
+declare const Neep_asValue: typeof asValue;
+declare const Neep_watch: typeof watch;
+declare const Neep_useValue: typeof useValue;
+declare const Neep_useService: typeof useService;
+declare const Neep_byService: typeof byService;
+declare const Neep_hook: typeof hook;
+declare const Neep_expose: typeof expose;
+declare const Neep_isElement: typeof isElement;
+declare const Neep_isSimpleTag: typeof isSimpleTag;
+declare const Neep_isSimpleElement: typeof isSimpleElement;
+declare const Neep_createElement: typeof createElement;
+declare const Neep_elements: typeof elements;
+declare const Neep_equal: typeof equal;
+declare const Neep_label: typeof label;
+declare const Neep_getRect: typeof getRect;
+declare const Neep_current: typeof current;
+declare const Neep_checkCurrent: typeof checkCurrent;
+declare const Neep_addContextConstructor: typeof addContextConstructor;
+declare const Neep_addEntityConstructor: typeof addEntityConstructor;
+declare const Neep_refresh: typeof refresh;
+type Neep_Mark = Mark;
+declare const Neep_mName: typeof mName;
+declare const Neep_mType: typeof mType;
+declare const Neep_mSimple: typeof mSimple;
+declare const Neep_mNative: typeof mNative;
+declare const Neep_mRender: typeof mRender;
+declare const Neep_mConfig: typeof mConfig;
+declare const Neep_mComponent: typeof mComponent;
+declare const Neep_create: typeof create;
+declare const Neep_mark: typeof mark;
+type Neep_Devtools = Devtools;
+type Neep_Hook = Hook;
+declare const Neep_NeepNode: typeof NeepNode;
+type Neep_SlotFn = SlotFn;
+type Neep_Slots = Slots;
+type Neep_Emit = Emit;
+type Neep_EventSet = EventSet;
+type Neep_On = On;
+type Neep_ContextConstructor = ContextConstructor;
+type Neep_EntityConstructor = EntityConstructor;
+declare const Neep_Hooks: typeof Hooks;
+type Neep_Exposed = Exposed;
+declare const Neep_Delivered: typeof Delivered;
+type Neep_RootExposed = RootExposed;
+type Neep_Deliver = Deliver;
+type Neep_Context = Context;
+type Neep_Entity = Entity;
+type Neep_Render = Render;
+type Neep_Service = Service;
+type Neep_Marks = Marks;
+type Neep_Component = Component;
+declare const Neep_Tag: typeof Tag;
+type Neep_Ref = Ref;
+type Neep_RefSet = RefSet;
+type Neep_RefValue = RefValue;
+type Neep_NeepElement = NeepElement;
+type Neep_TreeNode = TreeNode;
+type Neep_MountedNode = MountedNode;
+type Neep_NativeElement = NativeElement;
+type Neep_NativeText = NativeText;
+type Neep_NativePlaceholder = NativePlaceholder;
+type Neep_NativeComponent = NativeComponent;
+type Neep_NativeShadow = NativeShadow;
+declare const Neep_NativeContainer: typeof NativeContainer;
+declare const Neep_NativeNode: typeof NativeNode;
+type Neep_MountProps = MountProps;
+type Neep_Rect = Rect;
+type Neep_IRender = IRender;
+type Neep_ElementIteratorOptions = ElementIteratorOptions;
+declare const Neep_typeSymbol: typeof typeSymbol;
+declare const Neep_nameSymbol: typeof nameSymbol;
+declare const Neep_renderSymbol: typeof renderSymbol;
+declare const Neep_componentsSymbol: typeof componentsSymbol;
+declare const Neep_configSymbol: typeof configSymbol;
+declare const Neep_objectTypeSymbol: typeof objectTypeSymbol;
+declare const Neep_objectTypeSymbolElement: typeof objectTypeSymbolElement;
+declare const Neep_objectTypeSymbolDeliver: typeof objectTypeSymbolDeliver;
+declare const Neep_deliverKeySymbol: typeof deliverKeySymbol;
+declare const Neep_deliverDefaultSymbol: typeof deliverDefaultSymbol;
+declare const Neep_setHook: typeof setHook;
+declare const Neep_callHook: typeof callHook;
+declare namespace Neep {
+  export {
+    Neep_install as install,
+    NeepError as Error,
+    Neep_EventEmitter as EventEmitter,
+    Neep_render as render,
+    Neep_register as register,
+    Neep_lazy as lazy,
+    Neep_version as version,
+    Neep_isProduction as isProduction,
+    Neep_createDeliver as createDeliver,
+    Neep_isDeliver as isDeliver,
+    Neep_ScopeSlot as ScopeSlot,
+    Neep_SlotRender as SlotRender,
+    Neep_Slot as Slot,
+    Neep_Value as Value,
+    Neep_Container as Container,
+    Neep_Template as Template,
+    Neep_Fragment as Fragment,
+    Neep_ref as ref,
+    Neep_value as value,
+    Neep_computed as computed,
+    Neep_isValue as isValue,
+    Neep_encase as encase,
+    Neep_recover as recover,
+    Neep_valueify as valueify,
+    Neep_asValue as asValue,
+    Neep_watch as watch,
+    Neep_useValue as useValue,
+    Neep_useService as useService,
+    Neep_byService as byService,
+    Neep_hook as hook,
+    Neep_expose as expose,
+    Neep_isElement as isElement,
+    Neep_isSimpleTag as isSimpleTag,
+    Neep_isSimpleElement as isSimpleElement,
+    Neep_createElement as createElement,
+    Neep_elements as elements,
+    Neep_equal as equal,
+    Neep_label as label,
+    Neep_getRect as getRect,
+    Neep_current as current,
+    Neep_checkCurrent as checkCurrent,
+    Neep_addContextConstructor as addContextConstructor,
+    Neep_addEntityConstructor as addEntityConstructor,
+    Neep_refresh as refresh,
+    Neep_Mark as Mark,
+    Neep_mName as mName,
+    Neep_mType as mType,
+    Neep_mSimple as mSimple,
+    Neep_mNative as mNative,
+    Neep_mRender as mRender,
+    Neep_mConfig as mConfig,
+    Neep_mComponent as mComponent,
+    Neep_create as create,
+    Neep_mark as mark,
+    EntityObject$1 as EntityObject,
+    ComponentEntity$1 as ComponentEntity,
+    ContainerEntity$1 as ContainerEntity,
+    Neep_Devtools as Devtools,
+    Neep_Hook as Hook,
+    Neep_NeepNode as NeepNode,
+    Neep_SlotFn as SlotFn,
+    Neep_Slots as Slots,
+    Neep_Emit as Emit,
+    Neep_EventSet as EventSet,
+    Neep_On as On,
+    Neep_ContextConstructor as ContextConstructor,
+    Neep_EntityConstructor as EntityConstructor,
+    Neep_Hooks as Hooks,
+    Neep_Exposed as Exposed,
+    Neep_Delivered as Delivered,
+    Neep_RootExposed as RootExposed,
+    Neep_Deliver as Deliver,
+    Neep_Context as Context,
+    Neep_Entity as Entity,
+    Neep_Render as Render,
+    Neep_Service as Service,
+    Neep_Marks as Marks,
+    Neep_Component as Component,
+    Neep_Tag as Tag,
+    Neep_Ref as Ref,
+    Neep_RefSet as RefSet,
+    Neep_RefValue as RefValue,
+    Neep_NeepElement as NeepElement,
+    Neep_TreeNode as TreeNode,
+    Neep_MountedNode as MountedNode,
+    Neep_NativeElement as NativeElement,
+    Neep_NativeText as NativeText,
+    Neep_NativePlaceholder as NativePlaceholder,
+    Neep_NativeComponent as NativeComponent,
+    Neep_NativeShadow as NativeShadow,
+    Neep_NativeContainer as NativeContainer,
+    Neep_NativeNode as NativeNode,
+    Neep_MountProps as MountProps,
+    Neep_Rect as Rect,
+    Neep_IRender as IRender,
+    Neep_ElementIteratorOptions as ElementIteratorOptions,
+    Neep_typeSymbol as typeSymbol,
+    Neep_nameSymbol as nameSymbol,
+    Neep_renderSymbol as renderSymbol,
+    Neep_componentsSymbol as componentsSymbol,
+    Neep_configSymbol as configSymbol,
+    Neep_objectTypeSymbol as objectTypeSymbol,
+    Neep_objectTypeSymbolElement as objectTypeSymbolElement,
+    Neep_objectTypeSymbolDeliver as objectTypeSymbolDeliver,
+    Neep_deliverKeySymbol as deliverKeySymbol,
+    Neep_deliverDefaultSymbol as deliverDefaultSymbol,
+    Neep_setHook as setHook,
+    Neep_callHook as callHook,
+  };
+}
+
+export default Neep;
+export { Component, ComponentEntity$1 as ComponentEntity, Container, ContainerEntity$1 as ContainerEntity, Context, ContextConstructor, Deliver, Delivered, Devtools, ElementIteratorOptions, Emit, Entity, EntityConstructor, EntityObject$1 as EntityObject, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, MountedNode, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Rect, Ref, RefSet, RefValue, Render, RootExposed, ScopeSlot, Service, Slot, SlotFn, SlotRender, Slots, Tag, Template, TreeNode, Value, addContextConstructor, addEntityConstructor, byService, callHook, checkCurrent, componentsSymbol, configSymbol, create, createDeliver, createElement, current, deliverDefaultSymbol, deliverKeySymbol, elements, equal, expose, getRect, hook, install, isDeliver, isElement, isProduction, isSimpleElement, isSimpleTag, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, objectTypeSymbol, objectTypeSymbolDeliver, objectTypeSymbolElement, ref, refresh, register, render, renderSymbol, setHook, typeSymbol, useService, useValue, version, watch };
