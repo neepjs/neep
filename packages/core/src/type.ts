@@ -166,10 +166,9 @@ export interface Ref {
 }
 
 export interface NeepElement {
-	[symbols.isElementSymbol]: true,
+	[symbols.objectTypeSymbol]: typeof symbols.objectTypeSymbolElement,
 	/** 标签名 */
 	tag: Tag;
-	execed?: boolean;
 	/** 属性 */
 	props?: { [key: string]: any; };
 	/** 子节点 */
@@ -184,6 +183,7 @@ export interface NeepElement {
 	value?: any;
 	/** 是否是已插入的 */
 	inserted?: boolean;
+	execed?: boolean;
 	/** 标注 */
 	label?: [string, string];
 }
@@ -191,7 +191,7 @@ export interface NeepElement {
 export interface TreeNode
 	extends Omit<
 	NeepElement,
-	'children' | typeof symbols.isElementSymbol
+	'children' | typeof symbols.objectTypeSymbol
 	>
 {
 	children: (this | this[])[];

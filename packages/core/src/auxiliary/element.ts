@@ -1,5 +1,9 @@
 import { Tag, NeepElement, ElementIteratorOptions } from '../type';
-import { isElementSymbol, typeSymbol } from '../symbols';
+import {
+	objectTypeSymbol,
+	objectTypeSymbolElement,
+	typeSymbol,
+} from '../symbols';
 import { Value, Template, ScopeSlot } from './tags';
 
 /**
@@ -8,7 +12,7 @@ import { Value, Template, ScopeSlot } from './tags';
 export function isElement(v: any): v is NeepElement {
 	if (!v) { return false; }
 	if (typeof v !== 'object') { return false; }
-	return v[isElementSymbol] === true;
+	return v[objectTypeSymbol] === objectTypeSymbolElement;
 }
 export function isSimpleTag(tag: Tag): boolean {
 	if (!tag) { return false; }
@@ -26,7 +30,7 @@ export function createElement(
 ): NeepElement {
 	const props = attrs ? {...attrs} : {};
 	const node: NeepElement = {
-		[isElementSymbol]: true,
+		[objectTypeSymbol]: objectTypeSymbolElement,
 		tag,
 		key: undefined,
 		props,

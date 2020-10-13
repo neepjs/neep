@@ -1,6 +1,10 @@
 import { NeepElement, SlotFn, Slots, IRender } from '../type';
 import { isElement, SlotRender, ScopeSlot, equal, Template } from '../auxiliary';
-import { isElementSymbol, typeSymbol } from '../symbols';
+import {
+	typeSymbol,
+	objectTypeSymbol,
+	objectTypeSymbolElement,
+} from '../symbols';
 import { isProduction } from '../constant';
 import { isValue } from '../install';
 
@@ -109,7 +113,7 @@ function createSlots(
 	list: any[],
 ): SlotFn {
 	const slot = (...props: any): NeepElement => ({
-		[isElementSymbol]: true,
+		[objectTypeSymbol]: objectTypeSymbolElement,
 		tag: ScopeSlot,
 		children: renderSlots(list, ...props),
 		inserted: true,

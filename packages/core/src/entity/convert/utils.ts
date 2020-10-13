@@ -1,6 +1,6 @@
 import { NeepElement, TreeNode } from '../../type';
-import { isElement } from '../../auxiliary';
-import { isElementSymbol } from '../../symbols';
+import { isElement, Value } from '../../auxiliary';
+import { objectTypeSymbol, objectTypeSymbolElement } from '../../symbols';
 
 /** 强制转换为 NeepElement */
 export function toElement(t: any): null | NeepElement {
@@ -11,8 +11,8 @@ export function toElement(t: any): null | NeepElement {
 		return t;
 	}
 	return {
-		[isElementSymbol]: true,
-		tag: 'Neep:Value',
+		[objectTypeSymbol]: objectTypeSymbolElement,
+		tag: Value,
 		key: t,
 		value: t,
 		children: [],

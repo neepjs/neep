@@ -2,16 +2,22 @@ import {
 	NeepElement, Exposed, Delivered,
 	Render, NeepNode, Slots, Context, IRender, Component,
 } from '../../type';
-import { typeSymbol, componentsSymbol } from '../../symbols';
+import {
+	renderSymbol,
+	typeSymbol,
+	componentsSymbol,
+	objectTypeSymbol,
+	objectTypeSymbolElement,
+} from '../../symbols';
 import { isProduction } from '../../constant';
-import { isElement, Deliver, Value, SlotRender } from '../../auxiliary';
-import { renderSymbol, isElementSymbol } from '../../symbols';
+import {
+	isElement, Deliver, Value, SlotRender,
+} from '../../auxiliary';
 import { getLabel } from '../../extends/label';
 import ComponentEntity from '../ComponentEntity';
 import EntityObject from '../EntityObject';
 import { getSlots, setSlots } from '../slot';
 import { initContext } from '../../extends/context';
-import { updateProps } from '../props';
 import EventEmitter from '../../EventEmitter';
 import replaceNode from './replaceNode';
 import { isValue, postpone } from '../../install';
@@ -199,7 +205,7 @@ function renderNode<R extends object = object>(
 	if (isElement(node)) { return [node]; }
 	if (node === undefined || node === null) {
 		return [{
-			[isElementSymbol]: true,
+			[objectTypeSymbol]: objectTypeSymbolElement,
 			tag: null,
 			key: undefined,
 			children: [],
@@ -213,14 +219,14 @@ function renderNode<R extends object = object>(
 	if (isElement(node)) { return [node]; }
 	if (node === undefined || node === null) {
 		return [{
-			[isElementSymbol]: true,
+			[objectTypeSymbol]: objectTypeSymbolElement,
 			tag: null,
 			key: undefined,
 			children: [],
 		}];
 	}
 	return [{
-		[isElementSymbol]: true,
+		[objectTypeSymbol]: objectTypeSymbolElement,
 		key: undefined,
 		tag: Value,
 		value: node,
