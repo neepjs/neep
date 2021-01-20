@@ -1,4 +1,4 @@
-import { create, mark, mName, mComponent, value, createElement, label, hook, Container, computed } from '@neep/core';
+import Neep from '@neep/core';
 
 import C from './C';
 import { DeliverValue, DeliverNumber } from './delivers';
@@ -19,37 +19,38 @@ const divs = [
 	createItem('#00F'),
 ];
 
-const A = create((
+export default Neep.createComponent((
 	props: { name?: string },
 ) => {
-	const divIndex = value(6);
-	const div = computed(() => divs[divIndex.value]);
+	const divIndex = Neep.value(6);
+	const div = Neep.computed(() => divs[divIndex.value]);
 
 	function moveDiv(): void {
 		divIndex.value = (divIndex.value + 1) % (divs.length + 1);
 	}
 
-	label('{自定义标签文本}', '#F00');
-	hook('beforeCreate', () => console.log('Hook', 'A', 'beforeCreate'));
-	hook('created', () => console.log('Hook', 'A', 'created'));
-	hook('beforeMount', () => console.log('Hook', 'A', 'beforeMount'));
-	hook('mounted', () => console.log('Hook', 'A', 'mounted'));
-	hook('beforeUpdate', () => console.log('Hook', 'A', 'beforeUpdate'));
-	hook('updated', () => console.log('Hook', 'A', 'updated'));
-	const v = value(1);
+	Neep.label('{自定义标签文本}', '#F00');
+	Neep.hook('beforeCreate', () => console.log('Hook', 'A', 'beforeCreate'));
+	Neep.hook('created', () => console.log('Hook', 'A', 'created'));
+	Neep.hook('beforeMount', () => console.log('Hook', 'A', 'beforeMount'));
+	Neep.hook('mounted', () => console.log('Hook', 'A', 'mounted'));
+	Neep.hook('beforeUpdate', () => console.log('Hook', 'A', 'beforeUpdate'));
+	Neep.hook('updated', () => console.log('Hook', 'A', 'updated'));
+	const v = Neep.value(1);
 	const ref = (x: any): void => console.log('Ref', 'B', x);
-	return () => <DeliverValue value={v}>
+	return Neep.createRenderElement(() => <DeliverValue value={v}>
 		<DeliverNumber value={v.value}>
-			<Container target={div}>
+			<Neep.Container target={div}>
 				<button on-click={moveDiv}>移动</button>
-			</Container>
+			</Neep.Container>
 			<tc a="1" onset={() => v.value++ } ref={ref}>
 				<b ref={ref}>你好</b>
 				<i ref={ref}>{v}</i>
 				<u ref={ref} slot="name">{props.name}</u>
 			</tc>
 		</DeliverNumber>
-	</DeliverValue>;
+	</DeliverValue>);
+}, {
+	name: 'A',
+	components: {tc: C},
 });
-
-export default mark(A, mName('A'), mComponent('tc', C));
