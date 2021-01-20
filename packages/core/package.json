@@ -14,7 +14,6 @@
     "types.d.ts",
     "README.md",
     "LICENSE",
-    "esm/package.json",
     "dist"
   ],
   "author": "Fierflame",

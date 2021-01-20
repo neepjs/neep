@@ -6,7 +6,7 @@ module.exports = {
 	},
 	"settings": {
 		"react": {
-			"pragma": 'createElement',
+			"pragma": 'Neep',
 		},
 	},
 	parser: '@typescript-eslint/parser',

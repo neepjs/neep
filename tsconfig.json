@@ -1,11 +1,12 @@
 {
   "compilerOptions": {
     "jsx": "react",
-    "jsxFactory": "createElement",
+    "jsxFactory": "Neep",
     "outDir": "./types/",
     "module": "commonjs",
     "target": "esnext",
     "baseUrl": ".",
+    "moduleResolution": "node",
     "paths": {
       "@neep/core": ["packages/core/src"],
       "@neep/renderer-html": ["packages/renderer-html/src"]
