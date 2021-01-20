@@ -1,6 +1,13 @@
 import { install as NeepInstall } from '@neep/core';
 
-export { isValue, EventEmitter, Error } from '@neep/core';
-export default function installNeep(): typeof NeepInstall {
-	return NeepInstall;
+export {
+	isValue,
+	createContainerComponent,
+	createElement,
+} from '@neep/core';
+
+export default function installNeep(
+	renderer: import('@neep/core').IRenderer,
+): void {
+	NeepInstall({renderer});
 }

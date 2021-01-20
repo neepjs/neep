@@ -1,5 +1,5 @@
 /* eslint-disable no-fallthrough */
-import { isValue } from '../install/neep';
+import { isValue } from '../../install/neep';
 
 export type Attrs = Record<string, string | null>;
 
@@ -143,14 +143,15 @@ function update(
 	}
 }
 
+const PropsMap = new WeakMap<Element, Attrs>();
 export default function updateAttrs(
 	props: {[k: string]: any},
 	el: Element,
-	old: Attrs,
 	hasStyle: boolean,
-): Attrs {
+): void {
+	const old = PropsMap.get(el) || {};
 	const attrs = getAttrs(props, hasStyle);
 	update(el, attrs, old);
 	setAttrs(el, attrs);
-	return attrs;
+	PropsMap.set(el, attrs);
 }

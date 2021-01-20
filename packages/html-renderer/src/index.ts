@@ -1,3 +1,3 @@
 export * from './exports';
-import * as NeepWebRender from './exports';
-export default NeepWebRender;
+import * as NeepHtmlRender from './exports';
+export default NeepHtmlRender;

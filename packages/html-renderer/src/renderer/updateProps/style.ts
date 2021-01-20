@@ -1,4 +1,4 @@
-import { isValue } from '../install/neep';
+import { isValue } from '../../install/neep';
 
 export type Style = string | Record<string, [string, 'important' | undefined]>;
 
@@ -113,17 +113,20 @@ function update(
 		}
 	}
 }
+const PropsMap = new WeakMap<Element, Style | undefined>();
 export default function updateStyle(
 	props: {[k: string]: any},
+	el: Element,
 	css: CSSStyleDeclaration,
-	old?: Style,
 	hasStyle?: boolean,
 ): Style | undefined {
 	if (!hasStyle) { return undefined; }
+	const old = PropsMap.get(el);
 
 	const style = getStyle(
 		isValue(props.style) ? props.style() : props.style,
 	);
 	update(css, style, old);
+	PropsMap.set(el, style);
 	return style;
 }

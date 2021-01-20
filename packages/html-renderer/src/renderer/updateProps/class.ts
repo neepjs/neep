@@ -1,7 +1,7 @@
-import { isValue } from '../install/neep';
-import { Value } from 'monitorable';
+import Neep from '@neep/core';
+import { isValue } from '../../install/neep';
 
-export type RecursiveItem<T> = T | RecursiveItem<T>[] | Value<T>;
+export type RecursiveItem<T> = T | RecursiveItem<T>[] | Neep.Value<T>;
 
 export function *recursive2iterable<T>(
 	list: RecursiveItem<T>,
@@ -60,12 +60,14 @@ function update(
 		el.removeAttribute('class');
 	}
 }
+
+const PropsMap = new WeakMap<Element, Class | undefined>();
 export default function updateClass(
 	props: {[k: string]: any},
 	el: Element,
-	old?: Class,
-): Class | undefined {
+): void {
+	const old = PropsMap.get(el);
 	const classes = getClass(isValue(props.class) ? props.class() : props.class);
 	update(el, classes, old);
-	return classes;
+	PropsMap.set(el, classes);
 }
