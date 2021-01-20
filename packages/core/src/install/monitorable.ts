@@ -1,7 +1,10 @@
 export {
-	value, computed, isValue, encase, valueify, asValue, mixValue,
-	markRead, markChange, safeify, exec, monitor, printError, postpone,
-	createObject, defineProperty, get, set,
+	printError, safeify,
+	markRead, markChange, postpone,
+	exec, monitor,
+	value, computed, isValue, valueify, asValue, mixValue,
+	defineProperty, createObject, get, set,
+	encase,
 } from 'monitorable';
 
 

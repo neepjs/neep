@@ -17,11 +17,12 @@ import { Node } from './node';
 import { Emit, EventSet } from './event';
 import { Ref } from './ref';
 import { Value } from './monitorable';
+import { Entity } from './entity';
 
 interface Attributes<T extends object> {
 	slot?: string;
-	'n:ref'?: Ref<T>;
-	'n-ref'?: Ref<T>;
+	'n:ref'?: Ref<T, Entity<any, any>>;
+	'n-ref'?: Ref<T, Entity<any, any>>;
 	'@'?: Emit | EventSet,
 	'n:on'?: Emit | EventSet,
 	'n-on'?: Emit | EventSet,
