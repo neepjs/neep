@@ -17,7 +17,7 @@ export default {
 		alias({
 			entries: {
 				'@neep/core': './packages/core/src/index.ts',
-				'@neep/html-renderer': './packages/html-renderer/src/index.ts',
+				'@neep/renderer-html': './packages/renderer-html/src/index.ts',
 			},
 		}),
 		resolve(),

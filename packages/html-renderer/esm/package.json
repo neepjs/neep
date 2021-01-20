@@ -1,7 +1,0 @@
-{
-  "main": "../dist/neep.html.renderer.esm.js",
-  "browser": "../dist/neep.html.renderer.esm.min.js",
-  "unpkg": "../dist/neep.html.renderer.esm.js",
-  "jsdelivr": "../dist/neep.html.renderer.esm.js",
-  "typings": "../types"
-}
