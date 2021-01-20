@@ -1,461 +1,478 @@
 /*!
- * Neep v0.1.0-alpha.15
- * (c) 2019-2020 Fierflame
+ * Neep v0.1.0-alpha.16
+ * (c) 2019-2021 Fierflame
  * @license MIT
  */
 import * as _mp_rt1_monitorable__ from 'monitorable';
-import { Value as Value$1, WatchCallback, value, computed, isValue, encase, recover, valueify, asValue } from 'monitorable';
-export { asValue, computed, encase, isValue, recover, value, valueify } from 'monitorable';
+import { Value, WatchCallback, value, computed, isValue, encase, valueify, asValue, mixValue, defineProperty, ReadMap, ObserveOptions, ExecOptions, ExecResult, MonitorOptions, Monitored, CancelWatch, ComputedOptions, Valueify, AsValue, DeValue, EnValue } from 'monitorable';
+export { AsValue, CancelWatch, ComputedOptions, DeValue, EnValue, ExecOptions, ExecResult, MonitorOptions, Monitored, ObserveOptions, ReadMap, Value, Valueify, WatchCallback, asValue, computed, defineProperty, encase, isValue, mixValue, value, valueify } from 'monitorable';
 
-declare const ScopeSlot = "neep:ScopeSlot";
-declare const SlotRender = "neep:SlotRender";
-declare const Slot = "neep:slot";
-declare const Value = "neep:value";
-declare const Container = "neep:container";
+declare const ScopeSlot = "core:scopeslot";
+declare const Render = "core:render";
+declare const Slot = "core:slot";
+declare const Container = "core:container";
 declare const Template = "template";
 declare const Fragment = "template";
 
-declare const _mp_rt28__auxiliary_tags___ScopeSlot: typeof ScopeSlot;
-declare const _mp_rt28__auxiliary_tags___SlotRender: typeof SlotRender;
-declare const _mp_rt28__auxiliary_tags___Slot: typeof Slot;
-declare const _mp_rt28__auxiliary_tags___Value: typeof Value;
-declare const _mp_rt28__auxiliary_tags___Container: typeof Container;
-declare const _mp_rt28__auxiliary_tags___Template: typeof Template;
-declare const _mp_rt28__auxiliary_tags___Fragment: typeof Fragment;
-declare namespace _mp_rt28__auxiliary_tags__ {
+declare const _mp_rt1____auxiliary_tags___ScopeSlot: typeof ScopeSlot;
+declare const _mp_rt1____auxiliary_tags___Render: typeof Render;
+declare const _mp_rt1____auxiliary_tags___Slot: typeof Slot;
+declare const _mp_rt1____auxiliary_tags___Container: typeof Container;
+declare const _mp_rt1____auxiliary_tags___Template: typeof Template;
+declare const _mp_rt1____auxiliary_tags___Fragment: typeof Fragment;
+declare namespace _mp_rt1____auxiliary_tags__ {
   export {
-    _mp_rt28__auxiliary_tags___ScopeSlot as ScopeSlot,
-    _mp_rt28__auxiliary_tags___SlotRender as SlotRender,
-    _mp_rt28__auxiliary_tags___Slot as Slot,
-    _mp_rt28__auxiliary_tags___Value as Value,
-    _mp_rt28__auxiliary_tags___Container as Container,
-    _mp_rt28__auxiliary_tags___Template as Template,
-    _mp_rt28__auxiliary_tags___Fragment as Fragment,
+    _mp_rt1____auxiliary_tags___ScopeSlot as ScopeSlot,
+    _mp_rt1____auxiliary_tags___Render as Render,
+    _mp_rt1____auxiliary_tags___Slot as Slot,
+    _mp_rt1____auxiliary_tags___Container as Container,
+    _mp_rt1____auxiliary_tags___Template as Template,
+    _mp_rt1____auxiliary_tags___Fragment as Fragment,
   };
 }
 
-interface AddEvent<T extends Record<string, any[]>> {
-    <N extends keyof T>(entName: N, listener: (...p: T[N]) => void): void;
-}
-declare class EventEmitter<T extends Record<string, any[]> = Record<string, any[]>> {
-    static update<T extends Record<string, any[]>>(emitter: EventEmitter<T>, events: any): (() => void)[];
-    static updateInProps<T extends Record<string, any[]>>(emitter: EventEmitter<T>, props: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
-    private readonly _names;
-    private readonly _cancelHandles;
-    get names(): (keyof T)[];
-    readonly emit: Emit<T>;
-    readonly on: On<T>;
-    constructor();
-    updateHandles(newHandles: (() => void)[]): (() => void)[];
-    update(list: any): (() => void)[];
-    updateInProps(list: any, custom?: (addEvent: AddEvent<T>) => void): (() => void)[];
-}
-
-interface RecursiveArray<T> extends Array<RecursiveItem<T>> {
-}
-declare type RecursiveItem<T> = T | RecursiveArray<T>;
-
-declare class EntityObject {
-    readonly slotRenderFnList: WeakMap<Function, Function>;
-    readonly events: EventEmitter<Record<string, any[]>>;
-    readonly emit: Emit<Record<string, any[]>>;
-    readonly on: On<Record<string, any[]>>;
-    readonly eventCancelHandles: Set<() => void>;
-    readonly iRender: IRender;
-    readonly components: Record<string, Component>;
-    readonly config: Record<string, any>;
-    /** 接受到的呈递值 */
-    readonly parentDelivered: Delivered;
-    /** 向后代呈递的值 */
-    readonly delivered: Delivered;
-    /** 组件暴露值 */
-    readonly exposed: Exposed;
-    /** 组件实体 */
-    readonly entity: Entity;
-    /** 父组件 */
-    parent?: EntityObject;
-    /** 原生组件 */
-    native: NativeComponent | undefined;
-    /** 状态 */
-    created: boolean;
-    destroyed: boolean;
-    mounted: boolean;
-    unmounted: boolean;
-    /**  子组件的暴露值 */
-    readonly children: Set<Exposed>;
-    /** The subtree mounted on the parent node */
-    tree: (MountedNode | MountedNode[])[];
-    readonly container: ContainerEntity;
-    constructor(iRender: IRender, parent?: EntityObject, delivered?: Delivered, container?: ContainerEntity);
-    /** 结果渲染函数 */
-    protected _render: () => RecursiveArray<NeepNode>;
-    get canRefresh(): boolean;
-    protected get needRefresh(): boolean;
-    /** 是否需要继续刷新 */
-    protected _needRefresh: boolean;
-    private _delayedRefresh;
-    /** 是否为刷新中 */
-    private _refreshing;
-    /** 渲染结果 */
-    protected _nodes: (TreeNode | TreeNode[])[];
-    protected requestDraw(): void;
-    asyncRefresh<T>(f: () => PromiseLike<T> | T): Promise<T>;
-    refresh(): void;
-    refresh<T>(f: () => T, async?: false): T;
-    refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
-    refresh<T>(f: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T;
-    refresh<T>(f?: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T | undefined;
-    callHook<H extends Hooks>(id: H): void;
-    callHook(id: string): void;
-    childNodes: any[];
-    /** 更新属性及子代 */
-    protected _update(props: object, children: any[]): void;
-    /** 更新属性及子代 */
-    update(props: object, children: any[]): void;
-    private __executed_destroy;
-    private __executed_mount;
-    private __executed_mounted;
-    protected _destroy(): void;
-    destroy(): void;
-    protected _mount(): void;
-    mount(): void;
-    protected _unmount(): void;
-    unmount(): void;
-    _draw(): void;
-    _cancelDrawMonitor?: () => void;
-    draw(): void;
-}
-
-declare class ContainerEntity extends EntityObject {
-    props: MountProps;
-    /** 组件树结构 */
-    content: (MountedNode | MountedNode[])[];
-    _node: NativeNode | null;
-    _container: NativeContainer | null;
-    readonly rootContainer: ContainerEntity;
-    constructor(iRender: IRender, props: MountProps, children: any[], parent?: EntityObject, delivered?: Delivered);
-    _drawChildren: boolean;
-    _drawContainer: boolean;
-    setChildren(children: any[]): void;
-    setProps(props: MountProps): void;
-    /** 更新属性及子代 */
-    update(props: MountProps, children: any[]): void;
-    requestDraw(): void;
-    _mount(): void;
-    _destroy(): void;
-    _unmount(): void;
-    _cancelDrawContainerMonitor?: () => void;
-    _cancelDrawChildrenMonitor?: () => void;
-    _draw(): void;
-    _drawSelf(): void;
-    drawSelf(): void;
-    /** 等待重画的项目 */
-    private _awaitDraw;
-    /** 自身是否需要重绘 */
-    private _needDraw;
-    /** 标记需要绘制的元素 */
-    markDraw(nObject: EntityObject, remove?: boolean): void;
-    drawContainer(): void;
-    private _containers;
-    markDrawContainer(container: ContainerEntity, remove?: boolean): void;
-    drawAll(): void;
-}
-
-declare class ComponentEntity<P extends object = object, R extends object = object> extends EntityObject {
-    /** 组件函数 */
-    readonly component: Component<P, R>;
-    /** 组件属性 */
-    readonly props: P;
-    /** 组件槽 */
-    readonly slots: Slots;
-    lastSlots: Record<string | symbol, any[]> | undefined;
-    /** 结果渲染函数 */
-    private readonly _stopRender;
-    /** 原生子代 */
-    nativeNodes: (TreeNode | TreeNode[])[] | undefined;
-    shadowTree: (MountedNode | MountedNode[])[];
-    nativeTree: (MountedNode | MountedNode[])[];
-    private readonly _shadow;
-    /** 组件上下文 */
-    readonly context: Context;
-    readonly parent: EntityObject;
-    /** 结果渲染函数 */
-    constructor(component: Component<P, R>, props: object, children: any[], parent: EntityObject, delivered?: Delivered);
-    /** 更新属性及子代 */
-    _update(props: object, children: any[]): void;
-    _destroy(): void;
-    /** 刷新 */
-    requestDraw(): void;
-    _draw(): void;
-    _mount(): void;
-    _unmount(): void;
-}
-
-interface Attributes {
-	slot?: string;
-	ref?: Ref;
-	'@'?: Emit | EventSet,
-	'n:on'?: Emit | EventSet,
-	'n-on'?: Emit | EventSet,
-	
-}
-interface NativeAttributes extends Attributes {
-	id?: string;
-	class?: string;
-}
-interface ClassAttributes<T> extends Attributes {
-
-}
-
-interface SlotAttr {
-	name?: string;
-}
-interface ScopeSlotAttr {
-	name?: string;
-	render?(...params: any[]): NeepNode | NeepNode[];
-}
-interface SlotRenderAttr {
-
-}
-
-
-declare global {
-	namespace JSX {
-		interface IntrinsicAttributes extends NativeAttributes { }
-		interface IntrinsicClassAttributes<T> extends ClassAttributes<T> { }
-
-		interface IntrinsicElements {
-			[Slot]: SlotAttr & ScopeSlotAttr;
-			[SlotRender]: SlotRenderAttr;
-			[ScopeSlot]: ScopeSlotAttr;
-			slot: SlotAttr;
-			[k: string]: any;
-		}
-	}
-}
-
-declare const typeSymbol: unique symbol;
+declare const rendererSymbol: unique symbol;
 declare const nameSymbol: unique symbol;
-declare const renderSymbol: unique symbol;
 declare const componentsSymbol: unique symbol;
-declare const configSymbol: unique symbol;
+declare const propsSymbol: unique symbol;
+declare const componentValueSymbol: unique symbol;
 declare const objectTypeSymbol: unique symbol;
 declare const objectTypeSymbolElement = "$$$objectType$$$Element";
-declare const objectTypeSymbolDeliver = "$$$objectType$$$Deliver";
+declare const objectTypeSymbolDeliverComponent = "$$$objectType$$$DeliverComponent";
+declare const objectTypeSymbolNativeComponent = "$$$objectType$$$NativeComponentNode";
+declare const objectTypeSymbolSimpleComponent = "$$$objectType$$$SimpleComponent";
+declare const objectTypeSymbolShellComponent = "$$$objectType$$$ShellComponent";
+declare const objectTypeSymbolRenderComponent = "$$$objectType$$$RenderComponent";
+declare const objectTypeSymbolContainerComponent = "$$$objectType$$$ContainerComponent";
+declare const objectTypeSymbolElementComponent = "$$$objectType$$$ElementComponent";
+declare const objectTypeSymbolHookEntity = "$$$objectType$$$HookEntity";
+declare const objectTypeSymbolRootEntity = "$$$objectType$$$RootEntity";
 declare const deliverKeySymbol: unique symbol;
 declare const deliverDefaultSymbol: unique symbol;
 
-declare type EntityObject$1 = InstanceType<typeof EntityObject>;
-declare type ComponentEntity$1 = InstanceType<typeof ComponentEntity>;
-declare type ContainerEntity$1 = InstanceType<typeof ContainerEntity>;
-interface Devtools {
-    renderHook(container: ContainerEntity$1): void;
+declare class EventEmitter<T, E extends Record<string, any> = Record<string, any>> {
+    private readonly _names;
+    get names(): (keyof E)[];
+    readonly events: Record<string, Set<Listener<T, any>> | undefined>;
+    readonly emit: Emit<E>;
+    readonly on: On<T, E>;
+    target?: T;
+    constructor();
+    private readonly __propsEvents;
+    private readonly __eventMap;
+    private readonly __propsEmitEvents;
+    private __propsEmitEvent?;
+    updateInProps(props: any): void;
 }
-/** 全局钩子 */
-interface Hook {
-    (nObject: Entity): void;
+
+interface EmitOptions {
+    options?: boolean;
+    cancelable?: boolean;
 }
-/** source 对象 */
-declare type NeepNode = NeepElement | null;
-/** 槽函数 */
-interface SlotFn {
-    (...props: any): NeepElement;
-    readonly children: any[];
-}
-/** 槽列表 */
-interface Slots {
-    [name: string]: SlotFn | undefined;
-}
-interface Emit<T extends Record<string, any[]> = Record<string, any[]>> {
-    <N extends keyof T>(name: N, ...p: T[N]): boolean;
+declare type EmitProps<T> = undefined extends T ? [] | [T] : void extends T ? [] | [T] : never extends T ? [] | [T] : [T];
+interface Emit<T extends Record<string, any> = Record<string, any>> {
+    <N extends keyof T & string>(name: N, ...p: EmitProps<T[N]>): boolean;
+    <N extends keyof T & string>(name: N, p: T[N]): boolean;
     omit(...names: string[]): Emit;
     readonly names: (keyof T)[];
 }
 interface EventSet {
     [key: string]: (...p: any[]) => void;
 }
-interface On<T extends Record<string, any[]> = Record<string, any[]>> {
-    <N extends keyof T>(name: N, listener: (...p: T[N]) => void | undefined | null | boolean): () => void;
+interface EventInfo<T> {
+    readonly target: any;
+    readonly cancelable: boolean;
+    readonly defaultPrevented: boolean;
+    readonly prevented: boolean;
+    preventDefault(): void;
+    prevent(): void;
 }
-interface ContextConstructor {
-    (context: Context, entity?: Entity): void;
+interface Listener<T, P> {
+    (p: P, event: EventInfo<T>): void;
 }
-interface EntityConstructor {
-    (entity: Entity): void;
+interface On<T, E extends Record<string, any>> {
+    <N extends keyof E & string>(name: N, listener: Listener<T, E[N]>): () => void;
 }
-declare type Hooks = 'beforeCreate' | 'created' | 'beforeDestroy' | 'destroyed' | 'beforeUpdate' | 'updated' | 'beforeMount' | 'mounted' | 'beforeDraw' | 'drawn' | 'beforeDrawAll' | 'drawnAll';
-interface Exposed {
-    readonly $component: Component<any, any> | null;
-    readonly $parent?: Exposed;
-    readonly $isContainer: boolean;
-    readonly $created: boolean;
-    readonly $destroyed: boolean;
-    readonly $mounted: boolean;
-    readonly $unmounted: boolean;
-    /** Only the development mode is valid */
-    readonly $label?: [string, string];
-    [name: string]: any;
+declare type EventEmitter$1<T, E extends Record<string, any>> = EventEmitter<T, E>;
+
+/** 全局钩子 */
+interface Hook<T extends HookEntity<any, any> = HookEntity<any, any>> {
+    (entity: T): void;
 }
-declare type Delivered = Record<any, any>;
-interface RootExposed extends Exposed {
-    $update(node?: NeepElement | Component): RootExposed;
-    $mount(target?: any): RootExposed;
-    $unmount(): void;
-}
-interface Deliver<T> {
-    (props: {
-        value?: T;
-    }, context: Context): NeepNode[];
-    [objectTypeSymbol]: typeof objectTypeSymbolDeliver;
-    [deliverKeySymbol]: symbol;
-    [deliverDefaultSymbol]: T;
-}
-/** 上下文环境 */
-interface Context {
-    /** 作用域槽 */
-    slots: Slots;
-    /** 是否已经完成初始化 */
-    created: boolean;
-    /** 父组件 */
-    parent?: Exposed;
-    delivered<T>(d: Deliver<T>): T;
-    /** 子组件集合 */
-    children: Set<Exposed>;
-    childNodes: any[];
-    refresh(fn?: () => void): void;
-    emit: Emit;
-}
-interface Entity {
-    readonly exposed: Exposed;
-    readonly component: Component<any, any> | null;
-    readonly parent?: Entity;
-    readonly isContainer: boolean;
-    readonly created: boolean;
-    readonly destroyed: boolean;
-    readonly mounted: boolean;
-    readonly unmounted: boolean;
-    readonly config: Record<string, any>;
-    readonly on: On;
-    readonly emit: Emit;
-    callHook<H extends Hooks>(hook: H): void;
-    callHook(hook: string): void;
-    setHook<H extends Hooks>(id: H, hook: Hook): () => void;
-    setHook(id: string, hook: Hook): () => void;
-    readonly $_hooks: {
-        [name: string]: Set<Hook>;
-    };
-    refresh(): void;
-    refresh<T>(f: () => T, async?: false): T;
-    refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
-    refresh<T>(f: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T;
-    refresh<T>(f?: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T | undefined;
-    $_valueIndex: number;
-    readonly $_values: any[];
-    $_serviceIndex: number;
-    readonly $_services: any[];
-}
-interface Render<R extends object = any> {
-    (data: R, context: Context): NeepNode;
-}
-interface Service<T, P extends any[]> {
-    (entity: Entity, ...p: P): T;
-}
-/** 组件标记 */
-interface Marks {
-    /** 组件名称 */
-    [nameSymbol]?: string;
-    /** 是否为原生组件 */
-    [typeSymbol]?: 'native' | 'simple' | 'standard';
-    [renderSymbol]?: Render;
-    [configSymbol]?: Record<string, any>;
-    [componentsSymbol]?: Record<string, Component>;
-}
-/** 构造函数 */
-interface Component<P extends object = object, R extends object = object> extends Marks {
-    (props: P, context: Context): undefined | null | NeepNode | NeepNode[] | R | (() => undefined | null | NeepNode | NeepNode[] | R);
-}
-declare type Tags = typeof _mp_rt28__auxiliary_tags__;
-declare type Tag = null | string | Tags[keyof Tags] | Component<any, any>;
-interface Ref<T extends NativeNode | Exposed = NativeNode | Exposed> {
-    (node: T, isRemove?: boolean): void;
-}
-interface RefSet<T extends NativeNode | Exposed = NativeNode | Exposed> {
-    add(value: T): void;
-    delete(value: T): void;
-}
-interface RefValue<T extends NativeNode | Exposed = NativeNode | Exposed> extends Ref<T> {
-    readonly value: T | null;
-}
-interface NeepElement {
-    [objectTypeSymbol]: typeof objectTypeSymbolElement;
-    /** 标签名 */
-    tag: Tag;
-    /** 属性 */
-    props?: {
-        [key: string]: any;
-    };
-    /** 子节点 */
-    children: any[];
-    /** 引用绑定 */
-    ref?: Ref;
-    /** 插槽 */
-    slot?: string;
-    /** 列表对比 key */
-    key?: any;
-    /** Value 类型值 */
+declare type HookNames = 'beforeCreate' | 'created' | 'beforeDestroy' | 'destroyed' | 'beforeUpdate' | 'updated' | 'beforeMount' | 'mounted' | 'beforeDraw' | 'drawn' | 'beforeDrawAll' | 'drawnAll';
+
+interface UseHook {
+    lib: string;
+    name: string;
     value?: any;
-    /** 是否是已插入的 */
-    inserted?: boolean;
-    execed?: boolean;
-    /** 标注 */
-    label?: [string, string];
+    list?: UseHook[];
 }
-interface TreeNode extends Omit<NeepElement, 'children' | typeof objectTypeSymbol> {
-    children: (this | this[])[];
-    delivered?: Delivered;
-    mounted?: boolean;
-    component?: EntityObject$1;
+
+declare abstract class RefProxy<TExposed extends object | Function, TTag, TEntity extends Entity<any, any>> extends BaseProxy<TTag> {
+    /** 组件暴露值 */
+    private __exposed?;
+    /** 组件暴露值 */
+    private __ref?;
+    get exposed(): TExposed | undefined;
+    setExposed(t?: TExposed): void;
+    readonly events: EventEmitter<TEntity>;
+    /** 组件实体 */
+    readonly entity: TEntity;
+    readonly data: Record<string, any>;
+    constructor(renderer: IRenderer, originalTag: any, tag: any, attrs: any, parent?: BaseProxy<any>, delivered?: Record<any, any>);
+    /** 创建 */
+    protected abstract createEntity(events: EventEmitter<any>): TEntity;
+    /** 更新属性及子代 */
+    update(attrs: Record<string, any>, children: any[]): void;
+    destroy(): boolean;
 }
-/**
- * @description node / component / children 至少一个有效
- */
-interface MountedNode extends TreeNode {
-    id: number;
-    parent?: this;
-    node: undefined | NativeNode;
+
+interface IRender {
+    render(): any[];
+    nodes: any[];
+    stopRender(): void;
 }
+declare abstract class ComponentProxy<TProps extends object, TExpose extends object, TEmit extends Record<string, any>, C extends StandardComponent<TProps, TExpose, TEmit> | RenderComponent<TProps, TExpose, TEmit>> extends RefProxy<TExpose, C, ComponentEntity<C>> {
+    isNative: boolean;
+    /** 所属容器 */
+    readonly container: ContainerProxy<any>;
+    /** 渲染组件根部，如果自身是 ComponentProxy 则为自身 */
+    readonly componentRoot?: ComponentProxy<any, any, any, any>;
+    /** 子组件 */
+    readonly children: Set<ComponentProxy<any, any, any, any>>;
+    readonly emit: Emit<Record<string, any>>;
+    readonly on: On<TExpose | undefined, Record<string, any>>;
+    readonly components: Record<string, StandardComponent<any, any, any>>;
+    /** 组件属性 */
+    readonly props: TProps;
+    /** 组件属性定义 */
+    readonly propsDefined: (keyof TProps & string)[];
+    /** 组件槽 */
+    readonly slots: Slots;
+    lastSlots: Record<string | symbol, any[]> | undefined;
+    /** 原生子代 */
+    nativeNodes: TreeNodeList | undefined;
+    /** 父组件代理 */
+    readonly parentComponentProxy?: ComponentProxy<any, any, any, any>;
+    callHook(id: string): void;
+    /** 结果渲染函数 */
+    protected _render: () => any[];
+    /** 结果渲染函数 */
+    protected readonly _stopRender: () => void;
+    protected abstract _init(): void;
+    protected abstract _initRender(): IRender;
+    /** 结果渲染函数 */
+    constructor(originalTag: any, component: C, props: object, children: any[], parent: BaseProxy<any>);
+    createEntity(events: EventEmitter<any>): ComponentEntity<C>;
+    /** 更新属性及子代 */
+    _update(props: object, children: any[]): void;
+    _destroy(): void;
+    childNodes: any[];
+    /** 是否为刷新中 */
+    private __refreshing;
+    /** 是否需要继续刷新 */
+    private __needRefresh;
+    get needRefresh(): boolean;
+    /** 延时刷新计数 */
+    private __delayedRefresh;
+    /** 渲染结果 */
+    protected _nodes: TreeNodeList;
+    refresh(): void;
+    refresh<T>(f: () => T): T;
+    refresh<T>(f?: () => T): T | void;
+    /** 刷新 */
+    requestDraw(): void;
+}
+
+declare abstract class BaseProxy<TTag> {
+    readonly tag: TTag;
+    attrs: Record<string, any>;
+    readonly renderer: IRenderer;
+    labels?: Label[];
+    /** 父组件 */
+    readonly parentProxy?: BaseProxy<any>;
+    /** 呈递值 */
+    readonly delivered: Record<any, any>;
+    /** 状态 */
+    created: boolean;
+    destroyed: boolean;
+    mounted: boolean;
+    unmounted: boolean;
+    /** The subtree mounted on the parent node */
+    tree: (MountedNode | MountedNode[])[];
+    /** 所属容器 */
+    abstract readonly container: ContainerProxy<any>;
+    /** 渲染组件根部，如果自身是 ComponentProxy 则为自身 */
+    abstract readonly componentRoot?: ComponentProxy<any, any, any, any>;
+    abstract get content(): (MountedNode | MountedNode[])[];
+    readonly originalTag: any;
+    constructor(renderer: IRenderer, originalTag: any, tag: any, attrs: any, parent?: BaseProxy<any>, delivered?: Record<any, any>);
+    /** 请求绘制 */
+    protected abstract requestDraw(): void;
+    abstract callHook<H extends HookNames>(id: H): void;
+    abstract callHook(id: string): void;
+    /** 更新属性及子代 */
+    abstract _update(props: object, children: any[]): void;
+    /** 更新属性及子代 */
+    update(attrs: Record<string, any>, children: any[]): void;
+    private __executed_destroy;
+    protected abstract _destroy(): void;
+    destroy(): boolean;
+    private __mountOptions;
+    protected abstract _mount(mountOptions: MountOptions): MountOptions | void;
+    private __cancelDrawMonitor?;
+    mount(mountOptions: MountOptions): boolean;
+    private __executed_unmounted;
+    protected abstract _unmount(): void;
+    unmount(): boolean;
+    protected abstract _redraw(mountOptions: MountOptions): void;
+    redraw(): void;
+}
+
+declare class ContainerProxy<P extends object> extends RefProxy<any, ContainerComponent<P> | null, ContainerEntity<any>> {
+    /** 所属容器 */
+    readonly container: ContainerProxy<any>;
+    /** 渲染组件根部，如果自身是 ComponentProxy 则为自身 */
+    readonly componentRoot?: ComponentProxy<any, any, any, any>;
+    setmountedRoot(target?: any, next?: any): void;
+    private readonly __containerData;
+    /** 组件树结构 */
+    content: (MountedNode | MountedNode[])[];
+    readonly rootContainer: ContainerProxy<any>;
+    constructor(originalTag: any, component: ContainerComponent<P, any> | null | undefined, props: Record<string, any> | undefined, children: any[], parent?: BaseProxy<any>);
+    createEntity(events: EventEmitter<any>): ContainerEntity<any>;
+    private __nodes;
+    setChildren(children: any[]): void;
+    /** 更新属性及子代 */
+    _update(props: Record<string, any>, children: any[]): void;
+    _destroy(): void;
+    callHook(id: string): void;
+    requestDraw(): void;
+    private __container;
+    private __placeholder;
+    private __placeholderNode;
+    private __targetNode;
+    private __insertNode;
+    private __nextNode;
+    _mount(opt: MountOptions): MountOptions | undefined;
+    _redrawSelf(): void;
+    _redrawChildren(opts: MountOptions): void;
+    _redraw(opt: MountOptions): void;
+    _unmount(): void;
+    /** 等待重画的项目 */
+    private __awaitDraw;
+    /** 标记需要绘制的元素 */
+    markDraw(proxy: BaseProxy<any>): void;
+    drawContainer(): void;
+    private __containers;
+    markDrawContainer(container: ContainerProxy<any>): void;
+    drawAll(): void;
+}
+
+declare class RenderComponentProxy<TProps extends object, TExpose extends object, TEmit extends Record<string, any>, C extends RenderComponent<TProps, TExpose, TEmit>> extends ComponentProxy<TProps, TExpose, TEmit, C> {
+    get content(): (MountedNode | MountedNode[])[];
+    /** 原生子代 */
+    nativeNodes: TreeNodeList | undefined;
+    protected _init(): void;
+    protected _initRender(): IRender;
+    _destroy(): void;
+    childNodes: any[];
+    /** 刷新 */
+    requestDraw(): void;
+    _redraw(mountOptions: MountOptions): void;
+    _mount(mountOptions: MountOptions): void;
+    _unmount(): void;
+}
+
+declare class StandardComponentProxy<TProps extends object, TExpose extends object, TEmit extends Record<string, any>, C extends StandardComponent<TProps, TExpose, TEmit>> extends ComponentProxy<TProps, TExpose, TEmit, C> {
+    content: (MountedNode | MountedNode[])[];
+    /** 原生组件 */
+    native: NativeComponentNode | undefined;
+    shadowTree: (MountedNode | MountedNode[])[];
+    nativeTree: (MountedNode | MountedNode[])[];
+    private _shadow;
+    protected _init(): void;
+    protected _initRender(): IRender;
+    _destroy(): void;
+    childNodes: any[];
+    /** 刷新 */
+    requestDraw(): void;
+    private __nativeTreeNountOptions;
+    _mount(mountOptions: MountOptions): MountOptions | void;
+    _redraw(mountOptions: MountOptions): void;
+    _unmount(): void;
+}
+
+declare abstract class NodeProxy<TTag> extends BaseProxy<TTag> {
+    /** 所属容器 */
+    readonly container: ContainerProxy$1<any>;
+    /** 渲染组件根部，如果自身是 ComponentProxy 则为自身 */
+    readonly componentRoot?: ComponentProxy<any, any, any, any>;
+    constructor(originalTag: any, tag: TTag, attrs: Record<string, any>, children: any[], parent: BaseProxy<any>, delivered?: Record<any, any>);
+    requestDraw(): void;
+    callHook(id: string): void;
+}
+
+declare class ValueProxy extends NodeProxy<null> {
+    get content(): (MountedNode | MountedNode[])[];
+    __value: any;
+    text?: string | null;
+    isValue?: boolean;
+    set value(v: any);
+    get value(): any;
+    __nodes?: TreeNodeList;
+    src?: any;
+    /** 结果渲染函数 */
+    private __render;
+    constructor(attrs: any, parent: BaseProxy<any>);
+    /** 是否为刷新中 */
+    private __refreshing;
+    /** 是否需要继续刷新 */
+    private __needRefresh;
+    refresh(): void;
+    _update({ value }: any): void;
+    _destroy(): void;
+    _mount(mountOptions: MountOptions): void;
+    _redraw(mountOptions: MountOptions): void;
+    _unmount(): void;
+}
+
+declare class ShellProxy<T extends ShellComponent<any, any>> extends RefProxy<any, T, ShellEntity> {
+    get content(): (MountedNode | MountedNode[])[];
+    props: any;
+    childNodes: any[];
+    src?: any;
+    /** 组件槽 */
+    readonly slots: Slots;
+    lastSlots: Record<string | symbol, any[]> | undefined;
+    /** 结果渲染函数 */
+    private __render;
+    /** 所属容器 */
+    readonly container: ContainerProxy<any>;
+    /** 渲染组件根部，如果自身是 ComponentProxy 则为自身 */
+    readonly componentRoot?: ComponentProxy<any, any, any, any>;
+    requestDraw(): void;
+    callHook(id: string): void;
+    createEntity(events: EventEmitter<any>): ShellEntity;
+    constructor(originalTag: any, tag: T, props: object, children: any[], parent: BaseProxy<any>);
+    /** 是否为刷新中 */
+    private __refreshing;
+    /** 是否需要继续刷新 */
+    private __needRefresh;
+    /** 延时刷新计数 */
+    private __delayedRefresh;
+    /** 渲染结果 */
+    protected _nodes: TreeNodeList;
+    refresh(): void;
+    refresh<T>(f: () => T): T;
+    refresh<T>(f?: () => T): T | void;
+    _update(props: object, children: any[]): void;
+    _destroy(): void;
+    _mount(mountOptions: MountOptions): void;
+    _redraw(mountOptions: MountOptions): void;
+    _unmount(): void;
+}
+
+declare class GroupProxy<T> extends NodeProxy<T> {
+    private __nodes;
+    get content(): (MountedNode | MountedNode[])[];
+    constructor(tag: T, children: any[], parent: BaseProxy<any>);
+    /** 更新属性及子代 */
+    _update(props: object, children: any[]): void;
+    _destroy(): void;
+    _mount(mountOptions: MountOptions): void;
+    _redraw(mountOptions: MountOptions): void;
+    _unmount(): void;
+}
+
+declare class ElementProxy<T extends string | ElementComponent<any, any>> extends RefProxy<NativeElementNode, T, ElementEntity<NativeElementNode>> {
+    /** 所属容器 */
+    readonly container: ContainerProxy<any>;
+    /** 渲染组件根部，如果自身是 ComponentProxy 则为自身 */
+    readonly componentRoot?: ComponentProxy<any, any, any, any>;
+    props: object;
+    private __nodes;
+    node?: NativeElementNode;
+    content: (MountedNode | MountedNode[])[];
+    private __elementTagData;
+    constructor(originalTag: any, tag: T, props: object, children: any[], parent: BaseProxy<any>);
+    requestDraw(): void;
+    callHook(id: string): void;
+    createEntity(events: EventEmitter<any>): ElementEntity<NativeElementNode>;
+    /** 更新属性及子代 */
+    _update(props: object, children: any[]): void;
+    _destroy(): void;
+    _mount(mountOptions: MountOptions): MountOptions | void;
+    _redrawChildren(mountOptions: MountOptions): void;
+    _redraw(mountOptions: MountOptions): void;
+    _unmount(): void;
+}
+
+declare class DeliverProxy<T> extends NodeProxy<DeliverComponent<T>> {
+    private __valueObject;
+    private __nodes;
+    get content(): (MountedNode | MountedNode[])[];
+    constructor(originalTag: any, tag: DeliverComponent<T>, props: {
+        value?: T;
+    }, children: any[], parent: BaseProxy<any>);
+    /** 更新属性及子代 */
+    _update({ value }: {
+        value?: T;
+    }, children: any[]): void;
+    _destroy(): void;
+    _mount(mountOptions: MountOptions): void;
+    _redraw(mountOptions: MountOptions): void;
+    _unmount(): void;
+}
+
 declare const NativeElementSymbol: unique symbol;
 declare const NativeTextSymbol: unique symbol;
 declare const NativeComponentSymbol: unique symbol;
 declare const NativePlaceholderSymbol: unique symbol;
 declare const NativeShadowSymbol: unique symbol;
 /** 原生元素节点 */
-interface NativeElement {
-    [NativeElementSymbol]: true;
+interface NativeElementNodes {
+    core: {
+        [NativeElementSymbol]: true;
+    };
 }
 /** 原生文本节点 */
-interface NativeText {
-    [NativeTextSymbol]: true;
+interface NativeTextNodes {
+    core: {
+        [NativeTextSymbol]: true;
+    };
 }
 /** 原生占位组件 */
-interface NativePlaceholder {
-    [NativePlaceholderSymbol]: true;
+interface NativePlaceholderNodes {
+    core: {
+        [NativePlaceholderSymbol]: true;
+    };
 }
 /** 原生组件 */
-interface NativeComponent {
-    [NativeComponentSymbol]: true;
+interface NativeComponentNodes {
+    core: {
+        [NativeComponentSymbol]: true;
+    };
 }
 /** 原生组件内部 */
-interface NativeShadow {
-    [NativeShadowSymbol]: true;
+interface NativeShadowNodes {
+    core: {
+        [NativeShadowSymbol]: true;
+    };
 }
-declare type NativeContainer = NativeElement | NativeComponent | NativeShadow;
-declare type NativeNode = NativeContainer | NativeText | NativePlaceholder;
-interface MountProps {
-    type?: string | IRender;
-    target?: any;
-    [key: string]: any;
-}
+/** 原生元素节点 */
+declare type NativeElementNode = ValueOf<NativeElementNodes>;
+/** 原生文本节点 */
+declare type NativeTextNode = ValueOf<NativeTextNodes>;
+/** 原生占位组件 */
+declare type NativePlaceholderNode = ValueOf<NativePlaceholderNodes>;
+/** 原生组件 */
+declare type NativeComponentNode = ValueOf<NativeComponentNodes>;
+/** 原生组件内部 */
+declare type NativeShadowNode = ValueOf<NativeShadowNodes>;
+declare type ValueOf<T extends object> = T[keyof T];
+declare type NativeContainerNode = NativeElementNode | NativeComponentNode | NativeShadowNode;
+declare type NativeNode = NativeContainerNode | NativeTextNode | NativePlaceholderNode;
 interface Rect {
     readonly bottom: number;
     readonly height: number;
@@ -464,36 +481,465 @@ interface Rect {
     readonly top: number;
     readonly width: number;
 }
-interface IRender {
+declare type MountOptions = Record<string, any>;
+interface MountContainerResult {
+    container: NativeContainerNode;
+    target: NativeContainerNode | null;
+    insert: NativeNode | null;
+    next: NativeNode | null;
+    exposed: any;
+}
+interface UpdateContainerResult {
+    target: NativeContainerNode | null;
+    insert: NativeNode | null;
+    next: NativeNode | null;
+}
+interface IRenderer<T = any> {
     type: string;
-    nextFrame?(fn: () => void): void;
-    mount(props: MountProps, parent?: IRender): [NativeContainer, NativeNode];
-    unmount(container: NativeContainer, node: NativeNode, removed: boolean): any;
-    drawNode(container: NativeContainer, node: NativeNode): void;
-    drawContainer(container: NativeContainer, node: NativeNode, props: MountProps, parent?: IRender, 
+    nextFrame?(this: this, fn: () => void): void;
+    getContainer(this: this, container: NativeContainerNode, target: any, next: any): [NativeContainerNode | null, NativeNode | null];
     /**
-     * 当 parent 存在且与当前节点不同时，用于区分
+     * 创建挂载容器组件
+     * @param data 创建数据
+     * @param props 创建参数
+     * @param parent 父渲染器
      */
-    isSelf?: boolean): [NativeContainer, NativeNode];
-    isNode(v: any): v is NativeNode;
-    createElement(tag: string): NativeElement;
-    updateProps(node: NativeElement, props: Record<string, any>): void;
-    createText(text: string): NativeText;
-    createPlaceholder(): NativePlaceholder;
-    createComponent?(): [NativeComponent, NativeShadow];
-    getParent(node: NativeNode): NativeContainer | null;
-    nextNode(node: NativeNode): NativeNode | null;
-    insertNode(parent: NativeContainer, node: NativeNode, next?: NativeNode | null): void;
-    removeNode(n: NativeNode): void;
-    getRect(n: NativeNode): Rect | null;
+    mountContainer(this: this, data: T, props: Record<string, any>, emit: Emit<Record<string, any>>, parent: IRenderer | undefined): MountContainerResult;
+    updateContainer(this: this, container: NativeContainerNode, target: NativeContainerNode | null, insert: NativeNode | null, next: NativeNode | null, data: T, props: Record<string, any>, emit: Emit<Record<string, any>>, parent: IRenderer | undefined): UpdateContainerResult;
+    recoveryContainer(this: this, container: NativeContainerNode, target: NativeContainerNode | null, insert: NativeNode | null, next: NativeNode | null, newTarget: NativeContainerNode | null, newInsert: NativeNode | null, newNext: NativeNode | null, data: T, props: Record<string, any>, parent: IRenderer | undefined): void;
+    unmountContainer(this: this, container: NativeContainerNode, target: NativeContainerNode | null, insert: NativeNode | null, next: NativeNode | null, data: T, props: Record<string, any>, parent: IRenderer | undefined): void;
+    getMountOptions(this: this, node: NativeNode, options: MountOptions): MountOptions | undefined | void;
+    isNode(this: this, v: any): v is NativeNode;
+    createElement(this: this, data: string | T, props: Record<string, any>, mountOptions: MountOptions): NativeElementNode | null;
+    updateProps(this: this, node: NativeElementNode, data: string | T, props: Record<string, any>, emit: Emit<Record<string, any>>, mountOptions: MountOptions): void;
+    createText(this: this, text: string): NativeTextNode;
+    createPlaceholder(this: this): NativePlaceholderNode;
+    createComponent?(this: this): [NativeComponentNode, NativeShadowNode];
+    getParent(this: this, node: NativeNode): NativeContainerNode | null;
+    nextNode(this: this, node: NativeNode): NativeNode | null;
+    insertNode(this: this, parent: NativeContainerNode, node: NativeNode, next?: NativeNode | null): void;
+    removeNode(this: this, n: NativeNode): void;
+}
+
+declare type BaseProxy$1<TTag> = BaseProxy<TTag>;
+declare type RefProxy$1<TExposed extends object, TTag, TEntity extends Entity<any, any>> = RefProxy<TExposed, TTag, TEntity>;
+declare type NodeProxy$1<TTag> = NodeProxy<TTag>;
+declare type DeliverProxy$1<T> = DeliverProxy<T>;
+declare type ElementProxy$1<T extends string> = ElementProxy<T>;
+declare type GroupProxy$1<T> = GroupProxy<T>;
+declare type ShellProxy$1<T extends ShellComponent<any, any>> = ShellProxy<T>;
+declare type ValueProxy$1 = ValueProxy;
+declare type ComponentProxy$1<TProps extends object, TExpose extends object, TEmit extends Record<string, any>, C extends StandardComponent<TProps, TExpose, TEmit>> = ComponentProxy<TProps, TExpose, TEmit, C>;
+declare type StandardComponentProxy$1<TProps extends object, TExpose extends object, TEmit extends Record<string, any>, C extends StandardComponent<TProps, TExpose, TEmit>> = StandardComponentProxy<TProps, TExpose, TEmit, C>;
+declare type RenderComponentProxy$1<TProps extends object, TExpose extends object, TEmit extends Record<string, any>, C extends StandardComponent<TProps, TExpose, TEmit>> = RenderComponentProxy<TProps, TExpose, TEmit, C>;
+declare type ContainerProxy$1<P extends object> = ContainerProxy<P>;
+interface Devtools {
+    renderHook(rootEntity: RootEntity<any>, container: ContainerProxy$1<any>): void;
+}
+interface Label {
+    text: string;
+    color?: string;
+}
+interface ValueElement {
+    /** 标签名 */
+    tag?: undefined;
+    /** 属性 */
+    props: {
+        value: any;
+    };
+    /** 子节点 */
+    children?: any[];
+    /** 插槽 */
+    slot?: undefined;
+    /** 列表对比 key */
+    key: any;
+    /** 是否是已插入的 */
+    inserted?: undefined;
+    execed?: undefined;
+}
+declare type TreeNodeList = (TreeNode | null | TreeNode[])[];
+interface TreeNode {
+    proxy: BaseProxy$1<any>;
+    /** 标签名 */
+    tag?: Tag<any> | undefined;
+    /** 属性 */
+    props?: {
+        [key: string]: any;
+    };
+    /** 列表对比 key */
+    key?: any;
+}
+interface ProxyMountedNode extends TreeNode {
+    node?: undefined;
+}
+interface ValueMountedNode {
+    tag?: undefined | null;
+    text?: string;
+    key?: any;
+    proxy?: undefined;
+    children?: undefined;
+    node: NativeNode;
+}
+/**
+* @description node / component / children 至少一个有效
+*/
+declare type MountNode = ProxyMountedNode | ValueMountedNode;
+declare type MountedNode = MountNode & {
+    id: number;
+};
+
+interface Entity<T, TEmit extends Record<string, any>> {
+    readonly exposed?: T;
+    data: Record<string, any>;
+    readonly on: On<T, TEmit>;
+    readonly emit: Emit<TEmit>;
+}
+interface ElementEntity<T, TEmit extends Record<string, any> = Record<string, any>> extends Entity<T, TEmit> {
+}
+interface ShellEntity<TEmit extends Record<string, any> = Record<string, any>> extends Entity<undefined, TEmit> {
+}
+interface HookEntity<T, TEmit extends Record<string, any> = Record<string, any>, THE extends HookEntity<any> = HookEntity<any, any, any>> extends Entity<T, TEmit> {
+    [objectTypeSymbol]: typeof objectTypeSymbolHookEntity;
+    callHook<H extends HookNames>(hook: H): void;
+    callHook(hook: string): void;
+    setHook<H extends HookNames>(id: H, hook: Hook<THE>): () => void;
+    setHook(id: string, hook: Hook<this>): () => void;
+    readonly $_hooks: {
+        [name: string]: Set<Hook>;
+    };
+}
+interface ComponentEntity<C extends StandardComponent<any, any, any> | RenderComponent<any, any, any>, Parent extends ComponentEntity<any, any> | undefined | never = ComponentEntity<any, any> | undefined> extends HookEntity<C extends StandardComponent<any, infer E, any> ? E : C extends RenderComponent<any, infer E, any> ? E : any, C extends StandardComponent<any, any, infer E> ? E : C extends RenderComponent<any, any, infer E> ? E : any, ComponentEntity<any, any>> {
+    readonly component: C;
+    readonly parent: Parent;
+    readonly created: boolean;
+    readonly destroyed: boolean;
+    readonly mounted: boolean;
+    readonly unmounted: boolean;
+    refresh(): void;
+    refresh<T>(f: () => T, async?: false): T;
+    refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
+    refresh<T>(f: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T;
+    refresh<T>(f?: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T | undefined;
+    readonly $_useHookValues: UseHook[];
+    /** Only the development mode is valid */
+    readonly $_label?: Label[];
+}
+interface EntityConstructor {
+    (entity: ComponentEntity<any>): void;
+}
+interface ContainerEntity<T, TEmit extends Record<string, any> = Record<string, any>> extends HookEntity<undefined, TEmit, ContainerEntity<any, any>> {
+    readonly created: boolean;
+    readonly destroyed: boolean;
+    readonly mounted: boolean;
+    readonly unmounted: boolean;
+}
+interface RootEntity<T, TEmit extends Record<string, any> = Record<string, any>> extends ContainerEntity<T, TEmit> {
+    update(node?: Element | StandardComponent<any, any, any>): this;
+    mount(target?: any): this;
+    unmount(): void;
+}
+
+/** 槽列表 */
+interface Slots {
+    readonly [name: string]: any[] | undefined;
+}
+interface SlotApi {
+    (name?: string, argv?: any): Element;
+    has(name?: string): boolean;
+}
+
+interface Delivered {
+    <T>(d: DeliverComponent<T>): T;
+}
+/** 上下文环境 */
+interface Context<TExpose extends object, TEmit extends Record<string, any>, Parent extends ComponentEntity<any, any>> {
+    isShell: boolean;
+    delivered: Delivered;
+    refresh(fn?: () => void): void;
+    childNodes: any[];
+    emit: Emit<TEmit>;
+    /** 作用域槽 */
+    slot: SlotApi;
+    /** 父组件 */
+    parent?: Parent;
+    expose?(value?: TExpose): void;
+    /** 是否已经完成初始化 */
+    created?: boolean;
+    /** 子组件集合 */
+    children?: object[];
+}
+/** 上下文环境 */
+interface ShellContext<TEmit extends Record<string, any>, Parent extends ComponentEntity<any, any> = ComponentEntity<any, any>> extends Context<never, TEmit, Parent> {
+    isShell: true;
+    expose?: undefined;
+    /** 是否已经完成初始化 */
+    created?: undefined;
+    /** 子组件集合 */
+    children?: undefined;
+}
+/** 上下文环境 */
+interface ComponentContext<TExpose extends object, TEmit extends Record<string, any>, Parent extends ComponentEntity<any, any> = ComponentEntity<any, any>> extends Context<TExpose, TEmit, Parent> {
+    isShell: false;
+    expose(value?: TExpose): void;
+    /** 是否已经完成初始化 */
+    created: boolean;
+    /** 子组件集合 */
+    children: object[];
+}
+interface ContextConstructor {
+    (context: ShellContext<any>): void;
+    (context: ComponentContext<any, any>, entity?: ComponentEntity<any>): void;
+    (context: Context<any, any, any>, entity?: ComponentEntity<any>): void;
+}
+
+interface SelfComponent<TProps extends object> {
+    (props: TProps): Element<this>;
+}
+interface PropsDefinition {
+    value?: 'mix' | 'always' | 'valueify';
+}
+/** 构造函数 */
+interface ComponentFunc<TProps extends object, TExpose extends object, TEmit extends Record<string, any>> {
+    (props: TProps, context: ComponentContext<TExpose, TEmit>): Node;
+}
+interface SimpleComponentFunc<TProps extends object, TEmit extends Record<string, any>> {
+    (props: TProps, context: ShellContext<TEmit>): Node;
+}
+interface ShellComponentFunc<TProps extends object, TEmit extends Record<string, any>> {
+    (props: TProps, context: ShellContext<TEmit>): Node;
+}
+interface SpecialComponentFunc<P extends object, C extends any[]> {
+    (attrs: P, ...children: C): Node;
+}
+interface DeliverComponent<T> extends SelfComponent<{
+    value?: T;
+}> {
+    readonly [objectTypeSymbol]: typeof objectTypeSymbolDeliverComponent;
+    readonly [deliverKeySymbol]: symbol;
+    readonly [deliverDefaultSymbol]: T;
+}
+interface RenderComponent<TProps extends object, TExpose extends object, TEmit extends Record<string, any>> extends SelfComponent<TProps> {
+    readonly [objectTypeSymbol]: typeof objectTypeSymbolRenderComponent;
+    readonly [componentValueSymbol]: ComponentFunc<TProps, TExpose, TEmit>;
+    readonly [nameSymbol]?: string;
+    readonly [componentsSymbol]?: Record<string, Component<any>>;
+    readonly [propsSymbol]?: (keyof TProps)[];
+}
+interface ContainerComponent<P extends object, T = any> extends SelfComponent<P> {
+    readonly [objectTypeSymbol]: typeof objectTypeSymbolContainerComponent;
+    readonly [componentValueSymbol]: T;
+    readonly [nameSymbol]?: string;
+    readonly [rendererSymbol]?: string | IRenderer;
+}
+interface ElementComponent<P extends object, T> extends SelfComponent<P> {
+    readonly [objectTypeSymbol]: typeof objectTypeSymbolElementComponent;
+    readonly [componentValueSymbol]: T;
+    readonly [nameSymbol]?: string;
+}
+interface StandardComponent<TProps extends object, TExpose extends object, TEmit extends Record<string, any>> extends ComponentFunc<TProps, TExpose, TEmit> {
+    /** 组件名称 */
+    [nameSymbol]?: string;
+    [componentsSymbol]?: Record<string, Component<any>>;
+    [objectTypeSymbol]?: typeof objectTypeSymbolNativeComponent;
+    [propsSymbol]?: (keyof TProps)[];
+}
+interface NativeComponent<TProps extends object, TExpose extends object, TEmit extends Record<string, any>> extends StandardComponent<TProps, TExpose, TEmit> {
+    [objectTypeSymbol]: typeof objectTypeSymbolNativeComponent;
+}
+interface SimpleComponent<TProps extends object, TEmit extends Record<string, any>> extends SimpleComponentFunc<TProps, TEmit> {
+    [objectTypeSymbol]: typeof objectTypeSymbolSimpleComponent;
+    /** 组件名称 */
+    [nameSymbol]?: string;
+    [componentsSymbol]?: Record<string, Component<any>>;
+}
+interface ShellComponent<TProps extends object, TEmit extends Record<string, any>> extends ShellComponentFunc<TProps, TEmit> {
+    [objectTypeSymbol]: typeof objectTypeSymbolShellComponent;
+    /** 组件名称 */
+    [nameSymbol]?: string;
+}
+declare type Component<P extends object = any> = StandardComponent<P, any, any> | SimpleComponent<P, any> | ShellComponent<P, any> | ContainerComponent<P> | ElementComponent<P, any> | DeliverComponent<P extends {
+    value?: infer T;
+} ? T : any>;
+interface Service<T, P extends any[]> {
+    (entity: ComponentEntity<any, any>, ...p: P): T;
+}
+
+declare type Tags = typeof _mp_rt1____auxiliary_tags__;
+declare type CoreTags = Tags[keyof Tags];
+declare type Tag<P extends object> = string | CoreTags | Component<P> | RenderComponent<P, any, any>;
+interface Element<T extends Tag<any> = Tag<any>> {
+    [objectTypeSymbol]: typeof objectTypeSymbolElement;
+    /** 标签名 */
+    tag: T;
+    /** 属性 */
+    props?: {
+        [key: string]: any;
+    };
+    /** 子节点 */
+    children: any[];
+    /** 插槽 */
+    slot?: string;
+    /** 列表对比 key */
+    key?: any;
+    /** 槽是否是已插入的 */
+    inserted?: boolean;
+    /** 是否为槽默认值 */
+    isDefault?: boolean;
+    /** 简单组件，是否是已经执行的 */
+    execed?: boolean;
 }
 interface ElementIteratorOptions {
-    simple?: boolean | Component[] | ((c: Component) => boolean);
+    simple?: boolean | SimpleComponent<any, any>[] | ((c: SimpleComponent<any, any>) => boolean);
+}
+/** source 对象 */
+declare type Node = Element | null;
+
+interface Recognizer {
+    (any: any): Component<any> | null;
+}
+
+interface Ref<TExposed extends object | Function, TEntity extends Entity<any, any>> {
+    (newNode: TExposed | undefined, oldNode: TExposed | undefined, entity: TEntity, 
+    /**
+     * true: 添加
+     * false: 移除
+     */
+    state?: boolean): void;
+}
+interface RefSet<T extends object> {
+    add(value: T): void;
+    delete(value: T): void;
+    replace?(newNode: T, oldNode: T): void;
+}
+interface RefValue<T extends object> extends Ref<T, any> {
+    readonly value: T | null;
+}
+interface RefEntityValue<T extends Entity<any, any>> extends Ref<any, T> {
+    readonly value: T | null;
+}
+
+declare function ref<T extends object>(watch?: boolean, isEntity?: false): RefValue<T>;
+declare function ref<T extends Entity<any, any>>(watch: boolean, isEntity: true): RefEntityValue<T>;
+declare function ref<T extends object>(set: RefSet<T>, isEntity?: false): Ref<T, any>;
+declare function ref<T extends Entity<any, any>>(set: RefSet<T>, isEntity: true): Ref<any, T>;
+
+/**********************************
+ * 状态管理类 API
+ **********************************/
+/**
+ * 监听指定值的变化
+ * @description 本质是调用 Value 对象的 watch 方法
+ * @description 但是通过此方法进行的观察，会在组件生命周期结束时自动停止观察
+ * @description 此函数只有在初始化调用时有效
+ * @param value 被监听的值
+ * @param cb    当监听的值发送变化时调用的函数
+ */
+declare function watch<T>(value: Value<T>, cb: WatchCallback<T>, run?: boolean): () => void;
+/**
+ * 监听指定值的变化
+ * @description 本质是创建调用 Value 对象的 watch 方法
+ * @description 但是通过此方法进行的观察，会在组件生命周期结束时自动停止观察
+ * @description 此函数只有在初始化调用时有效
+ * @param value 用于计算观测值的函数
+ * @param cb    当监听的值发送变化时调用的函数
+ */
+declare function watch<T>(value: () => T, cb: (v: T, stopped: boolean) => void, run?: boolean): () => void;
+declare function useValue(): Value<any>;
+declare function useValue<T>(fn: () => T): T;
+declare function useValue<T>(fn?: () => T): T | Value<any>;
+/**********************************
+ * 服务 API
+ **********************************/
+declare function useService<T, P extends any[]>(fn: Service<T, P>, ...p: P): T;
+declare function byService<T, P extends any[]>(fn: Service<T, P>, ...p: P): T;
+/**********************************
+ * 钩子类 API
+ **********************************/
+/**
+ * 为当前组件注册钩子
+ * @param name 钩子名称
+ * @param hook 钩子
+ * @param initOnly 是否仅在初始化时有效
+ */
+declare function hook<H extends HookNames>(name: H, hook: () => void, initOnly?: boolean): undefined | (() => void);
+declare function hook(name: string, hook: () => void, initOnly?: boolean): undefined | (() => void);
+
+/**
+ * 判读是否为元素
+ */
+declare function isElement(v: any): v is Element;
+declare function isFragmentElement(v: any): v is Element<'template'>;
+declare function isRenderElement(v: any): v is Element<typeof Render>;
+declare function isSimpleElement(v: any): boolean;
+declare function createElement<T extends DeliverComponent<any>>(tag: T, attrs?: (T extends DeliverComponent<infer P> ? {
+    value: P;
+} : never), ...children: any[]): Element;
+declare function createElement<P extends object, T extends Component<P> | RenderComponent<P, any, any>>(tag: T, attrs?: P, ...children: any[]): Element;
+declare function createElement<T extends string>(tag: T, attrs?: Record<string, any>, ...children: any[]): Element;
+declare function createElement(tag: any, attrs?: Record<string, any> | null, ...children: any[]): Element;
+declare function createElementBase<T extends DeliverComponent<any>>(tag: T, attrs?: (T extends DeliverComponent<infer P> ? {
+    value: P;
+} : never), ...children: any[]): Element;
+declare function createElementBase<P extends object, T extends Component<P> | RenderComponent<P, any, any>>(tag: T, attrs?: P, ...children: any[]): Element;
+declare function createElementBase<T extends string>(tag: T, attrs?: Record<string, any>, ...children: any[]): Element;
+declare function createElementBase<T extends Tag<any>>(tag: T, attrs?: Record<string, any> | null, ...children: any[]): Element;
+declare function createRenderElement(render: (_?: any) => Node, { slot, key }?: {
+    slot?: string;
+    key?: string;
+}): Element;
+declare function elements(node: any, opt?: ElementIteratorOptions): any[];
+declare function equal(a: any, b: any): boolean;
+declare function createTemplateElement(...children: any[]): Element;
+
+declare function label(...label: (string | Label)[]): void;
+
+interface Attributes<T extends object> {
+    slot?: string;
+    'n:ref'?: Ref<T, Entity<any, any>>;
+    'n-ref'?: Ref<T, Entity<any, any>>;
+    '@'?: Emit | EventSet;
+    'n:on'?: Emit | EventSet;
+    'n-on'?: Emit | EventSet;
+}
+interface NativeAttributes extends Attributes<any> {
+    id?: string | Value<string>;
+    class?: string | Value<string>;
+}
+interface ClassAttributes<T> extends Attributes<T & object> {
+}
+interface SlotAttr {
+    name?: string;
+}
+interface ScopeSlotAttr {
+    name?: string;
+    render?(...params: any[]): Node | Node[];
+}
+interface SlotRenderAttr {
+}
+interface CoreIntrinsicElements {
+    [Slot]: SlotAttr & ScopeSlotAttr;
+    [Render]: SlotRenderAttr;
+    [ScopeSlot]: ScopeSlotAttr;
+    slot: SlotAttr;
+}
+declare type NeepElement = Element;
+declare global {
+    namespace JSX {
+        interface IntrinsicAttributes extends NativeAttributes {
+        }
+        interface IntrinsicClassAttributes<T> extends ClassAttributes<T> {
+        }
+        interface Element extends NeepElement {
+        }
+        interface IntrinsicElements extends CoreIntrinsicElements {
+            [k: string]: any;
+        }
+    }
 }
 
 interface InstallOptions {
     monitorable?: typeof _mp_rt1_monitorable__;
-    render?: IRender;
+    renderer?: IRenderer;
     devtools?: Devtools;
 }
 declare function install(apis: InstallOptions): void;
@@ -503,15 +949,66 @@ declare class NeepError extends Error {
     constructor(message: string, tag?: string);
 }
 
-declare function render(e?: NeepElement | Component, p?: MountProps): RootExposed;
+declare function render(e?: Element | Component<any>, p?: Record<string, any>): RootEntity<any>;
 
-declare function register(name: string, component: Component): void;
+declare function register(name: string, component: Component<any>): void;
 
-declare function lazy<P extends object = object, C extends Component<P, any> = Component<P, any>>(component: () => Promise<C | {
+declare function getNode(id: number | NativeNode): MountNode | undefined;
+
+declare type Render$1<TObject extends object, TExpose extends object, TEmit extends Record<string, any>> = ((params: TObject, context: ComponentContext<TExpose, TEmit>) => Node) | RenderComponent<TObject, TExpose, TEmit>;
+interface Options<TProps extends object, TExpose extends object, TEmit extends Record<string, any>, TObject extends object> {
+    name?: string;
+    components?: Record<string, Component<any>>;
+    render?: Render$1<TObject, TExpose, TEmit>;
+    props?: (keyof TProps)[];
+}
+declare function createDeliverComponent<T>(def: T): DeliverComponent<T>;
+declare function createDeliverComponent<T>(def?: T): DeliverComponent<T | undefined>;
+declare function createDeliverComponent<T, D>(def: D): DeliverComponent<T | D>;
+declare function createRenderComponent<TProps extends object, TExpose extends object, TEmit extends Record<string, any>>(f: ComponentFunc<TProps, TExpose, TEmit>, { name, components }?: {
+    name?: string;
+    components?: Record<string, Component<any>>;
+}): RenderComponent<TProps, TExpose, TEmit>;
+declare function createContainerComponent<P extends object, T = any>(value: T, { name, renderer }?: {
+    name?: string;
+    renderer?: string | IRenderer;
+}): ContainerComponent<P, T>;
+declare function createElementComponent<P extends object, T>(value: T, { name }?: {
+    name?: string;
+}): ElementComponent<P, T>;
+declare function createStandardComponent<TProps extends object, TExpose extends object, TEmit extends Record<string, any>>(f: ComponentFunc<TProps, TExpose, TEmit>, options?: Options<TProps, TExpose, TEmit, never> & {
+    render?: undefined;
+}): StandardComponent<TProps, TExpose, TEmit>;
+declare function createStandardComponent<TProps extends object, TExpose extends object, TEmit extends Record<string, any>, TObject extends object>(f: (props: TProps, context: ComponentContext<TExpose, TEmit>) => TObject, options: Options<TProps, TExpose, TEmit, TObject> & {
+    render: Render$1<TObject, TExpose, TEmit>;
+}): StandardComponent<TProps, TExpose, TEmit>;
+declare function createNativeComponent<TProps extends object, TExpose extends object, TEmit extends Record<string, any>>(f: ComponentFunc<TProps, TExpose, TEmit>, options: Options<TProps, TExpose, TEmit, never> & {
+    render?: undefined;
+}): NativeComponent<TProps, TExpose, TEmit>;
+declare function createNativeComponent<TProps extends object, TExpose extends object, TEmit extends Record<string, any>, TObject extends object>(f: (props: TProps, context: ComponentContext<TExpose, TEmit>) => TObject, options: Options<TProps, TExpose, TEmit, TObject> & {
+    render: Render$1<TObject, TExpose, TEmit>;
+}): NativeComponent<TProps, TExpose, TEmit>;
+declare function createSimpleComponent<TProps extends object, TEmit extends Record<string, any>>(f: SimpleComponentFunc<TProps, TEmit>, { name, components }?: {
+    name?: string;
+    components?: Record<string, Component<any>>;
+}): SimpleComponent<TProps, TEmit>;
+declare function createShellComponent<TProps extends object, TEmit extends Record<string, any>>(f: ShellComponentFunc<TProps, TEmit>, { name }?: {
+    name?: string;
+}): ShellComponent<TProps, TEmit>;
+
+declare function isSimpleComponent(v: any): v is SimpleComponent<any, any>;
+declare function isShellComponent(v: any): v is ShellComponent<any, any>;
+declare function isNativeComponent(v: any): v is NativeComponent<any, any, any>;
+declare function isRenderComponent(v: any): v is RenderComponent<any, any, any>;
+declare function isContainerComponent(v: any): v is ContainerComponent<any, any>;
+declare function isElementComponent(v: any): v is ElementComponent<any, any>;
+declare function isDeliverComponent(v: any): v is DeliverComponent<any>;
+
+declare function lazy<P extends object, C extends Component<P>>(component: () => Promise<C | {
     default: C;
 }>, Placeholder?: Component<{
     loading: boolean;
-}, any>): Component<P>;
+}>): SimpleComponent<P, any>;
 
 /**
  * Global constant
@@ -528,99 +1025,17 @@ declare const version: string;
  */
 declare const isProduction: boolean;
 
-declare function ref<T extends NativeNode | Exposed = NativeNode | Exposed>(watch?: boolean): RefValue<T>;
-declare function ref<T extends NativeNode | Exposed = NativeNode | Exposed>(set: RefSet<T>): Ref<T>;
-
-/**********************************
- * 状态管理类 API
- **********************************/
-/**
- * 监听指定值的变化
- * @description 本质是调用 Value 对象的 watch 方法
- * @description 但是通过此方法进行的观察，会在组件生命周期结束时自动停止观察
- * @description 此函数只有在初始化调用时有效
- * @param value 被监听的值
- * @param cb    当监听的值发送变化时调用的函数
- */
-declare function watch<T>(value: Value$1<T>, cb: WatchCallback<T>): () => void;
-/**
- * 监听指定值的变化
- * @description 本质是创建调用 Value 对象的 watch 方法
- * @description 但是通过此方法进行的观察，会在组件生命周期结束时自动停止观察
- * @description 此函数只有在初始化调用时有效
- * @param value 用于计算观测值的函数
- * @param cb    当监听的值发送变化时调用的函数
- */
-declare function watch<T>(value: () => T, cb: (v: T, stopped: boolean) => void): () => void;
-declare function useValue(): Value$1<any>;
-declare function useValue<T>(fn: () => T): T;
-declare function useValue<T>(fn?: () => T): T | Value$1<any>;
-/**********************************
- * 服务 API
- **********************************/
-declare function useService<T, P extends any[]>(fn: Service<T, P>, ...p: P): T;
-declare function byService<T, P extends any[]>(fn: Service<T, P>, ...p: P): T;
-/**********************************
- * 钩子类 API
- **********************************/
-/**
- * 为当前组件注册钩子
- * @param name 钩子名称
- * @param hook 钩子
- * @param initOnly 是否仅在初始化时有效
- */
-declare function hook<H extends Hooks>(name: H, hook: () => void, initOnly?: boolean): undefined | (() => void);
-declare function hook(name: string, hook: () => void, initOnly?: boolean): undefined | (() => void);
-/**
- * 将 Value 导出
- * @param name 导出用的名称
- */
-declare function expose<T>(name: string | number | symbol, value: Value$1<T>, mix?: boolean): void;
-/**
- * 将普通值导出
- * @param name
- * @param value
- */
-declare function expose<T>(name: string | number | symbol, value: T): void;
-/**
- * 设置基于 getter 的导出
- * @param name
- * @param getter
- * @param nonModifiable
- */
-declare function expose<T>(name: string | number | symbol, getter: () => T, nonModifiable: true): void;
-/**
- * 设置基于 getter/setter 的导出
- * @param name
- * @param getter
- * @param setter
- */
-declare function expose<T>(name: string | number | symbol, getter: () => T, setter: (value: T) => void): void;
-
-/**
- * 判读是否为元素
- */
-declare function isElement(v: any): v is NeepElement;
-declare function isSimpleTag(tag: Tag): boolean;
-declare function isSimpleElement(v: any): boolean;
-declare function createElement(tag: Tag, attrs?: {
-    [key: string]: any;
-}, ...children: any[]): NeepElement;
-declare function elements(node: any, opt?: ElementIteratorOptions): any[];
-declare function equal(a: any, b: any): boolean;
-
-declare function label(text: string, color?: string): void;
-
-declare function getRect(n: NativeNode): Rect | null;
-
-declare function createDeliver<T>(def: T): Deliver<T>;
-declare function createDeliver<T>(def?: T): Deliver<T | undefined>;
-declare function createDeliver<T, D>(def: D): Deliver<T | D>;
-declare function isDeliver(d: any): d is Deliver<any>;
+declare function setHook<H extends HookNames, T extends HookEntity<any, any>>(id: H, hook: Hook<T>, entity: T): () => void;
+declare function setHook<T extends HookEntity<any, any>>(id: string, hook: Hook<T>, entity: T): () => void;
+declare function setHook<H extends HookNames>(id: H, hook: Hook, entity?: HookEntity<any, any>): () => void;
+declare function setHook(id: string, hook: Hook, entity?: HookEntity<any, any>): () => void;
+declare function callHook<H extends HookNames>(id: H, entity: ComponentEntity<any, any> | ContainerEntity<any>): void;
+declare function callHook(id: string, entity: ComponentEntity<any, any> | ContainerEntity<any>): void;
 
 /** 当前正在执行的对象 */
-declare let current: Entity | undefined;
-declare function checkCurrent(name: string, initOnly?: boolean): Entity;
+declare let current: ComponentEntity<any, any> | undefined;
+declare function execUseHooks<T>(name: string, lib: string, run: (entity: ComponentEntity<any, any>) => T): T;
+declare function checkCurrent(name: string, initOnly?: boolean): ComponentEntity<any, any>;
 
 declare function addContextConstructor(constructor: ContextConstructor): void;
 
@@ -630,259 +1045,255 @@ declare function refresh<T>(f: () => T, async?: false): T;
 declare function refresh<T>(f: () => PromiseLike<T> | T, async: true): Promise<T>;
 declare function refresh<T>(f: () => PromiseLike<T> | T, async?: boolean): PromiseLike<T> | T;
 
-/** 组件标记函数 */
-interface Mark {
-    <N extends Component<any, any>>(component: N): N;
+declare function nextTick(fn: () => void, level?: number, type?: 'middle' | 'end'): void;
+declare function addRendererDraw(fn: () => void): void;
+
+declare function addRecognizer(recognizer: Recognizer): void;
+
+declare class SlotProxy extends NodeProxy<typeof ScopeSlot> {
+    __nodes: TreeNodeList;
+    get content(): (MountedNode | MountedNode[])[];
+    constructor(children: any[], parent: BaseProxy<any>, isDefault?: boolean);
+    /** 更新属性及子代 */
+    _update(props: object, children: any[]): void;
+    _destroy(): void;
+    _mount(mountOptions: MountOptions): void;
+    _redraw(mountOptions: MountOptions): void;
+    _unmount(): void;
 }
-/** 标记组件名称 */
-declare function mName(name: string): Mark;
-declare function mName<N extends Component<any, any>>(name: string, component: N): N;
-/** 标记组件类型 */
-declare function mType(type?: 'native' | 'simple' | 'standard'): Mark;
-declare function mType<N extends Component<any, any>>(type: 'native' | 'simple' | 'standard', component: N): N;
-/** 标记为简单组件 */
-declare function mSimple(): Mark;
-declare function mSimple<N extends Component<any, any>>(component: N): N;
-/** 标记为原生组件 */
-declare function mNative(): Mark;
-declare function mNative<N extends Component<any, any>>(component: N): N;
-/** 标记独立的渲染函数 */
-declare function mRender(fn?: Marks[typeof renderSymbol]): Mark;
-declare function mRender<N extends Component<any, any>>(fn: Marks[typeof renderSymbol] | undefined, component: N): N;
-/** 标记组件配置 */
-declare function mConfig(name: string, config: any): Mark;
-declare function mConfig<N extends Component<any, any>>(name: string, config: any, component: N): N;
-/** 标记组件类型 */
-declare function mComponent(name: string, item: Component): Mark;
-declare function mComponent<N extends Component<any, any>>(name: string, item: Component, component: N): N;
-declare function create<P extends object>(c: Component<P, never>): Component<P, never>;
-declare function create<P extends object = object, R extends object = object>(c: Component<P, R>, r: Render<R>): Component<P, R>;
-declare function mark<N extends Component<any, any>>(component: N, ...marks: Mark[]): N;
 
-declare function setHook<H extends Hooks>(id: H, hook: Hook, entity?: Entity): () => void;
-declare function setHook(id: string, hook: Hook, entity?: Entity): () => void;
-declare function callHook<H extends Hooks>(id: H, exposed: Entity): void;
-declare function callHook(id: string, exposed: Entity): void;
+declare class RenderProxy extends NodeProxy<typeof Render> {
+    get content(): (MountedNode | MountedNode[])[];
+    childNodes: any[];
+    /** 结果渲染函数 */
+    private __render;
+    constructor(props: object, children: any[], parent: BaseProxy<any>);
+    /** 是否为刷新中 */
+    private __refreshing;
+    /** 是否需要继续刷新 */
+    private __needRefresh;
+    /** 延时刷新计数 */
+    private __delayedRefresh;
+    /** 渲染结果 */
+    protected _nodes: TreeNodeList;
+    refresh(): void;
+    refresh<T>(f: () => T): T;
+    refresh<T>(f?: () => T): T | void;
+    _update(props: object, children: any[]): void;
+    _destroy(): void;
+    _mount(mountOptions: MountOptions): void;
+    _redraw(mountOptions: MountOptions): void;
+    _unmount(): void;
+}
+
+declare function isProxy(v: any, type?: ''): v is RefProxy<any, any, any>;
+declare function isProxy(v: any, type?: ''): v is BaseProxy<any>;
+declare function isProxy(v: any, type: 'component'): v is ComponentProxy<any, any, any, any>;
+declare function isProxy(v: any, type: 'standardComponent'): v is StandardComponentProxy<any, any, any, any>;
+declare function isProxy(v: any, type: 'renderComponent'): v is RenderComponentProxy<any, any, any, any>;
+declare function isProxy(v: any, type: 'container'): v is ContainerProxy<any>;
+declare function isProxy(v: any, type: 'node'): v is NodeProxy<any>;
+declare function isProxy(v: any, type: 'deliver'): v is DeliverProxy<any>;
+declare function isProxy(v: any, type: 'element'): v is ElementProxy<any>;
+declare function isProxy(v: any, type: 'group'): v is GroupProxy<any>;
+declare function isProxy(v: any, type: 'shell'): v is ShellProxy<any>;
+declare function isProxy(v: any, type: 'value'): v is ValueProxy;
+declare function isProxy(v: any, type: 'render'): v is RenderProxy;
+declare function isProxy(v: any, type: 'slot'): v is SlotProxy;
 
 
-
-declare const Neep_install: typeof install;
-type Neep_EventEmitter = EventEmitter;
-declare const Neep_EventEmitter: typeof EventEmitter;
-declare const Neep_render: typeof render;
-declare const Neep_register: typeof register;
-declare const Neep_lazy: typeof lazy;
-declare const Neep_version: typeof version;
-declare const Neep_isProduction: typeof isProduction;
-declare const Neep_createDeliver: typeof createDeliver;
-declare const Neep_isDeliver: typeof isDeliver;
-declare const Neep_ScopeSlot: typeof ScopeSlot;
-declare const Neep_SlotRender: typeof SlotRender;
-declare const Neep_Slot: typeof Slot;
-declare const Neep_Value: typeof Value;
-declare const Neep_Container: typeof Container;
-declare const Neep_Template: typeof Template;
-declare const Neep_Fragment: typeof Fragment;
-declare const Neep_ref: typeof ref;
-declare const Neep_value: typeof value;
-declare const Neep_computed: typeof computed;
-declare const Neep_isValue: typeof isValue;
-declare const Neep_encase: typeof encase;
-declare const Neep_recover: typeof recover;
-declare const Neep_valueify: typeof valueify;
-declare const Neep_asValue: typeof asValue;
-declare const Neep_watch: typeof watch;
-declare const Neep_useValue: typeof useValue;
-declare const Neep_useService: typeof useService;
-declare const Neep_byService: typeof byService;
-declare const Neep_hook: typeof hook;
-declare const Neep_expose: typeof expose;
-declare const Neep_isElement: typeof isElement;
-declare const Neep_isSimpleTag: typeof isSimpleTag;
-declare const Neep_isSimpleElement: typeof isSimpleElement;
-declare const Neep_createElement: typeof createElement;
-declare const Neep_elements: typeof elements;
-declare const Neep_equal: typeof equal;
-declare const Neep_label: typeof label;
-declare const Neep_getRect: typeof getRect;
-declare const Neep_current: typeof current;
-declare const Neep_checkCurrent: typeof checkCurrent;
-declare const Neep_addContextConstructor: typeof addContextConstructor;
-declare const Neep_addEntityConstructor: typeof addEntityConstructor;
-declare const Neep_refresh: typeof refresh;
-type Neep_Mark = Mark;
-declare const Neep_mName: typeof mName;
-declare const Neep_mType: typeof mType;
-declare const Neep_mSimple: typeof mSimple;
-declare const Neep_mNative: typeof mNative;
-declare const Neep_mRender: typeof mRender;
-declare const Neep_mConfig: typeof mConfig;
-declare const Neep_mComponent: typeof mComponent;
-declare const Neep_create: typeof create;
-declare const Neep_mark: typeof mark;
-type Neep_Devtools = Devtools;
-type Neep_Hook = Hook;
-declare const Neep_NeepNode: typeof NeepNode;
-type Neep_SlotFn = SlotFn;
-type Neep_Slots = Slots;
-type Neep_Emit = Emit;
-type Neep_EventSet = EventSet;
-type Neep_On = On;
-type Neep_ContextConstructor = ContextConstructor;
-type Neep_EntityConstructor = EntityConstructor;
-declare const Neep_Hooks: typeof Hooks;
-type Neep_Exposed = Exposed;
-declare const Neep_Delivered: typeof Delivered;
-type Neep_RootExposed = RootExposed;
-type Neep_Deliver = Deliver;
-type Neep_Context = Context;
-type Neep_Entity = Entity;
-type Neep_Render = Render;
-type Neep_Service = Service;
-type Neep_Marks = Marks;
-type Neep_Component = Component;
-declare const Neep_Tag: typeof Tag;
-type Neep_Ref = Ref;
-type Neep_RefSet = RefSet;
-type Neep_RefValue = RefValue;
-type Neep_NeepElement = NeepElement;
-type Neep_TreeNode = TreeNode;
-type Neep_MountedNode = MountedNode;
-type Neep_NativeElement = NativeElement;
-type Neep_NativeText = NativeText;
-type Neep_NativePlaceholder = NativePlaceholder;
-type Neep_NativeComponent = NativeComponent;
-type Neep_NativeShadow = NativeShadow;
-declare const Neep_NativeContainer: typeof NativeContainer;
-declare const Neep_NativeNode: typeof NativeNode;
-type Neep_MountProps = MountProps;
-type Neep_Rect = Rect;
-type Neep_IRender = IRender;
-type Neep_ElementIteratorOptions = ElementIteratorOptions;
-declare const Neep_typeSymbol: typeof typeSymbol;
-declare const Neep_nameSymbol: typeof nameSymbol;
-declare const Neep_renderSymbol: typeof renderSymbol;
-declare const Neep_componentsSymbol: typeof componentsSymbol;
-declare const Neep_configSymbol: typeof configSymbol;
-declare const Neep_objectTypeSymbol: typeof objectTypeSymbol;
-declare const Neep_objectTypeSymbolElement: typeof objectTypeSymbolElement;
-declare const Neep_objectTypeSymbolDeliver: typeof objectTypeSymbolDeliver;
-declare const Neep_deliverKeySymbol: typeof deliverKeySymbol;
-declare const Neep_deliverDefaultSymbol: typeof deliverDefaultSymbol;
-declare const Neep_setHook: typeof setHook;
-declare const Neep_callHook: typeof callHook;
 declare namespace Neep {
   export {
-    Neep_install as install,
+    install,
     NeepError as Error,
-    Neep_EventEmitter as EventEmitter,
-    Neep_render as render,
-    Neep_register as register,
-    Neep_lazy as lazy,
-    Neep_version as version,
-    Neep_isProduction as isProduction,
-    Neep_createDeliver as createDeliver,
-    Neep_isDeliver as isDeliver,
-    Neep_ScopeSlot as ScopeSlot,
-    Neep_SlotRender as SlotRender,
-    Neep_Slot as Slot,
-    Neep_Value as Value,
-    Neep_Container as Container,
-    Neep_Template as Template,
-    Neep_Fragment as Fragment,
-    Neep_ref as ref,
-    Neep_value as value,
-    Neep_computed as computed,
-    Neep_isValue as isValue,
-    Neep_encase as encase,
-    Neep_recover as recover,
-    Neep_valueify as valueify,
-    Neep_asValue as asValue,
-    Neep_watch as watch,
-    Neep_useValue as useValue,
-    Neep_useService as useService,
-    Neep_byService as byService,
-    Neep_hook as hook,
-    Neep_expose as expose,
-    Neep_isElement as isElement,
-    Neep_isSimpleTag as isSimpleTag,
-    Neep_isSimpleElement as isSimpleElement,
-    Neep_createElement as createElement,
-    Neep_elements as elements,
-    Neep_equal as equal,
-    Neep_label as label,
-    Neep_getRect as getRect,
-    Neep_current as current,
-    Neep_checkCurrent as checkCurrent,
-    Neep_addContextConstructor as addContextConstructor,
-    Neep_addEntityConstructor as addEntityConstructor,
-    Neep_refresh as refresh,
-    Neep_Mark as Mark,
-    Neep_mName as mName,
-    Neep_mType as mType,
-    Neep_mSimple as mSimple,
-    Neep_mNative as mNative,
-    Neep_mRender as mRender,
-    Neep_mConfig as mConfig,
-    Neep_mComponent as mComponent,
-    Neep_create as create,
-    Neep_mark as mark,
-    EntityObject$1 as EntityObject,
-    ComponentEntity$1 as ComponentEntity,
-    ContainerEntity$1 as ContainerEntity,
-    Neep_Devtools as Devtools,
-    Neep_Hook as Hook,
-    Neep_NeepNode as NeepNode,
-    Neep_SlotFn as SlotFn,
-    Neep_Slots as Slots,
-    Neep_Emit as Emit,
-    Neep_EventSet as EventSet,
-    Neep_On as On,
-    Neep_ContextConstructor as ContextConstructor,
-    Neep_EntityConstructor as EntityConstructor,
-    Neep_Hooks as Hooks,
-    Neep_Exposed as Exposed,
-    Neep_Delivered as Delivered,
-    Neep_RootExposed as RootExposed,
-    Neep_Deliver as Deliver,
-    Neep_Context as Context,
-    Neep_Entity as Entity,
-    Neep_Render as Render,
-    Neep_Service as Service,
-    Neep_Marks as Marks,
-    Neep_Component as Component,
-    Neep_Tag as Tag,
-    Neep_Ref as Ref,
-    Neep_RefSet as RefSet,
-    Neep_RefValue as RefValue,
-    Neep_NeepElement as NeepElement,
-    Neep_TreeNode as TreeNode,
-    Neep_MountedNode as MountedNode,
-    Neep_NativeElement as NativeElement,
-    Neep_NativeText as NativeText,
-    Neep_NativePlaceholder as NativePlaceholder,
-    Neep_NativeComponent as NativeComponent,
-    Neep_NativeShadow as NativeShadow,
-    Neep_NativeContainer as NativeContainer,
-    Neep_NativeNode as NativeNode,
-    Neep_MountProps as MountProps,
-    Neep_Rect as Rect,
-    Neep_IRender as IRender,
-    Neep_ElementIteratorOptions as ElementIteratorOptions,
-    Neep_typeSymbol as typeSymbol,
-    Neep_nameSymbol as nameSymbol,
-    Neep_renderSymbol as renderSymbol,
-    Neep_componentsSymbol as componentsSymbol,
-    Neep_configSymbol as configSymbol,
-    Neep_objectTypeSymbol as objectTypeSymbol,
-    Neep_objectTypeSymbolElement as objectTypeSymbolElement,
-    Neep_objectTypeSymbolDeliver as objectTypeSymbolDeliver,
-    Neep_deliverKeySymbol as deliverKeySymbol,
-    Neep_deliverDefaultSymbol as deliverDefaultSymbol,
-    Neep_setHook as setHook,
-    Neep_callHook as callHook,
+    render,
+    register,
+    getNode,
+    createDeliverComponent,
+    createRenderComponent,
+    createContainerComponent,
+    createElementComponent,
+    createStandardComponent,
+    createNativeComponent,
+    createSimpleComponent,
+    createShellComponent,
+    createStandardComponent as createComponent,
+    isSimpleComponent,
+    isShellComponent,
+    isNativeComponent,
+    isRenderComponent,
+    isContainerComponent,
+    isElementComponent,
+    isDeliverComponent,
+    isDeliverComponent as isDeliver,
+    lazy,
+    version,
+    isProduction,
+    ScopeSlot,
+    Render,
+    Slot,
+    Container,
+    Template,
+    Fragment,
+    value,
+    computed,
+    isValue,
+    encase,
+    valueify,
+    asValue,
+    mixValue,
+    defineProperty,
+    ref,
+    watch,
+    useValue,
+    useService,
+    byService,
+    hook,
+    isElement,
+    isFragmentElement,
+    isRenderElement,
+    isSimpleElement,
+    createElement,
+    createElementBase,
+    createRenderElement,
+    elements,
+    equal,
+    createTemplateElement,
+    label,
+    SelfComponent,
+    PropsDefinition,
+    ComponentFunc,
+    SimpleComponentFunc,
+    ShellComponentFunc,
+    SpecialComponentFunc,
+    DeliverComponent,
+    RenderComponent,
+    ContainerComponent,
+    ElementComponent,
+    StandardComponent,
+    NativeComponent,
+    SimpleComponent,
+    ShellComponent,
+    Component,
+    Service,
+    Delivered,
+    Context,
+    ShellContext,
+    ComponentContext,
+    ContextConstructor,
+    BaseProxy$1 as BaseProxy,
+    RefProxy$1 as RefProxy,
+    NodeProxy$1 as NodeProxy,
+    DeliverProxy$1 as DeliverProxy,
+    ElementProxy$1 as ElementProxy,
+    GroupProxy$1 as GroupProxy,
+    ShellProxy$1 as ShellProxy,
+    ValueProxy$1 as ValueProxy,
+    ComponentProxy$1 as ComponentProxy,
+    StandardComponentProxy$1 as StandardComponentProxy,
+    RenderComponentProxy$1 as RenderComponentProxy,
+    ContainerProxy$1 as ContainerProxy,
+    Devtools,
+    Label,
+    ValueElement,
+    TreeNodeList,
+    TreeNode,
+    ProxyMountedNode,
+    ValueMountedNode,
+    MountNode,
+    MountedNode,
+    Entity,
+    ElementEntity,
+    ShellEntity,
+    HookEntity,
+    ComponentEntity,
+    EntityConstructor,
+    ContainerEntity,
+    RootEntity,
+    EmitOptions,
+    Emit,
+    EventSet,
+    EventInfo,
+    Listener,
+    On,
+    EventEmitter$1 as EventEmitter,
+    Hook,
+    HookNames as HookName,
+    ReadMap,
+    ObserveOptions,
+    ExecOptions,
+    ExecResult,
+    MonitorOptions,
+    Monitored,
+    Value,
+    WatchCallback,
+    CancelWatch,
+    ComputedOptions,
+    Valueify,
+    AsValue,
+    DeValue,
+    EnValue,
+    Tag,
+    Element,
+    ElementIteratorOptions,
+    Node,
+    Recognizer,
+    Ref,
+    RefSet,
+    RefValue,
+    RefEntityValue,
+    NativeElementNodes,
+    NativeTextNodes,
+    NativePlaceholderNodes,
+    NativeComponentNodes,
+    NativeShadowNodes,
+    NativeElementNode,
+    NativeTextNode,
+    NativePlaceholderNode,
+    NativeComponentNode,
+    NativeShadowNode,
+    NativeContainerNode,
+    NativeNode,
+    Rect,
+    MountOptions,
+    MountContainerResult,
+    UpdateContainerResult,
+    IRenderer,
+    Slots,
+    SlotApi,
+    UseHook,
+    rendererSymbol,
+    nameSymbol,
+    componentsSymbol,
+    propsSymbol,
+    componentValueSymbol,
+    objectTypeSymbol,
+    objectTypeSymbolElement,
+    objectTypeSymbolDeliverComponent,
+    objectTypeSymbolNativeComponent,
+    objectTypeSymbolSimpleComponent,
+    objectTypeSymbolShellComponent,
+    objectTypeSymbolRenderComponent,
+    objectTypeSymbolContainerComponent,
+    objectTypeSymbolElementComponent,
+    objectTypeSymbolHookEntity,
+    objectTypeSymbolRootEntity,
+    deliverKeySymbol,
+    deliverDefaultSymbol,
+    setHook,
+    callHook,
+    current,
+    checkCurrent,
+    execUseHooks,
+    addContextConstructor,
+    addEntityConstructor,
+    refresh,
+    nextTick,
+    addRendererDraw,
+    addRecognizer,
+    isProxy,
   };
 }
 
 export default Neep;
-export { Component, ComponentEntity$1 as ComponentEntity, Container, ContainerEntity$1 as ContainerEntity, Context, ContextConstructor, Deliver, Delivered, Devtools, ElementIteratorOptions, Emit, Entity, EntityConstructor, EntityObject$1 as EntityObject, NeepError as Error, EventEmitter, EventSet, Exposed, Fragment, Hook, Hooks, IRender, Mark, Marks, MountProps, MountedNode, NativeComponent, NativeContainer, NativeElement, NativeNode, NativePlaceholder, NativeShadow, NativeText, NeepElement, NeepNode, On, Rect, Ref, RefSet, RefValue, Render, RootExposed, ScopeSlot, Service, Slot, SlotFn, SlotRender, Slots, Tag, Template, TreeNode, Value, addContextConstructor, addEntityConstructor, byService, callHook, checkCurrent, componentsSymbol, configSymbol, create, createDeliver, createElement, current, deliverDefaultSymbol, deliverKeySymbol, elements, equal, expose, getRect, hook, install, isDeliver, isElement, isProduction, isSimpleElement, isSimpleTag, label, lazy, mComponent, mConfig, mName, mNative, mRender, mSimple, mType, mark, nameSymbol, objectTypeSymbol, objectTypeSymbolDeliver, objectTypeSymbolElement, ref, refresh, register, render, renderSymbol, setHook, typeSymbol, useService, useValue, version, watch };
+export { BaseProxy$1 as BaseProxy, Component, ComponentContext, ComponentEntity, ComponentFunc, ComponentProxy$1 as ComponentProxy, Container, ContainerComponent, ContainerEntity, ContainerProxy$1 as ContainerProxy, Context, ContextConstructor, DeliverComponent, DeliverProxy$1 as DeliverProxy, Delivered, Devtools, Element, ElementComponent, ElementEntity, ElementIteratorOptions, ElementProxy$1 as ElementProxy, Emit, EmitOptions, Entity, EntityConstructor, NeepError as Error, EventEmitter$1 as EventEmitter, EventInfo, EventSet, Fragment, GroupProxy$1 as GroupProxy, Hook, HookEntity, HookNames as HookName, IRenderer, Label, Listener, MountContainerResult, MountNode, MountOptions, MountedNode, NativeComponent, NativeComponentNode, NativeComponentNodes, NativeContainerNode, NativeElementNode, NativeElementNodes, NativeNode, NativePlaceholderNode, NativePlaceholderNodes, NativeShadowNode, NativeShadowNodes, NativeTextNode, NativeTextNodes, Node, NodeProxy$1 as NodeProxy, On, PropsDefinition, ProxyMountedNode, Recognizer, Rect, Ref, RefEntityValue, RefProxy$1 as RefProxy, RefSet, RefValue, Render, RenderComponent, RenderComponentProxy$1 as RenderComponentProxy, RootEntity, ScopeSlot, SelfComponent, Service, ShellComponent, ShellComponentFunc, ShellContext, ShellEntity, ShellProxy$1 as ShellProxy, SimpleComponent, SimpleComponentFunc, Slot, SlotApi, Slots, SpecialComponentFunc, StandardComponent, StandardComponentProxy$1 as StandardComponentProxy, Tag, Template, TreeNode, TreeNodeList, UpdateContainerResult, UseHook, ValueElement, ValueMountedNode, ValueProxy$1 as ValueProxy, addContextConstructor, addEntityConstructor, addRecognizer, addRendererDraw, byService, callHook, checkCurrent, componentValueSymbol, componentsSymbol, createStandardComponent as createComponent, createContainerComponent, createDeliverComponent, createElement, createElementBase, createElementComponent, createNativeComponent, createRenderComponent, createRenderElement, createShellComponent, createSimpleComponent, createStandardComponent, createTemplateElement, current, deliverDefaultSymbol, deliverKeySymbol, elements, equal, execUseHooks, getNode, hook, install, isContainerComponent, isDeliverComponent as isDeliver, isDeliverComponent, isElement, isElementComponent, isFragmentElement, isNativeComponent, isProduction, isProxy, isRenderComponent, isRenderElement, isShellComponent, isSimpleComponent, isSimpleElement, label, lazy, nameSymbol, nextTick, objectTypeSymbol, objectTypeSymbolContainerComponent, objectTypeSymbolDeliverComponent, objectTypeSymbolElement, objectTypeSymbolElementComponent, objectTypeSymbolHookEntity, objectTypeSymbolNativeComponent, objectTypeSymbolRenderComponent, objectTypeSymbolRootEntity, objectTypeSymbolShellComponent, objectTypeSymbolSimpleComponent, propsSymbol, ref, refresh, register, render, rendererSymbol, setHook, useService, useValue, version, watch };

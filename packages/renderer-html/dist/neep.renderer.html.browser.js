@@ -1,16 +1,60 @@
 /*!
- * NeepHtmlRenderer v0.1.0-alpha.15
- * (c) 2019-2020 Fierflame
+ * NeepRendererHtml v0.1.0-alpha.16
+ * (c) 2019-2021 Fierflame
  * @license MIT
  */
 (function (global, factory) {
 	typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports, require('@neep/core')) :
 	typeof define === 'function' && define.amd ? define(['exports', '@neep/core'], factory) :
-	(global = global || self, factory(global.NeepHtmlRenderer = {}, global.Neep));
+	(global = global || self, factory(global.NeepRendererHtml = {}, global.Neep));
 }(this, (function (exports, core) { 'use strict';
 
-	function installNeep() {
-	  return core.install;
+	const xmlnsMap = {
+	  svg: 'http://www.w3.org/2000/svg',
+	  html: 'http://www.w3.org/1999/xhtml',
+	  mathml: 'http://www.w3.org/1998/Math/MathML'
+	};
+	const SVGTags = new Set(['altGlyph', 'altGlyphDef', 'altGlyphItem', 'animate', 'animateColor', 'animateMotion', 'animateTransform', 'circle', 'clipPath', 'color-profile', 'cursor', 'defs', 'desc', 'ellipse', 'feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite', 'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap', 'feDistantLight', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR', 'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode', 'feMorphology', 'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile', 'feTurbulence', 'filter', 'font-face', 'font-face-format', 'font-face-name', 'font-face-src', 'font-face-uri', 'foreignObject', 'g', 'glyph', 'glyphRef', 'hkern', 'image', 'line', 'linearGradient', 'marker', 'mask', 'metadata', 'missing-glyph', 'mpath', 'path', 'pattern', 'polygon', 'polyline', 'radialGradient', 'rect', 'script', 'set', 'stop', 'style', 'svg', 'switch', 'symbol', 'text', 'textPath', 'title', 'tref', 'tspan', 'use', 'view', 'vkern']);
+	const MathMLTags = new Set(['maction', 'math', 'menclose', 'merror', 'mfenced', 'mfrac', 'mglyph', 'mi', 'mlabeledtr', 'mmultiscripts', 'mn', 'mo', 'mover', 'mpadded', 'mphantom', 'mroot', 'mrow', 'ms', 'mspace', 'msqrt', 'mstyle', 'msub', 'msubsup', 'msup', 'mtable', 'mtd', 'mtext', 'mtr', 'munder', 'munderover', 'semantics']);
+	function createElement(tagname, namespace) {
+	  const res = /^([a-z][a-z0-9-]*):([a-z0-9-]+)$/i.exec(tagname);
+	  const tag = res ? res[2] : tagname;
+	  const ns = (namespace || (res === null || res === void 0 ? void 0 : res[1]) || SVGTags.has(tag.toLowerCase()) && 'svg' || MathMLTags.has(tag.toLowerCase()) && 'mathml' || '').toLowerCase();
+
+	  if (!ns) {
+	    return document.createElement(tag);
+	  }
+
+	  return document.createElementNS(ns in xmlnsMap && xmlnsMap[ns] || ns, tag);
+	}
+
+	function createComponent(renderer) {
+	  const node = createElement('neep-component');
+	  return [node, node.attachShadow({
+	    mode: 'open'
+	  })];
+	}
+
+	function createPlaceholder() {
+	  return document.createComment('');
+	}
+
+	function createText(text) {
+	  return document.createTextNode(text);
+	}
+
+	function getParent(node) {
+	  return node.parentNode;
+	}
+
+	function insertNode(parent, node, next = null) {
+	  parent.insertBefore(node, next);
+	}
+
+	function installNeep(renderer) {
+	  core.install({
+	    renderer
+	  });
 	}
 
 	function getId(v) {
@@ -25,18 +69,19 @@
 	  return undefined;
 	}
 
-	function updateId(props, el, old) {
+	const PropsMap = new WeakMap();
+	function updateId(props, el) {
+	  const old = PropsMap.get(el);
 	  const id = getId(core.isValue(props.id) ? props.id() : props.id);
+	  PropsMap.set(el, id);
 
 	  if (id !== old) {
 	    if (typeof id === 'string') {
-	      el.id = props.id;
+	      el.id = id;
 	    } else {
 	      el.removeAttribute('id');
 	    }
 	  }
-
-	  return id;
 	}
 
 	function* recursive2iterable(list) {
@@ -99,10 +144,12 @@
 	  }
 	}
 
-	function updateClass(props, el, old) {
+	const PropsMap$1 = new WeakMap();
+	function updateClass(props, el) {
+	  const old = PropsMap$1.get(el);
 	  const classes = getClass(core.isValue(props.class) ? props.class() : props.class);
 	  update(el, classes, old);
-	  return classes;
+	  PropsMap$1.set(el, classes);
 	}
 
 	const unit = {
@@ -232,13 +279,16 @@
 	  }
 	}
 
-	function updateStyle(props, css, old, hasStyle) {
+	const PropsMap$2 = new WeakMap();
+	function updateStyle(props, el, css, hasStyle) {
 	  if (!hasStyle) {
 	    return undefined;
 	  }
 
+	  const old = PropsMap$2.get(el);
 	  const style = getStyle(core.isValue(props.style) ? props.style() : props.style);
 	  update$1(css, style, old);
+	  PropsMap$2.set(el, style);
 	  return style;
 	}
 
@@ -420,17 +470,13 @@
 	  }
 	}
 
-	function updateAttrs(props, el, old, hasStyle) {
+	const PropsMap$3 = new WeakMap();
+	function updateAttrs(props, el, hasStyle) {
+	  const old = PropsMap$3.get(el) || {};
 	  const attrs = getAttrs(props, hasStyle);
 	  update$2(el, attrs, old);
 	  setAttrs(el, attrs);
-	  return attrs;
-	}
-
-	function createEventEmitter() {
-	  const events = new core.EventEmitter();
-	  events.__eventBind = Object.create(null);
-	  return events;
+	  PropsMap$3.set(el, attrs);
 	}
 
 	function* getElementModel(el) {
@@ -469,48 +515,63 @@
 	  }
 	}
 
-	function getEventName(k) {
-	  if (k.substr(0, 2) !== 'on') {
-	    return '';
+	const ValueEventMap = new WeakMap();
+
+	function getValueEventBind(el) {
+	  let list = ValueEventMap.get(el);
+
+	  if (list) {
+	    return list;
 	  }
 
-	  let n = k.substr(2);
-
-	  if (n[0] === ':' || n[0] === '-') {
-	    return '';
-	  }
-
-	  return n;
+	  list = Object.create(null);
+	  ValueEventMap.set(el, list);
+	  return list;
 	}
 
-	function updateEvent(props, el, event = createEventEmitter()) {
-	  event.updateInProps(props, addEvent => {
-	    for (const k in props) {
-	      const f = props[k];
+	const bindMap = new WeakMap();
 
-	      if (typeof f !== 'function') {
-	        continue;
-	      }
+	function getEventBind(el) {
+	  let list = bindMap.get(el);
 
-	      const name = getEventName(k);
+	  if (list) {
+	    return list;
+	  }
 
-	      if (!name) {
-	        continue;
-	      }
+	  list = Object.create(null);
+	  bindMap.set(el, list);
+	  return list;
+	}
 
-	      addEvent(name, f);
+	function updateEvent(props, el, emit) {
+	  const valueEventMap = getValueEventBind(el);
+
+	  for (const [prop, name, t] of getElementModel(el)) {
+	    const value = props[prop];
+	    const item = valueEventMap[prop];
+
+	    if (item && item[0] === value) {
+	      continue;
 	    }
 
-	    for (const [prop, name, t] of getElementModel(el)) {
-	      const value = props[prop];
-
-	      if (core.isValue(value)) {
-	        addEvent(name, e => value(t(e)));
-	      }
+	    if (item) {
+	      item[1]();
 	    }
-	  });
-	  const names = new Set(event.names.map(String));
-	  const eventBind = event.__eventBind;
+
+	    if (!core.isValue(value)) {
+	      continue;
+	    }
+
+	    const f = e => {
+	      value(t(e));
+	    };
+
+	    el.addEventListener(name, f);
+	    valueEventMap[name] = [value, () => el.removeEventListener(name, f)];
+	  }
+
+	  const names = new Set(emit.names.map(String));
+	  const eventBind = getEventBind(el);
 
 	  for (const k of Object.keys(eventBind)) {
 	    if (names.has(k)) {
@@ -521,16 +582,12 @@
 	    delete eventBind[k];
 	  }
 
-	  const {
-	    emit
-	  } = event;
-
 	  for (const k of names) {
 	    if (k in eventBind) {
 	      continue;
 	    }
 
-	    const f = (...p) => emit(k, ...p);
+	    const f = p => emit(k, p);
 
 	    el.addEventListener(k, f);
 
@@ -538,330 +595,212 @@
 	      el.removeEventListener(k, f);
 	    };
 	  }
-
-	  return event;
 	}
 
-	const PropsMap = new WeakMap();
-	function update$3(el, props) {
+	function updateProps(renderer, el, props, emit) {
 	  const css = el.style;
 	  const hasStyle = css instanceof CSSStyleDeclaration;
-	  const old = PropsMap.get(el) || {
-	    attrs: {}
-	  };
-	  const id = updateId(props, el, old.id);
-	  const classes = updateClass(props, el, old.classes);
-	  const style = updateStyle(props, css, old.style, hasStyle);
-	  const attrs = updateAttrs(props, el, old.attrs, hasStyle);
-	  const event = updateEvent(props, el, old.event);
-	  PropsMap.set(el, {
-	    id,
-	    classes,
-	    style,
-	    attrs,
-	    event
-	  });
+	  updateId(props, el);
+	  updateClass(props, el);
+	  updateAttrs(props, el, hasStyle);
+	  updateStyle(props, el, css, hasStyle);
+	  updateEvent(props, el, emit);
 	  return el;
 	}
 
-	let list;
 	function nextFrame(f) {
-	  if (list) {
-	    list.push(f);
+	  window.requestAnimationFrame(f);
+	}
+
+	function getTarget(renderer, container, target, parent) {
+	  if (core.isValue(target)) {
+	    target = target.value;
+	  }
+
+	  if (target === null) {
+	    return {
+	      target: container,
+	      insert: null,
+	      next: null
+	    };
+	  }
+
+	  if (typeof target === 'string') {
+	    target = document.querySelector(target);
+	  }
+
+	  if (target instanceof Element) {
+	    return {
+	      target,
+	      insert: null,
+	      next: null
+	    };
+	  }
+
+	  return {
+	    target: null,
+	    insert: null,
+	    next: null
+	  };
+	}
+
+	function mountContainer(renderer, element, {
+	  target: targetProps,
+	  ...props
+	}, emit, parent) {
+	  const container = createElement('div');
+	  updateProps(renderer, container, (element === null || element === void 0 ? void 0 : element.props) || props, emit);
+	  return { ...getTarget(renderer, container, targetProps),
+	    container,
+	    exposed: null
+	  };
+	}
+
+	function unmountContainer(renderer, container, node) {
+	  if (node === null) {
+	    container.remove();
+	  }
+	}
+
+	function updateContainer(renderer, container, element, {
+	  target,
+	  ...props
+	}, emit, parent) {
+	  updateProps(renderer, container, (element === null || element === void 0 ? void 0 : element.props) || props, emit);
+	  return getTarget(renderer, container, target);
+	}
+
+	function removeNode(renderer, node) {
+	  const p = renderer.getParent(node);
+
+	  if (!p) {
 	    return;
 	  }
 
-	  list = [f];
-	  window.requestAnimationFrame(() => {
-	    const fs = list;
-	    list = undefined;
-
-	    if (!fs) {
-	      return;
-	    }
-
-	    fs.forEach(f => f());
-	  });
+	  p.removeChild(node);
 	}
 
-	const xmlnsMap = {
-	  svg: 'http://www.w3.org/2000/svg',
-	  html: 'http://www.w3.org/1999/xhtml',
-	  mathml: 'http://www.w3.org/1998/Math/MathML'
-	};
-	const SVGTags = new Set(['altGlyph', 'altGlyphDef', 'altGlyphItem', 'animate', 'animateColor', 'animateMotion', 'animateTransform', 'circle', 'clipPath', 'color-profile', 'cursor', 'defs', 'desc', 'ellipse', 'feBlend', 'feColorMatrix', 'feComponentTransfer', 'feComposite', 'feConvolveMatrix', 'feDiffuseLighting', 'feDisplacementMap', 'feDistantLight', 'feFlood', 'feFuncA', 'feFuncB', 'feFuncG', 'feFuncR', 'feGaussianBlur', 'feImage', 'feMerge', 'feMergeNode', 'feMorphology', 'feOffset', 'fePointLight', 'feSpecularLighting', 'feSpotLight', 'feTile', 'feTurbulence', 'filter', 'font-face', 'font-face-format', 'font-face-name', 'font-face-src', 'font-face-uri', 'foreignObject', 'g', 'glyph', 'glyphRef', 'hkern', 'image', 'line', 'linearGradient', 'marker', 'mask', 'metadata', 'missing-glyph', 'mpath', 'path', 'pattern', 'polygon', 'polyline', 'radialGradient', 'rect', 'script', 'set', 'stop', 'style', 'svg', 'switch', 'symbol', 'text', 'textPath', 'title', 'tref', 'tspan', 'use', 'view', 'vkern']);
-	const MathMLTags = new Set(['maction', 'math', 'menclose', 'merror', 'mfenced', 'mfrac', 'mglyph', 'mi', 'mlabeledtr', 'mmultiscripts', 'mn', 'mo', 'mover', 'mpadded', 'mphantom', 'mroot', 'mrow', 'ms', 'mspace', 'msqrt', 'mstyle', 'msub', 'msubsup', 'msup', 'mtable', 'mtd', 'mtext', 'mtr', 'munder', 'munderover', 'semantics']);
-	function createElement(tagname, namespace) {
-	  const res = /^([a-z][a-z0-9-]*):([a-z0-9-]+)$/i.exec(tagname);
-	  const tag = res ? res[2] : tagname;
-	  const ns = (namespace || (res === null || res === void 0 ? void 0 : res[1]) || SVGTags.has(tag.toLowerCase()) && 'svg' || MathMLTags.has(tag.toLowerCase()) && 'mathml' || '').toLowerCase();
-
-	  if (!ns) {
-	    return document.createElement(tag);
+	function getContainer(renderer, container, target, next) {
+	  if (typeof target === 'string') {
+	    target = document.querySelector(target);
 	  }
 
-	  return document.createElementNS(ns in xmlnsMap && xmlnsMap[ns] || ns, tag);
-	}
-
-	const tagRegex = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)?(?::[a-z0-9]+(?:-[a-z0-9]+)?)?$/i;
-	function isTagName(tag) {
-	  if (typeof tag !== 'string') {
-	    return false;
+	  if (target === null) {
+	    return [null, null];
 	  }
 
-	  return tagRegex.test(tag);
+	  if (!(target instanceof Element)) {
+	    target = document.body;
+	  }
+
+	  if (typeof next === 'string') {
+	    next = document.querySelector(next);
+	  }
+
+	  if (!(next instanceof Element) || next.parentElement !== target) {
+	    next = null;
+	  }
+
+	  return [target, next];
 	}
 
-	const render = {
-	  type: 'web',
+	const renderer = {
+	  type: 'html',
 	  nextFrame,
 
 	  isNode(v) {
 	    return v instanceof Node;
 	  },
 
-	  mount({
-	    target,
-	    class: className,
-	    style,
-	    tag
-	  }, parent) {
-	    if (core.isValue(target)) {
-	      target = target.value;
-	    }
-
-	    if (!isTagName(tag)) {
-	      tag = 'div';
-	    }
-
-	    const container = render.createElement(tag);
-	    render.updateProps(container, {
-	      class: className,
-	      style
-	    });
-
-	    if (target === null) {
-	      if (!parent) {
-	        return [container, container];
-	      }
-
-	      return [container, parent.createPlaceholder()];
-	    }
-
-	    if (typeof target === 'string') {
-	      target = document.querySelector(target);
-	    }
-
-	    if (target instanceof Element) {
-	      target.appendChild(container);
-
-	      if (parent) {
-	        return [container, parent.createPlaceholder()];
-	      }
-
-	      return [container, container];
-	    }
-
-	    if (parent !== render) {
-	      document.body.appendChild(container);
-	      return [container, container];
-	    }
-
-	    return [container, container];
+	  getContainer(container, target, next) {
+	    return getContainer(this, container, target, next);
 	  },
 
-	  unmount(container, node, removed) {
-	    if (container === node && removed) {
-	      return;
-	    }
-
-	    container.remove();
+	  mountContainer(data, props, emit, parent) {
+	    return mountContainer(this, data, props, emit);
 	  },
 
-	  drawContainer(container, node, {
-	    target,
-	    class: className,
-	    style,
-	    tag
-	  }, parent) {
-	    render.updateProps(container, {
-	      class: className,
-	      style
-	    });
-
-	    if (core.isValue(target)) {
-	      console.log(target);
-	      target = target.value;
-	    }
-
-	    const oldTarget = parent === render && container === node ? undefined : render.getParent(node);
-
-	    if (target === null) {
-	      if (oldTarget === null) {
-	        return [container, node];
-	      }
-
-	      if (container !== node) {
-	        container.remove();
-	      }
-
-	      if (!parent) {
-	        return [container, container];
-	      }
-
-	      return [container, parent.createPlaceholder()];
-	    }
-
-	    if (typeof target === 'string') {
-	      target = document.querySelector(target);
-	    }
-
-	    if (parent !== render && !(target instanceof Element)) {
-	      target = document.body;
-	    }
-
-	    if (oldTarget === target) {
-	      return [container, node];
-	    }
-
-	    if (parent !== render) {
-	      target.appendChild(container);
-	      return [container, node];
-	    }
-
-	    if (!oldTarget) {
-	      const newNode = parent.createPlaceholder();
-	      const pNode = parent.getParent(node);
-
-	      if (pNode) {
-	        render.insertNode(pNode, newNode, node);
-	        render.removeNode(node);
-	      }
-
-	      target.appendChild(container);
-	      return [container, newNode];
-	    }
-
-	    if (!target) {
-	      const pNode = parent.getParent(node);
-
-	      if (pNode) {
-	        render.insertNode(pNode, container, node);
-	        render.removeNode(node);
-	      }
-
-	      return [container, container];
-	    }
-
-	    target.appendChild(container);
-	    return [container, node];
+	  updateContainer(container, target, insert, next, data, props, emit, parent) {
+	    return updateContainer(this, container, data, props, emit);
 	  },
 
-	  drawNode() {},
+	  recoveryContainer() {},
 
-	  createElement(tag) {
-	    return createElement(tag);
+	  unmountContainer(container, data, props, parent) {
+	    return unmountContainer(this, container, data);
+	  },
+
+	  getMountOptions() {},
+
+	  createElement(data) {
+	    if (!data || typeof data !== 'string') {
+	      return null;
+	    }
+
+	    return createElement(data);
 	  },
 
 	  createText(text) {
-	    return document.createTextNode(text);
+	    return createText(text);
 	  },
 
 	  createPlaceholder() {
-	    return document.createComment('');
+	    return createPlaceholder();
 	  },
 
 	  createComponent() {
-	    const node = createElement('neep-component');
-	    return [node, node.attachShadow({
-	      mode: 'open'
-	    })];
+	    return createComponent();
 	  },
 
 	  getParent(node) {
-	    return node.parentNode;
+	    return getParent(node);
 	  },
 
 	  nextNode(node) {
 	    return node.nextSibling;
 	  },
 
-	  updateProps(node, props) {
-	    update$3(node, props);
+	  updateProps(node, data, props, emit) {
+	    updateProps(this, node, props, emit);
 	  },
 
 	  insertNode(parent, node, next = null) {
-	    parent.insertBefore(node, next);
+	    return insertNode(parent, node, next);
 	  },
 
 	  removeNode(node) {
-	    const p = render.getParent(node);
-
-	    if (!p) {
-	      return;
-	    }
-
-	    p.removeChild(node);
-	  },
-
-	  getRect(node) {
-	    if (node instanceof Element) {
-	      const {
-	        top,
-	        right,
-	        bottom,
-	        left,
-	        width,
-	        height
-	      } = node.getBoundingClientRect();
-	      return {
-	        top,
-	        right,
-	        bottom,
-	        left,
-	        width,
-	        height
-	      };
-	    }
-
-	    if (node instanceof ShadowRoot) {
-	      const {
-	        top,
-	        right,
-	        bottom,
-	        left,
-	        width,
-	        height
-	      } = node.host.getBoundingClientRect();
-	      return {
-	        top,
-	        right,
-	        bottom,
-	        left,
-	        width,
-	        height
-	      };
-	    }
-
-	    return null;
+	    return removeNode(this, node);
 	  }
 
 	};
 
-	installNeep()({
-	  render
-	});
+	function initContainer() {
+	  exports.Container = core.createContainerComponent(core.createElement(''), {
+	    renderer,
+	    name: '[HTML]'
+	  });
+	}
+
+	function init() {
+	  initContainer();
+	}
+
 	function install(Neep) {}
+	installNeep(renderer);
+	init();
 
 
 
-	var NeepWebRender = /*#__PURE__*/Object.freeze({
+	var NeepHtmlRender = /*#__PURE__*/Object.freeze({
 		__proto__: null,
-		install: install
+		renderer: renderer,
+		install: install,
+		get Container () { return exports.Container; }
 	});
 
-	exports.default = NeepWebRender;
+	exports.default = NeepHtmlRender;
 	exports.install = install;
+	exports.renderer = renderer;
 
 	Object.defineProperty(exports, '__esModule', { value: true });
 

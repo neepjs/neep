@@ -1,988 +1,813 @@
 /*!
- * Neep v0.1.0-alpha.15
- * (c) 2019-2020 Fierflame
+ * Neep v0.1.0-alpha.16
+ * (c) 2019-2021 Fierflame
  * @license MIT
  */
 'use strict';
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-let monitorable = require('monitorable');
+var monitorable = require('monitorable');
 
-const version = '0.1.0-alpha.15';
+const version = '0.1.0-alpha.16';
 const isProduction = process.env.NODE_ENV === 'production';
 
 const devtools = {
-	renderHook() {},
+  renderHook() {}
 
 };
 function installDevtools(tools) {
-	if (!tools) {
-		return;
-	}
+  if (!tools) {
+    return;
+  }
 
-	if (typeof tools !== 'object') {
-		return;
-	}
+  if (typeof tools !== 'object') {
+    return;
+  }
 
-	const {
-		renderHook,
-	} = tools;
+  const {
+    renderHook
+  } = tools;
 
-	if (typeof renderHook === 'function') {
-		devtools.renderHook = renderHook;
-	}
+  if (typeof renderHook === 'function') {
+    devtools.renderHook = renderHook;
+  }
 }
 
 function _defineProperty(obj, key, value) {
-	if (key in obj) {
-		Object.defineProperty(obj, key, {
-			value,
-			enumerable: true,
-			configurable: true,
-			writable: true,
-		});
-	} else {
-		obj[key] = value;
-	}
+  if (key in obj) {
+    Object.defineProperty(obj, key, {
+      value: value,
+      enumerable: true,
+      configurable: true,
+      writable: true
+    });
+  } else {
+    obj[key] = value;
+  }
 
-	return obj;
+  return obj;
 }
 
 class NeepError extends Error {
-	constructor(message, tag = '') {
-		super(tag ? `[${ tag }] ${ message }` : message);
+  constructor(message, tag = '') {
+    super(tag ? `[${tag}] ${message}` : message);
 
-		_defineProperty(this, 'tag', void 0);
+    _defineProperty(this, "tag", void 0);
 
-		this.tag = tag;
-	}
+    this.tag = tag;
+  }
 
 }
 function assert(v, message, tag) {
-	if (v) {
-		return;
-	}
+  if (v) {
+    return;
+  }
 
-	throw new NeepError(message, tag);
+  throw new NeepError(message, tag);
 }
 
 let nextFrameApi;
 function nextFrame(fn) {
-	assert(nextFrameApi, 'The basic renderer is not installed', 'install');
-
-	if (nextFrameApi) {
-		nextFrameApi(fn);
-	}
+  assert(nextFrameApi, 'The basic renderer is not installed', 'install');
+  nextFrameApi(fn);
 }
-const renders = Object.create(null);
-function getRender(type = '') {
-	if (typeof type === 'object') {
-		return type;
-	}
+const renderers = Object.create(null);
+function getRender(type = '', def = renderers.default) {
+  if (typeof type === 'object') {
+    return type;
+  }
 
-	return renders[type] || renders.default;
+  return renderers[type] || def;
 }
-function installRender(render) {
-	if (!render) {
-		return;
-	}
+function installRender(renderer) {
+  if (!renderer) {
+    return;
+  }
 
-	renders[render.type] = render;
+  renderers[renderer.type] = renderer;
 
-	if (nextFrameApi) {
-		return;
-	}
+  if (nextFrameApi) {
+    return;
+  }
 
-	if (!renders.default) {
-		renders.default = render;
-	}
+  if (!renderers.default) {
+    renderers.default = renderer;
+  }
 
-	if (!nextFrameApi && render.nextFrame) {
-		renders.default = render;
-		nextFrameApi = render.nextFrame;
-	}
+  if (!nextFrameApi && renderer.nextFrame) {
+    renderers.default = renderer;
+    nextFrameApi = renderer.nextFrame.bind(renderer);
+  }
 }
 
 function installMonitorable(api) {}
 
 function install(apis) {
-	installMonitorable(apis.monitorable);
-	installRender(apis.render);
+  installMonitorable(apis.monitorable);
+  installRender(apis.renderer);
 
-	if (!isProduction) {
-		installDevtools(apis.devtools);
-	}
+  if (!isProduction) {
+    installDevtools(apis.devtools);
+  }
 }
 
-function setCurrent(fn, entity) {
-	const oldEntity = exports.current;
-	exports.current = entity;
-
-	try {
-		exports.current.$_valueIndex = 0;
-		exports.current.$_serviceIndex = 0;
-		const ret = fn();
-
-		if (exports.current.$_valueIndex !== exports.current.$_values.length) {
-			throw new NeepError('Inconsistent number of useValue executions', 'life');
-		}
-
-		if (exports.current.$_serviceIndex && exports.current.$_serviceIndex !== exports.current.$_services.length) {
-			throw new NeepError('Inconsistent number of useService executions', 'life');
-		}
-
-		return ret;
-	} finally {
-		exports.current = oldEntity;
-	}
-}
-function checkCurrent(name, initOnly = false) {
-	if (!exports.current) {
-		throw new NeepError(`Function \`${ name }\` can only be called within a cycle.`, 'life');
-	}
-
-	if (!initOnly) {
-		return exports.current;
-	}
-
-	if (!exports.current.created) {
-		return exports.current;
-	}
-
-	throw new NeepError(`Function \`${ name }\` can only be called at initialization time.`, 'life');
-}
-
-const constructors = [];
-function initContext(context, entity) {
-	for (const constructor of constructors) {
-		constructor(context, entity);
-	}
-
-	return context;
-}
-function addContextConstructor(constructor) {
-	constructors.push(monitorable.safeify(constructor));
-}
-
-const constructors$1 = [];
-function initEntity(entity) {
-	for (const constructor of constructors$1) {
-		constructor(entity);
-	}
-
-	return entity;
-}
-function addEntityConstructor(constructor) {
-	constructors$1.push(monitorable.safeify(constructor));
-}
-
-let delayedRefresh = 0;
-const objectSet = new Set();
-function wait(obj) {
-	if (delayedRefresh <= 0) {
-		return false;
-	}
-
-	objectSet.add(obj);
-	return true;
-}
-
-function run() {
-	if (delayedRefresh > 0) {
-		return;
-	}
-
-	const list = [...objectSet];
-	objectSet.clear();
-	list.forEach(o => o.refresh());
-}
-
-async function asyncRefresh(f) {
-	try {
-		delayedRefresh++;
-		return await f();
-	} finally {
-		delayedRefresh--;
-		run();
-	}
-}
-
-function refresh(f, async) {
-	if (async) {
-		return asyncRefresh(f);
-	}
-
-	try {
-		delayedRefresh++;
-		return f();
-	} finally {
-		delayedRefresh--;
-		run();
-	}
-}
-
-function getEventName(k) {
-	if (k[0] === '@') {
-		return k.substr(1);
-	}
-
-	if (/^on[:-]/.test(k)) {
-		return k.substr(3);
-	}
-
-	if (/^n([:-])on(\1|:)/.test(k)) {
-		return k.substr(5);
-	}
-
-	return '';
-}
-
-function addEventFromCollection(addEvent, events) {
-	if (!events) {
-		return;
-	}
-
-	if (typeof events === 'function') {
-		const {
-			names,
-		} = events;
-
-		if (!Array.isArray(names)) {
-			return;
-		}
-
-		for (const n of names) {
-			if (!n) {
-				continue;
-			}
-
-			addEvent(n, (...p) => events(n, ...p));
-		}
-
-		return;
-	}
-
-	if (typeof events !== 'object') {
-		return;
-	}
-
-	for (const k of Object.keys(events)) {
-		const f = events[k];
-
-		if (typeof f !== 'function') {
-			continue;
-		}
-
-		addEvent(k, f);
-	}
-}
-
-class EventEmitter {
-	static update(emitter, events) {
-		if (!events) {
-			return [];
-		}
-
-		const newHandles = [];
-
-		if (events && typeof events === 'object') {
-			for (const n of Object.keys(events)) {
-				if (!n) {
-					continue;
-				}
-
-				const fn = events[n];
-
-				if (typeof fn !== 'function') {
-					continue;
-				}
-
-				newHandles.push(emitter.on(n, fn));
-			}
-		}
-
-		return newHandles;
-	}
-
-	static updateInProps(emitter, props, custom) {
-		if (!props) {
-			return [];
-		}
-
-		const newHandles = [];
-
-		function addEvent(entName, listener) {
-			newHandles.push(emitter.on(entName, listener));
-		}
-
-		for (const k of Object.keys(props)) {
-			const fn = props[k];
-
-			if (typeof fn !== 'function') {
-				continue;
-			}
-
-			const entName = getEventName(k);
-
-			if (!entName) {
-				continue;
-			}
-
-			addEvent(entName, fn);
-		}
-
-		addEventFromCollection(addEvent, props['@']);
-		addEventFromCollection(addEvent, props['n:on']);
-		addEventFromCollection(addEvent, props['n-on']);
-
-		if (typeof custom === 'function') {
-			custom(addEvent);
-		}
-
-		newHandles.push(...EventEmitter.update(emitter, props['@']));
-		return newHandles;
-	}
-
-	get names() {
-		return [...this._names];
-	}
-
-	constructor() {
-		_defineProperty(this, '_names', new Set());
-
-		_defineProperty(this, '_cancelHandles', new Set());
-
-		_defineProperty(this, 'emit', void 0);
-
-		_defineProperty(this, 'on', void 0);
-
-		const events = Object.create(null);
-		const names = this._names;
-
-		function createEmit(...omitNames) {
-			function emit(name, ...p) {
-				const event = events[name];
-
-				if (!event) {
-					return true;
-				}
-
-				return refresh(() => {
-					let res = true;
-
-					for (const fn of [...event]) {
-						res = fn(...p) && res;
-					}
-
-					return res;
-				});
-			}
-
-			emit.omit = (...names) => createEmit(...omitNames, ...names);
-
-			Reflect.defineProperty(emit, 'names', {
-				get: () => {
-					monitorable.markRead(createEmit, 'names');
-					return [...names].filter(t => !omitNames.includes(t));
-				},
-				configurable: true,
-			});
-			return emit;
-		}
-
-		const on = (name, listener) => {
-			let _event;
-
-			function fn(...p) {
-				try {
-					return listener(...p) !== false;
-				} catch (e) {
-					monitorable.printError(e);
-					return true;
-				}
-			}
-
-			let event = events[name];
-
-			if (!((_event = event) === null || _event === void 0 ? void 0 : _event.size)) {
-				event = new Set();
-				events[name] = event;
-				monitorable.markChange(createEmit, 'names');
-				names.add(name);
-			}
-
-			event.add(fn);
-			let removed = false;
-			return () => {
-				if (removed) {
-					return;
-				}
-
-				removed = true;
-				event.delete(fn);
-
-				if (event.size) {
-					return;
-				}
-
-				monitorable.markChange(createEmit, 'names');
-				names.delete(name);
-			};
-		};
-
-		this.emit = createEmit();
-		this.on = on;
-	}
-
-	updateHandles(newHandles) {
-		const eventCancelHandles = this._cancelHandles;
-		const oldHandles = [...eventCancelHandles];
-		eventCancelHandles.clear();
-
-		for (const fn of oldHandles) {
-			fn();
-		}
-
-		newHandles.forEach(f => eventCancelHandles.add(f));
-		return newHandles;
-	}
-
-	update(list) {
-		const handles = EventEmitter.update(this, list);
-		return this.updateHandles(handles);
-	}
-
-	updateInProps(list, custom) {
-		const handles = EventEmitter.updateInProps(this, list, custom);
-		return this.updateHandles(handles);
-	}
-
-}
-
-const ScopeSlot = 'neep:ScopeSlot';
-const SlotRender = 'neep:SlotRender';
-const Slot = 'neep:slot';
-const Value = 'neep:value';
-const Container = 'neep:container';
+const ScopeSlot = 'core:scopeslot';
+const Render = 'core:render';
+const Slot = 'core:slot';
+const Container = 'core:container';
 const Template = 'template';
 const Fragment = Template;
 
-function ref(set) {
-	if (set && (typeof set === 'function' || typeof set === 'object')) {
-		return function refValue(node, isRemove) {
-			if (isRemove) {
-				set.delete(node);
-			} else {
-				set.add(node);
-			}
-		};
-	}
+function createEntitySetRef(set) {
+  return function refValue(_0, _1, entity, state) {
+    if (state === true) {
+      set.add(entity);
+      return;
+    }
 
-	if (set) {
-		const obj = monitorable.value(null);
+    if (state === false) {
+      set.delete(entity);
+    }
+  };
+}
 
-		function refValue(node, isRemove) {
-			obj.value = isRemove ? null : node;
-		}
+function createExposedSetRef(set) {
+  return function refValue(newNode, oldNode) {
+    if (newNode === undefined) {
+      if (oldNode !== undefined) {
+        set.delete(oldNode);
+      }
 
-		Reflect.defineProperty(refValue, 'value', {
-			get() {
-				return obj.value;
-			},
+      return;
+    }
 
-			enumerable: true,
-			configurable: true,
-		});
-		return refValue;
-	}
+    if (oldNode === undefined) {
+      set.add(newNode);
+      return;
+    }
 
-	let obj = null;
+    if (typeof set.replace === 'function') {
+      set.replace(newNode, oldNode);
+      return;
+    }
 
-	function refValue(node, isRemove) {
-		obj = isRemove ? null : node;
-	}
+    set.delete(oldNode);
+    set.add(newNode);
+  };
+}
 
-	Reflect.defineProperty(refValue, 'value', {
-		get() {
-			return obj;
-		},
+function createEntityRefValue(watch) {
+  const obj = watch ? monitorable.value(undefined) : {
+    value: undefined
+  };
 
-		enumerable: true,
-		configurable: true,
-	});
-	return refValue;
+  function refValue(_1, _2, entity, state) {
+    obj.value = state === false ? entity : undefined;
+  }
+
+  Reflect.defineProperty(refValue, 'value', {
+    get() {
+      return obj.value;
+    },
+
+    enumerable: true,
+    configurable: true
+  });
+  return refValue;
+}
+
+function createExposedRefValue(watch) {
+  const obj = watch ? monitorable.value(undefined) : {
+    value: undefined
+  };
+
+  function refValue(newNode) {
+    obj.value = newNode;
+  }
+
+  Reflect.defineProperty(refValue, 'value', {
+    get() {
+      return obj.value;
+    },
+
+    enumerable: true,
+    configurable: true
+  });
+  return refValue;
+}
+
+function ref(set, isEntity) {
+  if (set && (typeof set === 'function' || typeof set === 'object')) {
+    return isEntity ? createEntitySetRef(set) : createExposedSetRef(set);
+  }
+
+  return isEntity ? createEntityRefValue(set) : createExposedRefValue(set);
+}
+
+let isInit = false;
+let root = [];
+let hookList = [];
+let runs = [];
+function getUseHookValue(name, lib, init) {
+  assert(exports.current, `Function \`${name}\` can only be called within a cycle.`, 'life');
+
+  if (isInit) {
+    const value = init(exports.current);
+    hookList.push({
+      name,
+      lib,
+      value
+    });
+    return value;
+  }
+
+  const next = hookList.shift();
+  assert(next && next.name === name && next.lib === lib && !next.list, '');
+
+  if (!isProduction) {
+    runs.push({
+      name,
+      lib
+    });
+  }
+
+  return next.value;
+}
+function execUseHooks(name, lib, run) {
+  assert(exports.current, `Function \`${name}\` can only be called within a cycle.`, 'life');
+
+  if (isInit) {
+    const list = [];
+    hookList.push({
+      name,
+      lib,
+      list
+    });
+    const parent = hookList;
+    hookList = list;
+
+    try {
+      return run(exports.current);
+    } finally {
+      hookList = parent;
+    }
+  }
+
+  const next = hookList.shift();
+  assert(next && next.name === name && next.lib === lib && next.list, '');
+  const parent = hookList;
+  const list = [...next.list];
+  hookList = list;
+
+  if (isProduction) {
+    try {
+      const ret = run(exports.current);
+      assert(!list.length, '');
+      return ret;
+    } finally {
+      hookList = parent;
+    }
+  } else {
+    const runList = [];
+    runs.push({
+      name,
+      lib,
+      list: runList
+    });
+    const runParent = runs;
+    runs = runList;
+
+    try {
+      const ret = run(exports.current);
+      assert(!list.length, '');
+      return ret;
+    } finally {
+      hookList = parent;
+      runs = runParent;
+    }
+  }
+}
+let setLabels;
+function runShell(setLabel, fn) {
+  if (!isProduction) {
+    const oldSetLabel = setLabels;
+    setLabels = setLabel;
+
+    try {
+      return fn();
+    } finally {
+      setLabels = oldSetLabel;
+    }
+  }
+
+  return fn();
+}
+function runCurrent(entity, setLabel, fn) {
+  const oldSetLabel = setLabels;
+
+  if (!isProduction) {
+    setLabels = setLabel;
+  }
+
+  const oldEntity = exports.current;
+  exports.current = entity;
+  const oldIsInit = isInit;
+  isInit = !entity.created;
+  const oldRuns = runs;
+  runs = [];
+  const oldRoot = root;
+  root = exports.current.$_useHookValues;
+  const oldHookList = hookList;
+  hookList = isInit ? root : [...root];
+
+  try {
+    const ret = fn();
+    assert(isInit || !hookList.length, 'Inconsistent number of useService executions', 'life');
+    return ret;
+  } finally {
+    exports.current = oldEntity;
+    isInit = oldIsInit;
+    hookList = oldHookList;
+    runs = oldRuns;
+    root = oldRoot;
+
+    if (!isProduction) {
+      setLabels = oldSetLabel;
+    }
+  }
+}
+function checkCurrent(name, initOnly = false) {
+  assert(exports.current, `Function \`${name}\` can only be called within a cycle.`, 'life');
+  assert(!initOnly || !exports.current.created, `Function \`${name}\` can only be called at initialization time.`, 'life');
+  return exports.current;
 }
 
 const hooks = Object.create(null);
 function setHook(id, hook, entity) {
-	let list = (entity === null || entity === void 0 ? void 0 : entity.$_hooks) || hooks;
+  let list = (entity === null || entity === void 0 ? void 0 : entity.$_hooks) || hooks;
 
-	if (!list) {
-		return () => {};
-	}
+  if (!list) {
+    return () => {};
+  }
 
-	hook = monitorable.safeify(hook);
-	let set = list[id];
+  hook = monitorable.safeify(hook);
+  let set = list[id];
 
-	if (!set) {
-		set = new Set();
-		list[id] = set;
-	}
+  if (!set) {
+    set = new Set();
+    list[id] = set;
+  }
 
-	set.add(hook);
-	return () => set.delete(hook);
+  set.add(hook);
+  return () => set.delete(hook);
 }
-function callHook(id, exposed) {
-	if (!exposed) {
-		return;
-	}
+function callHook(id, entity) {
+  if (!entity) {
+    return;
+  }
 
-	for (const hook of exposed.$_hooks[id] || []) {
-		hook(exposed);
-	}
+  for (const hook of entity.$_hooks[id] || []) {
+    hook(entity);
+  }
 
-	for (const hook of hooks[id] || []) {
-		hook(exposed);
-	}
+  for (const hook of hooks[id] || []) {
+    hook(entity);
+  }
 }
 
-function watch(value, cb) {
-	const entity = checkCurrent('watch');
+function watch(value, cb, run) {
+  const entity = checkCurrent('watch');
 
-	if (typeof value !== 'function') {
-		return () => {};
-	}
+  if (typeof value !== 'function') {
+    return () => {};
+  }
 
-	const stop = monitorable.isValue(value) ? value.watch(cb) : monitorable.computed(value).watch((v, s) => cb(v(), s));
-	setHook('beforeDestroy', () => stop(), entity);
-	return stop;
+  let stop;
+
+  if (monitorable.isValue(value)) {
+    stop = value.watch(cb);
+    cb(value, false);
+  } else {
+    const v = monitorable.computed(value);
+    stop = v.watch((v, s) => cb(v(), s));
+    cb(v(), false);
+  }
+
+  setHook('beforeDestroy', () => stop(), entity);
+  return stop;
 }
 function useValue(fn) {
-	const entity = checkCurrent('useValue');
-	const index = entity.$_valueIndex++;
-	const values = entity.$_values;
-
-	if (!entity.created) {
-		values[index] = undefined;
-		const v = typeof fn === 'function' ? fn() : monitorable.value(undefined);
-		return values[index] = v;
-	}
-
-	if (index >= values.length) {
-		throw new NeepError('Inconsistent number of useValue executions', 'life');
-	}
-
-	return values[index];
+  return getUseHookValue('useValue', 'core', typeof fn === 'function' ? fn : () => monitorable.value(undefined));
 }
 function useService(fn, ...p) {
-	const entity = checkCurrent('useService');
-	const index = entity.$_serviceIndex++;
-	const services = entity.$_services;
-
-	if (!entity.created) {
-		services[index] = undefined;
-		const v = fn(entity, ...p);
-		services[index] = v;
-		return v;
-	}
-
-	if (index >= services.length) {
-		throw new NeepError('Inconsistent number of useService executions', 'life');
-	}
-
-	return services[index];
+  return getUseHookValue('useService', 'core', entity => fn(entity, ...p));
 }
 function byService(fn, ...p) {
-	const entity = checkCurrent('byService');
-	return fn(entity, ...p);
+  const entity = checkCurrent('byService');
+  return fn(entity, ...p);
 }
 function hook(name, hook, initOnly) {
-	const entity = checkCurrent('setHook');
+  const entity = checkCurrent('setHook');
 
-	if (initOnly && entity.created) {
-		return undefined;
-	}
+  if (initOnly && entity.created) {
+    return undefined;
+  }
 
-	return setHook(name, () => hook(), entity);
+  return setHook(name, () => hook(), entity);
 }
 
-function setValue(obj, name, value, opt) {
-	if (typeof name === 'string' && ['$', '_'].includes(name[0])) {
-		return;
-	}
-
-	if (monitorable.isValue(value) && opt) {
-		Reflect.defineProperty(obj, name, {
-			get() {
-				return value();
-			},
-
-			set(v) {
-				value(v);
-			},
-
-			configurable: true,
-			enumerable: true,
-		});
-		return;
-	}
-
-	if (typeof value === 'function' && opt) {
-		Reflect.defineProperty(obj, name, {
-			get: value,
-			set: typeof opt === 'function' ? opt : undefined,
-			configurable: true,
-			enumerable: true,
-		});
-		return;
-	}
-
-	Reflect.defineProperty(obj, name, {
-		get() {
-			return value;
-		},
-
-		configurable: true,
-		enumerable: true,
-	});
-}
-
-function expose(name, value, opt) {
-	setValue(checkCurrent('expose', true).exposed, name, value, opt);
-}
-
-const typeSymbol = Symbol.for('type');
+const rendererSymbol = Symbol.for('renderer');
 const nameSymbol = Symbol.for('name');
-const renderSymbol = Symbol.for('render');
 const componentsSymbol = Symbol.for('components');
-const configSymbol = Symbol.for('config');
+const propsSymbol = Symbol.for('props');
+const componentValueSymbol = Symbol.for('$$$componentValue$$$');
 const objectTypeSymbol = Symbol.for('$$$objectType$$$');
 const objectTypeSymbolElement = '$$$objectType$$$Element';
-const objectTypeSymbolDeliver = '$$$objectType$$$Deliver';
+const objectTypeSymbolDeliverComponent = '$$$objectType$$$DeliverComponent';
+const objectTypeSymbolNativeComponent = '$$$objectType$$$NativeComponentNode';
+const objectTypeSymbolSimpleComponent = '$$$objectType$$$SimpleComponent';
+const objectTypeSymbolShellComponent = '$$$objectType$$$ShellComponent';
+const objectTypeSymbolRenderComponent = '$$$objectType$$$RenderComponent';
+const objectTypeSymbolContainerComponent = '$$$objectType$$$ContainerComponent';
+const objectTypeSymbolElementComponent = '$$$objectType$$$ElementComponent';
+const objectTypeSymbolHookEntity = '$$$objectType$$$HookEntity';
+const objectTypeSymbolRootEntity = '$$$objectType$$$RootEntity';
 const deliverKeySymbol = Symbol.for('$$$deliverKey$$$');
 const deliverDefaultSymbol = Symbol.for('$$$deliverDefault$$$');
 
-function isElement(v) {
-	if (!v) {
-		return false;
-	}
+function isSimpleComponent(v) {
+  if (typeof v !== 'function') {
+    return false;
+  }
 
-	if (typeof v !== 'object') {
-		return false;
-	}
-
-	return v[objectTypeSymbol] === objectTypeSymbolElement;
+  return v[objectTypeSymbol] === objectTypeSymbolSimpleComponent;
 }
-function isSimpleTag(tag) {
-	if (!tag) {
-		return false;
-	}
+function isShellComponent(v) {
+  if (typeof v !== 'function') {
+    return false;
+  }
 
-	if (typeof tag !== 'function') {
-		return false;
-	}
+  return v[objectTypeSymbol] === objectTypeSymbolShellComponent;
+}
+function isNativeComponent(v) {
+  if (typeof v !== 'function') {
+    return false;
+  }
 
-	return tag[typeSymbol] === 'simple';
+  return v[objectTypeSymbol] === objectTypeSymbolNativeComponent;
+}
+function isRenderComponent(v) {
+  if (typeof v !== 'function') {
+    return false;
+  }
+
+  return v[objectTypeSymbol] === objectTypeSymbolRenderComponent;
+}
+function isContainerComponent(v) {
+  if (typeof v !== 'function') {
+    return false;
+  }
+
+  return v[objectTypeSymbol] === objectTypeSymbolContainerComponent;
+}
+function isElementComponent(v) {
+  if (typeof v !== 'function') {
+    return false;
+  }
+
+  return v[objectTypeSymbol] === objectTypeSymbolElementComponent;
+}
+function isDeliverComponent(v) {
+  if (typeof v !== 'function') {
+    return false;
+  }
+
+  return v[objectTypeSymbol] === objectTypeSymbolDeliverComponent;
+}
+
+function isElement(v) {
+  if (!v) {
+    return false;
+  }
+
+  if (typeof v !== 'object') {
+    return false;
+  }
+
+  return v[objectTypeSymbol] === objectTypeSymbolElement;
+}
+function isFragmentElement(v) {
+  if (!isElement(v)) {
+    return false;
+  }
+
+  const {
+    tag
+  } = v;
+
+  if (typeof tag !== 'string') {
+    return false;
+  }
+
+  return tag.toLowerCase() === 'template';
+}
+function isRenderElement(v) {
+  if (!isElement(v)) {
+    return false;
+  }
+
+  const {
+    tag
+  } = v;
+
+  if (typeof tag !== 'string') {
+    return false;
+  }
+
+  return tag.toLowerCase() === Render;
 }
 function isSimpleElement(v) {
-	return isElement(v) && isSimpleTag(v.tag);
+  return isElement(v) && isSimpleComponent(v.tag);
 }
 function createElement(tag, attrs, ...children) {
-	const props = attrs ? { ...attrs,
-	} : {};
-	const node = {
-		[objectTypeSymbol]: objectTypeSymbolElement,
-		tag,
-		key: undefined,
-		props,
-		children,
-	};
+  const attrProps = attrs ? { ...attrs
+  } : {};
+  const props = {};
 
-	if ('n:key' in props) {
-		node.key = props['n:key'];
-	} else if ('n-key' in props) {
-		node.key = props['n-key'];
-	} else if ('key' in props) {
-		node.key = props.key;
-	}
+  for (const n of Object.keys(attrProps)) {
+    if (n === '@') {
+      props['n:on'] = attrProps[n];
+      continue;
+    }
 
-	if ('n:slot' in props) {
-		node.slot = props['n:slot'];
-	} else if ('n-slot' in props) {
-		node.slot = props['n-slot'];
-	} else if ('slot' in props) {
-		node.slot = props.slot;
-	}
+    if (n[0] === '!') {
+      props[`n:${n.substr(1)}`] = attrProps[n];
+      continue;
+    }
 
-	if (typeof props['n:ref'] === 'function') {
-		node.ref = props['n:ref'];
-	} else if (typeof props['n-ref'] === 'function') {
-		node.ref = props['n-ref'];
-	} else if (typeof props.ref === 'function') {
-		node.ref = props.ref;
-	}
+    if (n[0] === '@') {
+      props[`on:${n.substr(1)}`] = attrProps[n];
+      continue;
+    }
 
-	if (tag === Value) {
-		node.value = props.value;
-	}
+    if (n.substr(0, 2) === 'n-') {
+      props[`n:${n.substr(2)}`] = attrProps[n];
+      continue;
+    }
 
-	return node;
+    if (n.substr(0, 3) === 'on-') {
+      const fn = attrProps[n];
+
+      if (typeof fn === 'function' || fn === null || fn === undefined) {
+        props[`on:${n.substr(3)}`] = fn;
+      }
+
+      continue;
+    }
+
+    if (n.substr(0, 5) === 'hook-') {
+      const fn = attrProps[n];
+
+      if (typeof fn === 'function' || fn === null || fn === undefined) {
+        props[`hook:${n.substr(5)}`] = fn;
+      }
+
+      continue;
+    }
+
+    if (n.substr(0, 5) === 'data-') {
+      props[`data:${n.substr(5)}`] = attrProps[n];
+    }
+
+    props[n] = attrProps[n];
+  }
+
+  return createElementBase(tag, props, ...children);
+}
+function createElementBase(tag, attrs, ...children) {
+  const props = typeof attrs === 'object' && attrs || {};
+  const node = {
+    [objectTypeSymbol]: objectTypeSymbolElement,
+    tag,
+    props,
+    children,
+    key: undefined
+  };
+
+  if ('n:key' in props) {
+    node.key = props['n:key'];
+  }
+
+  if ('n:slot' in props) {
+    node.slot = props['n:slot'];
+  }
+
+  return node;
+}
+function createRenderElement(render, {
+  slot,
+  key
+} = {}) {
+  const node = {
+    [objectTypeSymbol]: objectTypeSymbolElement,
+    tag: Render,
+    props: {
+      'n:key': key,
+      'n:slot': slot
+    },
+    children: [render],
+    key,
+    slot
+  };
+  return node;
 }
 function elements(node, opt = {}) {
-	if (Array.isArray(node)) {
-		const list = [];
+  if (Array.isArray(node)) {
+    const list = [];
 
-		for (let n of node) {
-			list.push(elements(n, opt));
-		}
+    for (let n of node) {
+      list.push(elements(n, opt));
+    }
 
-		return [].concat(...list);
-	}
+    return [].concat(...list);
+  }
 
-	if (!isElement(node)) {
-		return [node];
-	}
+  if (!isElement(node)) {
+    return [node];
+  }
 
-	let {
-		tag,
-	} = node;
+  let {
+    tag
+  } = node;
 
-	if (!tag) {
-		return [node];
-	}
+  if (!tag) {
+    return [node];
+  }
 
-	if ([Template, ScopeSlot].includes(tag)) {
-		return elements(node.children, opt);
-	}
+  if (tag === Template) {
+    return elements(node.children, opt);
+  }
 
-	if (typeof tag !== 'function') {
-		return [node];
-	}
+  if (!isSimpleComponent(tag)) {
+    return [node];
+  }
 
-	if (tag[typeSymbol] !== 'simple') {
-		return [node];
-	}
+  const {
+    simple
+  } = opt;
 
-	const {
-		simple = true,
-	} = opt;
+  if (Array.isArray(simple)) {
+    if (simple.includes(tag)) {
+      return [node];
+    }
+  } else if (typeof simple === 'function') {
+    if (simple(tag)) {
+      return [node];
+    }
+  } else if (simple) {
+    return [node];
+  }
 
-	if (!simple) {
-		return [node];
-	}
-
-	if (Array.isArray(simple)) {
-		if (simple.includes(tag)) {
-			return [node];
-		}
-	} else if (typeof simple === 'function') {
-		if (!simple(tag)) {
-			return [node];
-		}
-	}
-
-	return elements(node.children, opt);
+  return elements(node.children, opt);
 }
-
-function equalProps(a, b) {
-	if (Object.is(a, b)) {
-		return true;
-	}
-
-	if (!a) {
-		return false;
-	}
-
-	if (!b) {
-		return false;
-	}
-
-	if (typeof a !== 'object') {
-		return false;
-	}
-
-	if (typeof b !== 'object') {
-		return false;
-	}
-
-	const aKeys = new Set(Reflect.ownKeys(a));
-	const bKeys = Reflect.ownKeys(b);
-
-	if (aKeys.size !== bKeys.length) {
-		return false;
-	}
-
-	for (const k of bKeys) {
-		if (!aKeys.has(k)) {
-			return false;
-		}
-
-		if (a[k] !== b[k]) {
-			return false;
-		}
-	}
-
-	return true;
-}
-
 function equal(a, b) {
-	if (Object.is(a, b)) {
-		return true;
-	}
+  if (Object.is(a, b)) {
+    return true;
+  }
 
-	if (!a) {
-		return false;
-	}
+  if (!a) {
+    return false;
+  }
 
-	if (!b) {
-		return false;
-	}
+  if (!b) {
+    return false;
+  }
 
-	if (typeof a !== 'object') {
-		return false;
-	}
+  if (typeof a !== 'object') {
+    return false;
+  }
 
-	if (typeof b !== 'object') {
-		return false;
-	}
+  if (typeof b !== 'object') {
+    return false;
+  }
 
-	if (Array.isArray(a)) {
-		if (!Array.isArray(b)) {
-			return false;
-		}
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b)) {
+      return false;
+    }
 
-		if (a.length !== b.length) {
-			return false;
-		}
+    if (a.length !== b.length) {
+      return false;
+    }
 
-		for (let i = a.length - 1; i >= 0; i--) {
-			if (!equal(a[i], b[i])) {
-				return false;
-			}
-		}
+    for (let i = a.length - 1; i >= 0; i--) {
+      if (!equal(a[i], b[i])) {
+        return false;
+      }
+    }
 
-		return true;
-	}
+    return true;
+  }
 
-	if (Array.isArray(b)) {
-		return false;
-	}
+  if (Array.isArray(b)) {
+    return false;
+  }
 
-	if (!isElement(a)) {
-		return false;
-	}
+  if (!isElement(a)) {
+    return false;
+  }
 
-	if (!isElement(b)) {
-		return false;
-	}
+  if (!isElement(b)) {
+    return false;
+  }
 
-	if (a.tag !== b.tag) {
-		return false;
-	}
+  if (a.tag !== b.tag) {
+    return false;
+  }
 
-	if (a.execed !== b.execed) {
-		return false;
-	}
+  if (a.execed !== b.execed) {
+    return false;
+  }
 
-	if (a.inserted !== b.inserted) {
-		return false;
-	}
+  if (a.inserted !== b.inserted) {
+    return false;
+  }
 
-	if (a.ref !== b.ref) {
-		return false;
-	}
+  if (a.isDefault !== b.isDefault) {
+    return false;
+  }
 
-	if (a.value !== b.value) {
-		return false;
-	}
+  if (a.key !== b.key) {
+    return false;
+  }
 
-	if (a.key !== b.key) {
-		return false;
-	}
+  if (a.slot !== b.slot) {
+    return false;
+  }
 
-	if (a.slot !== b.slot) {
-		return false;
-	}
+  const aprops = a.props;
+  const bprops = b.props;
 
-	return equalProps(a.props, b.props) && equal(a.children, b.children);
+  if (Object.is(aprops, bprops)) {
+    return equal(a.children, b.children);
+  }
+
+  if (!aprops) {
+    return false;
+  }
+
+  if (!bprops) {
+    return false;
+  }
+
+  if (typeof aprops !== 'object') {
+    return false;
+  }
+
+  if (typeof bprops !== 'object') {
+    return false;
+  }
+
+  const aKeys = new Set(Object.keys(aprops));
+  const bKeys = Object.keys(bprops);
+
+  if (aKeys.size !== bKeys.length) {
+    return false;
+  }
+
+  for (const k of bKeys) {
+    if (!aKeys.has(k)) {
+      return false;
+    }
+
+    if (aprops[k] !== bprops[k]) {
+      return false;
+    }
+  }
+
+  return equal(a.children, b.children);
+}
+function createTemplateElement(...children) {
+  return {
+    [objectTypeSymbol]: objectTypeSymbolElement,
+    tag: Template,
+    children
+  };
 }
 
-let label;
-function setLabel(l) {
-	label = l;
-}
-function getLabel() {
-	const l = label;
-	label = undefined;
-	return l;
-}
+function label(...label) {
+  if (!isProduction) {
+    const labels = label.filter(Boolean).map(t => typeof t === 'string' ? {
+      text: t
+    } : t);
 
-function label$1(text, color = '') {
-	if (!isProduction) {
-		if (!exports.current) {
-			setLabel([text, color]);
-			return;
-		}
+    if (!setLabels) {
+      return;
+    }
 
-		Reflect.defineProperty(exports.current.exposed, '$label', {
-			value: [text, color],
-			configurable: true,
-		});
-	}
-}
-
-function getRect(n) {
-	for (const render of [...Object.values(renders)]) {
-		if (!render) {
-			continue;
-		}
-
-		if (!render.isNode(n)) {
-			continue;
-		}
-
-		const rect = render.getRect(n);
-
-		if (rect) {
-			return rect;
-		}
-	}
-
-	return null;
-}
-
-function createDeliver(def) {
-	const symbol = Symbol();
-
-	function Provider(_, {
-		childNodes,
-	}) {
-		return childNodes;
-	}
-
-	Reflect.defineProperty(Provider, objectTypeSymbol, {
-		value: objectTypeSymbolDeliver,
-	});
-	Reflect.defineProperty(Provider, deliverKeySymbol, {
-		value: symbol,
-	});
-	Reflect.defineProperty(Provider, deliverDefaultSymbol, {
-		value: def,
-	});
-	return Provider;
-}
-function isDeliver(d) {
-	if (typeof d !== 'function') {
-		return false;
-	}
-
-	return d[objectTypeSymbol] === objectTypeSymbolDeliver;
-}
-function getDelivered(delivered, Deliver) {
-	assert(isDeliver(Deliver), '');
-	const value = delivered[Deliver[deliverKeySymbol]];
-	return value === undefined ? Deliver[deliverDefaultSymbol] : value;
+    setLabels(labels);
+  }
 }
 
 let ids = 0;
@@ -990,2726 +815,4607 @@ const Nodes = {};
 let IdMap;
 
 if (!isProduction) {
-	IdMap = new Map();
+  IdMap = new WeakMap();
 }
 
 function createMountedNode(n, id) {
-	if (!isProduction) {
-		id = id || ++ids;
-		const {
-			node,
-		} = n;
+  if (!isProduction) {
+    id = id || ++ids;
+    const {
+      node
+    } = n;
 
-		if (node && IdMap) {
-			IdMap.set(node, id);
-		}
+    if (node && IdMap) {
+      IdMap.set(node, id);
+    }
 
-		return Nodes[id] = { ...n,
-			id,
-		};
-	}
+    const newNode = { ...n,
+      id
+    };
+    Nodes[id] = newNode;
+    monitorable.markChange(Nodes, id);
+    return newNode;
+  }
 
-	return { ...n,
-		id: 0,
-	};
+  return { ...n,
+    id: 0
+  };
 }
 function recoveryMountedNode(node) {
-	if (!isProduction) {
-		delete Nodes[node.id];
-	}
+  if (!isProduction) {
+    delete Nodes[node.id];
+  }
 }
-
-function *recursive2iterable(list) {
-	if (!Array.isArray(list)) {
-		yield list;
-		return;
-	}
-
-	for (const it of list) {
-		yield *recursive2iterable(it);
-	}
-}
-
-let refList;
-function setRefList(list) {
-	refList = list;
-}
-function setRef(ref, node, isRemove) {
-	if (typeof ref !== 'function') {
-		return;
-	}
-
-	if (!node) {
-		return;
-	}
-
-	if (!refList) {
-		ref(node, isRemove);
-	} else {
-		refList.push(() => ref(node, isRemove));
-	}
-}
-function *getNodes(tree) {
-	if (Array.isArray(tree)) {
-		for (const it of tree) {
-			yield *getNodes(it);
-		}
-
-		return;
-	}
-
-	const {
-		children,
-		node,
-		component,
-	} = tree;
-
-	if (node) {
-		yield node;
-		return;
-	}
-
-	if (component) {
-		yield *getNodes(component.tree);
-		return;
-	}
-
-	yield *getNodes(children);
-}
-function unmount(iRender, tree) {
-	if (Array.isArray(tree)) {
-		tree.forEach(e => unmount(iRender, e));
-		return;
-	}
-
-	const {
-		component,
-		children,
-		node,
-		ref,
-	} = tree;
-	recoveryMountedNode(tree);
-
-	if (component) {
-		setRef(ref, component.exposed, true);
-		component.unmount();
-		return;
-	}
-
-	if (node) {
-		setRef(ref, node, true);
-		iRender.removeNode(node);
-	}
-
-	unmount(iRender, children);
-}
-
-function createValue(iRender, source, value) {
-	let {
-		ref,
-	} = source;
-
-	if (iRender.isNode(value)) {
-		setRef(ref, value);
-		return createMountedNode({ ...source,
-			value,
-			node: value,
-			children: [],
-			component: undefined,
-		});
-	}
-
-	const type = typeof value;
-	let node;
-
-	if (type === 'bigint' || type === 'boolean' || type === 'number' || type === 'string' || type === 'symbol' || value instanceof RegExp) {
-		node = iRender.createText(String(value));
-	} else if (value instanceof Date) {
-		node = iRender.createText(value.toISOString());
-	} else if (type === 'object' && value) {
-		node = iRender.createText(String(value));
-	}
-
-	if (!node) {
-		node = iRender.createPlaceholder();
-	}
-
-	setRef(ref, node);
-	return createMountedNode({ ...source,
-		value,
-		node,
-		component: undefined,
-		children: [],
-	});
-}
-function createAll(iRender, source) {
-	if (!source.length) {
-		return [createMountedNode({
-			tag: null,
-			node: iRender.createPlaceholder(),
-			component: undefined,
-			children: [],
-		})];
-	}
-
-	return source.map(item => Array.isArray(item) ? createList(iRender, item) : createItem(iRender, item));
-}
-function createList(iRender, source) {
-	if (source.length) {
-		return source.map(it => createItem(iRender, it));
-	}
-
-	return [createMountedNode({
-		tag: null,
-		node: iRender.createPlaceholder(),
-		component: undefined,
-		children: [],
-	})];
-}
-function createItem(iRender, source) {
-	let _source$children;
-
-	const {
-		tag,
-		ref,
-		component,
-	} = source;
-
-	if (!tag) {
-		const node = iRender.createPlaceholder();
-		setRef(ref, node);
-		return createMountedNode({
-			tag: null,
-			node,
-			component: undefined,
-			children: [],
-		});
-	}
-
-	if (isDeliver(tag)) {
-		return createMountedNode({ ...source,
-			node: undefined,
-			component: undefined,
-			children: createAll(iRender, source.children),
-		});
-	}
-
-	const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
-
-	if (typeof tag !== 'string' || ltag === Container) {
-		if (!component) {
-			return createMountedNode({ ...source,
-				node: undefined,
-				component: undefined,
-				children: createAll(iRender, source.children),
-			});
-		}
-
-		component.mount();
-		setRef(ref, component.exposed);
-		return createMountedNode({ ...source,
-			node: undefined,
-			component,
-			children: [],
-		});
-	}
-
-	if (ltag === Value) {
-		let {
-			value,
-		} = source;
-
-		if (monitorable.isValue(value)) {
-			value = value();
-		}
-
-		return createValue(iRender, source, value);
-	}
-
-	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
-		return createMountedNode({ ...source,
-			node: undefined,
-			component: undefined,
-			children: createAll(iRender, source.children),
-		});
-	}
-
-	const node = iRender.createElement(tag);
-	setRef(ref, node);
-	let children = [];
-
-	if ((_source$children = source.children) === null || _source$children === void 0 ? void 0 : _source$children.length) {
-		children = createAll(iRender, source.children);
-
-		for (const it of getNodes(children)) {
-			iRender.insertNode(node, it);
-		}
-	}
-
-	iRender.updateProps(node, source.props || {});
-	return createMountedNode({ ...source,
-		node,
-		component: undefined,
-		children,
-	});
-}
-
-function getLastNode(tree) {
-	if (Array.isArray(tree)) {
-		return getLastNode(tree[tree.length - 1]);
-	}
-
-	const {
-		component,
-		children,
-		node,
-	} = tree;
-
-	if (node) {
-		return node;
-	}
-
-	if (component) {
-		return getLastNode(component.tree);
-	}
-
-	return getLastNode(children);
-}
-
-function getFirstNode(tree) {
-	if (Array.isArray(tree)) {
-		return getFirstNode(tree[0]);
-	}
-
-	const {
-		component,
-		children,
-		node,
-	} = tree;
-
-	if (node) {
-		return node;
-	}
-
-	if (component) {
-		return getFirstNode(component.tree);
-	}
-
-	return getFirstNode(children[0]);
-}
-
-function replace(iRender, newTree, oldTree) {
-	const next = getFirstNode(oldTree);
-
-	if (!next) {
-		return newTree;
-	}
-
-	const parent = iRender.getParent(next);
-
-	if (!parent) {
-		return newTree;
-	}
-
-	for (const it of getNodes(newTree)) {
-		iRender.insertNode(parent, it, next);
-	}
-
-	unmount(iRender, oldTree);
-	return newTree;
-}
-
-function updateList(iRender, source, tree) {
-	if (!source.length) {
-		const node = createItem(iRender, {
-			tag: null,
-			children: [],
-		});
-		return [replace(iRender, node, tree)];
-	}
-
-	if (!Array.isArray(tree)) {
-		tree = [tree];
-	}
-
-	const newList = [];
-	const list = [...tree];
-	const mountedMap = new Map();
-
-	for (const src of source) {
-		const index = list.findIndex(it => it.tag === src.tag && it.key === src.key);
-
-		if (index >= 0) {
-			const old = list[index];
-			const item = updateItem(iRender, src, old);
-			mountedMap.set(old, item);
-			newList.push(item);
-			list.splice(index, 1);
-		} else {
-			const item = createItem(iRender, src);
-			newList.push(item);
-		}
-	}
-
-	if (!mountedMap.size) {
-		return replace(iRender, newList, list);
-	}
-
-	unmount(iRender, list);
-	tree = tree.filter(t => mountedMap.has(t));
-	const last = getLastNode(tree[tree.length - 1]);
-	const parent = iRender.getParent(last);
-
-	if (!parent) {
-		return newList;
-	}
-
-	let next = iRender.nextNode(last);
-
-	for (let i = newList.length - 1; i >= 0; i--) {
-		const item = newList[i];
-		const index = tree.findIndex(o => mountedMap.get(o) === item);
-
-		if (index >= 0) {
-			for (const it of tree.splice(index)) {
-				mountedMap.delete(it);
-			}
-		} else {
-			for (const it of getNodes(item)) {
-				iRender.insertNode(parent, it, next);
-			}
-		}
-
-		next = getFirstNode(item) || next;
-	}
-
-	return newList;
-}
-
-function updateAll(iRender, source, tree) {
-	let index = 0;
-	let length = Math.min(source.length, tree.length);
-	const list = [];
-
-	for (; index < length; index++) {
-		const src = source[index];
-
-		if (Array.isArray(src)) {
-			list.push(updateList(iRender, src, tree[index]));
-		} else {
-			list.push(updateItem(iRender, src, tree[index]));
-		}
-	}
-
-	length = Math.max(source.length, tree.length);
-
-	if (tree.length > index) {
-		for (; index < length; index++) {
-			unmount(iRender, tree[index]);
-		}
-	}
-
-	if (source.length > index) {
-		const last = getLastNode(list[list.length - 1]);
-		const parent = iRender.getParent(last);
-		const next = iRender.nextNode(last);
-
-		for (; index < length; index++) {
-			const src = source[index];
-			const item = Array.isArray(src) ? createList(iRender, src) : createItem(iRender, src);
-			list.push(item);
-
-			if (!parent) {
-				continue;
-			}
-
-			for (const it of getNodes(item)) {
-				iRender.insertNode(parent, it, next);
-			}
-		}
-	}
-
-	return list;
-}
-
-function updateItem(iRender, source, tree) {
-	if (Array.isArray(tree)) {
-		const index = tree.findIndex(it => it.tag === source.tag && it.component === source.component);
-
-		if (index < 0) {
-			return replace(iRender, createItem(iRender, source), tree);
-		}
-
-		const all = tree;
-		[tree] = tree.splice(index, 1);
-		unmount(iRender, all);
-	}
-
-	const {
-		tag,
-		component,
-	} = source;
-	const ref = source.ref !== tree.ref && source.ref || undefined;
-
-	if (tag !== tree.tag || component !== tree.component) {
-		return replace(iRender, createItem(iRender, source), tree);
-	}
-
-	if (isDeliver(tag)) {
-		return createMountedNode({ ...source,
-			node: undefined,
-			component: undefined,
-			children: updateAll(iRender, source.children, tree.children),
-		}, tree.id);
-	}
-
-	if (!tag) {
-		return tree;
-	}
-
-	const ltag = typeof tag !== 'string' ? '' : tag.toLowerCase();
-
-	if (typeof tag !== 'string' || ltag === Container) {
-		if (!component) {
-			return createMountedNode({ ...source,
-				node: undefined,
-				component: undefined,
-				children: updateAll(iRender, source.children, tree.children),
-			}, tree.id);
-		}
-
-		setRef(ref, component.exposed);
-		return createMountedNode({ ...source,
-			node: undefined,
-			component,
-			children: [],
-		}, tree.id);
-	}
-
-	if (ltag === Value) {
-		let {
-			value,
-		} = source;
-
-		if (monitorable.isValue(value)) {
-			value = value();
-		}
-
-		if (tree.value === value) {
-			setRef(ref, tree.node);
-			return createMountedNode({ ...tree,
-				...source,
-				value,
-				children: [],
-			}, tree.id);
-		}
-
-		return replace(iRender, createValue(iRender, source, value), tree);
-	}
-
-	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
-		return createMountedNode({ ...source,
-			node: undefined,
-			component: undefined,
-			children: updateAll(iRender, source.children, tree.children),
-		}, tree.id);
-	}
-
-	const {
-		node,
-	} = tree;
-	setRef(ref, node);
-	let children = [];
-
-	if (!source.children.length && tree.children.length) {
-		unmount(iRender, tree.children);
-	} else if (source.children.length && tree.children.length) {
-		children = updateAll(iRender, source.children, tree.children);
-	} else if (source.children.length && !tree.children.length) {
-		children = createAll(iRender, source.children);
-
-		for (const it of getNodes(children)) {
-			iRender.insertNode(node, it);
-		}
-	}
-
-	iRender.updateProps(node, source.props || {});
-	return createMountedNode({ ...tree,
-		...source,
-		children,
-	}, tree.id);
-}
-
-function draw(iRender, source, tree) {
-	if (tree) {
-		return updateAll(iRender, source, tree);
-	}
-
-	return createAll(iRender, source);
-}
-
-function getSlots(iRender, children, slots, native = false) {
-	const nativeList = [];
-
-	for (const it of children) {
-		if (Array.isArray(it)) {
-			const list = Object.create(null);
-			nativeList.push(getSlots(iRender, it, list, native));
-
-			for (const k of Reflect.ownKeys(list)) {
-				if (k in slots) {
-					slots[k].push(list[k]);
-				} else {
-					slots[k] = [list[k]];
-				}
-			}
-
-			continue;
-		}
-
-		if (isElement(it) && it.slot === undefined) {
-			if (typeof it.tag === 'function' && it.tag[typeSymbol] === 'simple' && it.execed || it.tag === Template) {
-				const list = Object.create(null);
-				nativeList.push(getSlots(iRender, it.children, list, native));
-
-				for (const k of Reflect.ownKeys(list)) {
-					const node = { ...it,
-						children: list[k],
-					};
-
-					if (k in slots) {
-						slots[k].push(node);
-					} else {
-						slots[k] = [node];
-					}
-				}
-
-				continue;
-			}
-		}
-
-		if (native) {
-			if (iRender.isNode(it)) {
-				nativeList.push(it);
-				continue;
-			}
-
-			if (!isElement(it)) {
-				nativeList.push(it);
-				continue;
-			}
-
-			if (it.tag !== SlotRender && it.tag !== Template) {
-				nativeList.push(it);
-				continue;
-			}
-		}
-
-		const slot = isElement(it) && it.slot || 'default';
-		const el = isElement(it) ? { ...it,
-			slot: undefined,
-			props: { ...it.props,
-				slot: undefined,
-			},
-		} : it;
-
-		if (slot in slots) {
-			slots[slot].push(el);
-		} else {
-			slots[slot] = [el];
-		}
-	}
-
-	return nativeList;
-}
-
-function renderSlots(list, ...props) {
-	return list.map(it => {
-		if (Array.isArray(it)) {
-			return renderSlots(it, ...props);
-		}
-
-		if (!isElement(it)) {
-			return it;
-		}
-
-		if (it.tag !== SlotRender) {
-			return { ...it,
-				slot: undefined,
-			};
-		}
-
-		const {
-			children,
-		} = it;
-
-		if ((children === null || children === void 0 ? void 0 : children.length) !== 1) {
-			return children;
-		}
-
-		const [render] = children;
-
-		if (monitorable.isValue(render) || typeof render !== 'function') {
-			return children;
-		}
-
-		return render(...props);
-	});
-}
-
-function createSlots(name, list) {
-	const slot = (...props) => ({
-		[objectTypeSymbol]: objectTypeSymbolElement,
-		tag: ScopeSlot,
-		children: renderSlots(list, ...props),
-		inserted: true,
-		label: isProduction ? undefined : [`[${ name }]`, '#00F'],
-	});
-
-	slot.children = list;
-	return slot;
-}
-
-function setSlots(children, slots = Object.create(null), oldChildren) {
-	for (const k of Reflect.ownKeys(slots)) {
-		if (k in children) {
-			continue;
-		}
-
-		delete slots[k];
-	}
-
-	if (!oldChildren) {
-		for (const k of Reflect.ownKeys(children)) {
-			slots[k] = createSlots(k, children[k]);
-		}
-
-		return slots;
-	}
-
-	for (const k of Reflect.ownKeys(children)) {
-		const list = children[k];
-
-		if (equal(list, oldChildren[k])) {
-			continue;
-		}
-
-		slots[k] = createSlots(k, list);
-	}
-
-	return slots;
-}
-
-const components = Object.create(null);
-function register(name, component) {
-	components[name] = component;
-}
-
-function findComponent(tag, components$1) {
-	if (!tag) {
-		return null;
-	}
-
-	if (typeof tag !== 'string') {
-		return tag;
-	}
-
-	if (tag === 'template') {
-		return tag;
-	}
-
-	if (/^neep:.+/i.test(tag)) {
-		return tag;
-	}
-
-	for (const list of components$1) {
-		const component = list[tag];
-
-		if (component) {
-			return component;
-		}
-	}
-
-	return components[tag] || tag;
-}
-
-function getChildren(children, args) {
-	if (children.length !== 1) {
-		return children;
-	}
-
-	const [fn] = children;
-
-	if (typeof fn !== 'function') {
-		return children;
-	}
-
-	return fn(...args);
-}
-
-function replaceNode(node, slots, components, native, isRoot) {
-	let _node$props;
-
-	if (Array.isArray(node)) {
-		return node.map(n => replaceNode(n, slots, components, native, isRoot));
-	}
-
-	if (!isElement(node)) {
-		return node;
-	}
-
-	let {
-		children,
-		props,
-	} = node;
-	let tag = findComponent(node.tag, components);
-
-	if (tag === SlotRender && isRoot) {
-		return null;
-	}
-
-	if (tag === Slot) {
-		tag = native ? 'slot' : ScopeSlot;
-	}
-
-	if (tag !== ScopeSlot) {
-		return { ...node,
-			tag,
-			children: replaceNode(children, slots, components, native, isRoot),
-		};
-	}
-
-	if (node.tag === ScopeSlot && node.inserted) {
-		return node;
-	}
-
-	const args = (props === null || props === void 0 ? void 0 : props.argv) && [props.argv] || Array.isArray(props === null || props === void 0 ? void 0 : props.args) && (props === null || props === void 0 ? void 0 : props.args.length) && props.args || [{}];
-	const slotName = ((_node$props = node.props) === null || _node$props === void 0 ? void 0 : _node$props.name) || 'default';
-	const slot = slots[slotName];
-
-	if (typeof slot === 'function') {
-		return { ...node,
-			...slot(...args),
-		};
-	}
-
-	const label = isProduction ? undefined : [`[${ slotName }]`, '#00F'];
-	return { ...node,
-		tag: ScopeSlot,
-		label,
-		children: replaceNode(getChildren(children, args), slots, components, native, false),
-	};
-}
-
-function getComponents(...components) {
-	return components.filter(Boolean);
-}
-
-function execSimple(nObject, delivered, node, tag, components, children) {
-	if (node.execed) {
-		return node;
-	}
-
-	const {
-		iRender,
-	} = nObject;
-	const slotMap = Object.create(null);
-	getSlots(iRender, children, slotMap);
-	const slots = setSlots(slotMap);
-	const event = new EventEmitter();
-	event.updateInProps(node.props);
-	const props = { ...node.props,
-	};
-	const context = initContext({
-		slots,
-		created: false,
-		parent: nObject.exposed,
-
-		delivered(deliver) {
-			return getDelivered(delivered, deliver);
-		},
-
-		children: new Set(),
-		childNodes: children,
-
-		refresh(f) {
-			nObject.refresh(f);
-		},
-
-		emit: event.emit,
-	});
-
-	if (!isProduction) {
-		getLabel();
-	}
-
-	const result = tag(props, context);
-	let label;
-
-	if (!isProduction) {
-		label = getLabel();
-	}
-
-	const nodes = init(nObject, delivered, renderNode(nObject.iRender, result, context, tag[renderSymbol]), slots, getComponents(...components, tag[componentsSymbol]), false);
-	return { ...node,
-		tag,
-		execed: true,
-		children: Array.isArray(nodes) ? nodes : [nodes],
-		label,
-	};
-}
-
-function getSlotRenderFn(nObject, delivered, children, slots, components, native) {
-	if (children.length !== 1) {
-		return null;
-	}
-
-	const [renderFn] = children;
-
-	if (monitorable.isValue(renderFn) || typeof renderFn !== 'function') {
-		return null;
-	}
-
-	const {
-		slotRenderFnList,
-	} = nObject;
-	const fn = slotRenderFnList.get(renderFn);
-
-	if (fn) {
-		return fn;
-	}
-
-	const newFn = function (...p) {
-		return init(nObject, delivered, renderFn.call(this, ...p), slots, components, native);
-	};
-
-	slotRenderFnList.set(renderFn, newFn);
-	return newFn;
-}
-
-function exec(nObject, delivered, node, slots, components, native) {
-	if (Array.isArray(node)) {
-		return node.map(n => exec(nObject, delivered, n, slots, components, native));
-	}
-
-	if (!isElement(node)) {
-		return node;
-	}
-
-	let {
-		tag,
-		children,
-	} = node;
-
-	if (isDeliver(tag)) {
-		const newDelivered = Object.create(delivered);
-		Reflect.defineProperty(newDelivered, tag[deliverKeySymbol], {
-			configurable: true,
-			enumerable: true,
-			value: node.props ? node.props.value : undefined,
-		});
-		return { ...node,
-			tag,
-			children: children.map(child => exec(nObject, newDelivered, child, slots, components, native)),
-		};
-	}
-
-	if (tag === SlotRender) {
-		const slotRenderFn = getSlotRenderFn(nObject, delivered, children, slots, components, native);
-
-		if (slotRenderFn) {
-			return { ...node,
-				children: [slotRenderFn],
-			};
-		}
-	}
-
-	if (typeof tag !== 'function' || tag[typeSymbol] !== 'simple') {
-		return { ...node,
-			tag,
-			children: children.map(n => exec(nObject, delivered, n, slots, components, native)),
-		};
-	}
-
-	return execSimple(nObject, delivered, node, tag, components, children);
-}
-
-function getItem(node) {
-	if (Array.isArray(node)) {
-		return node.map(getItem);
-	}
-
-	if (isElement(node)) {
-		return node;
-	}
-
-	if (node === undefined || node === null) {
-		return {
-			[objectTypeSymbol]: objectTypeSymbolElement,
-			tag: null,
-			key: undefined,
-			children: [],
-		};
-	}
-
-	return {
-		[objectTypeSymbol]: objectTypeSymbolElement,
-		key: undefined,
-		tag: Value,
-		value: node,
-		children: [],
-	};
-}
-
-function renderNode(iRender, node, context, render) {
-	if (Array.isArray(node)) {
-		return node;
-	}
-
-	if (isElement(node)) {
-		if (node.tag === Fragment) {
-			return node.children.map(getItem);
-		}
-
-		return [node];
-	}
-
-	if (!node || !render || iRender.isNode(node)) {
-		return [node];
-	}
-
-	if (typeof node !== 'object') {
-		return [node];
-	}
-
-	const list = render(node, context);
-
-	if (Array.isArray(list)) {
-		return list;
-	}
-
-	return [list];
-}
-
-function init(nObject, delivered, node, slots, components, native) {
-	return refresh(() => monitorable.postpone(() => exec(nObject, delivered, replaceNode(node, slots, components, native, true).map(getItem), slots, components, native)));
-}
-function normalize(nObject, result) {
-	const {
-		component,
-	} = nObject;
-	return init(nObject, nObject.delivered, renderNode(nObject.iRender, result, nObject.context, component[renderSymbol]), nObject.slots, getComponents(component[componentsSymbol]), Boolean(nObject.native));
-}
-
-function createExposed(obj) {
-	const cfg = {
-		$parent: {
-			configurable: true,
-			get: () => {
-				let _obj$parent;
-
-				return (_obj$parent = obj.parent) === null || _obj$parent === void 0 ? void 0 : _obj$parent.exposed;
-			},
-		},
-		$component: {
-			configurable: true,
-			value: null,
-		},
-		$isContainer: {
-			configurable: true,
-			value: false,
-		},
-		$created: {
-			configurable: true,
-			get: () => obj.created,
-		},
-		$destroyed: {
-			configurable: true,
-			get: () => obj.destroyed,
-		},
-		$mounted: {
-			configurable: true,
-			get: () => obj.mounted,
-		},
-		$unmounted: {
-			configurable: true,
-			get: () => obj.unmounted,
-		},
-	};
-	const exposed = Object.create(null, cfg);
-	return exposed;
+function getNode(id) {
+  if (!isProduction) {
+    if (typeof id !== 'number') {
+      var _IdMap;
+
+      id = ((_IdMap = IdMap) === null || _IdMap === void 0 ? void 0 : _IdMap.get(id)) || -1;
+    }
+
+    monitorable.markRead(Nodes, id);
+    return Nodes[id];
+  }
+
+  return undefined;
 }
 
 let completeList;
 function setCompleteList(list) {
-	completeList = list;
+  completeList = list;
 }
 function complete(it) {
-	if (!completeList) {
-		it();
-	} else {
-		completeList.push(it);
-	}
+  if (!completeList) {
+    it();
+  } else {
+    completeList.push(it);
+  }
 }
+class BaseProxy {
+  constructor(renderer, originalTag, tag, attrs, parent, delivered) {
+    _defineProperty(this, "tag", void 0);
 
-function createEntity(obj) {
-	const cfg = {
-		exposed: {
-			configurable: true,
-			get: () => obj.exposed,
-		},
-		parent: {
-			configurable: true,
-			get: () => {
-				let _obj$parent2;
-
-				return (_obj$parent2 = obj.parent) === null || _obj$parent2 === void 0 ? void 0 : _obj$parent2.entity;
-			},
-		},
-		component: {
-			configurable: true,
-			value: null,
-		},
-		isContainer: {
-			configurable: true,
-			value: false,
-		},
-		created: {
-			configurable: true,
-			get: () => obj.created,
-		},
-		destroyed: {
-			configurable: true,
-			get: () => obj.destroyed,
-		},
-		mounted: {
-			configurable: true,
-			get: () => obj.mounted,
-		},
-		unmounted: {
-			configurable: true,
-			get: () => obj.unmounted,
-		},
-		$_hooks: {
-			configurable: true,
-			value: Object.create(null),
-		},
-		$_valueIndex: {
-			configurable: true,
-			value: 0,
-			writable: true,
-		},
-		$_values: {
-			configurable: true,
-			value: [],
-		},
-		$_serviceIndex: {
-			configurable: true,
-			value: 0,
-			writable: true,
-		},
-		$_services: {
-			configurable: true,
-			value: [],
-		},
-		callHook: {
-			configurable: true,
-
-			value(h) {
-				callHook(h, entity);
-			},
-
-		},
-		setHook: {
-			configurable: true,
-
-			value(id, hook) {
-				return setHook(id, hook, entity);
-			},
-
-		},
-		refresh: {
-			configurable: true,
-			value: obj.refresh.bind(obj),
-		},
-		on: {
-			configurable: true,
-			value: obj.on,
-		},
-		emit: {
-			configurable: true,
-			value: obj.emit,
-		},
-		config: {
-			configurable: true,
-			value: obj.config,
-		},
-	};
-	const entity = Object.create(null, cfg);
-	return initEntity(entity);
-}
-
-class EntityObject {
-	constructor(iRender, parent, delivered = (parent === null || parent === void 0 ? void 0 : parent.delivered) || Object.create(null), container) {
-		_defineProperty(this, 'slotRenderFnList', new WeakMap());
+    _defineProperty(this, "attrs", void 0);
 
-		_defineProperty(this, 'events', new EventEmitter());
+    _defineProperty(this, "renderer", void 0);
 
-		_defineProperty(this, 'emit', this.events.emit);
+    _defineProperty(this, "labels", void 0);
 
-		_defineProperty(this, 'on', this.events.on);
+    _defineProperty(this, "parentProxy", void 0);
 
-		_defineProperty(this, 'eventCancelHandles', new Set());
+    _defineProperty(this, "delivered", void 0);
 
-		_defineProperty(this, 'iRender', void 0);
+    _defineProperty(this, "created", false);
 
-		_defineProperty(this, 'components', Object.create(null));
+    _defineProperty(this, "destroyed", false);
 
-		_defineProperty(this, 'config', Object.create(null));
+    _defineProperty(this, "mounted", false);
 
-		_defineProperty(this, 'parentDelivered', void 0);
+    _defineProperty(this, "unmounted", false);
 
-		_defineProperty(this, 'delivered', void 0);
+    _defineProperty(this, "tree", []);
 
-		_defineProperty(this, 'exposed', createExposed(this));
+    _defineProperty(this, "container", void 0);
 
-		_defineProperty(this, 'entity', createEntity(this));
+    _defineProperty(this, "componentRoot", void 0);
 
-		_defineProperty(this, 'parent', void 0);
+    _defineProperty(this, "originalTag", void 0);
 
-		_defineProperty(this, 'native', void 0);
+    _defineProperty(this, "__executed_destroy", false);
 
-		_defineProperty(this, 'created', false);
+    _defineProperty(this, "__mountOptions", null);
 
-		_defineProperty(this, 'destroyed', false);
+    _defineProperty(this, "__cancelDrawMonitor", void 0);
 
-		_defineProperty(this, 'mounted', false);
+    _defineProperty(this, "__executed_unmounted", false);
 
-		_defineProperty(this, 'unmounted', false);
+    this.originalTag = originalTag;
+    this.tag = tag;
+    this.renderer = renderer;
+    this.attrs = attrs;
+    this.parentProxy = parent;
+    this.delivered = delivered || (parent === null || parent === void 0 ? void 0 : parent.delivered) || Object.create(null);
 
-		_defineProperty(this, 'children', new Set());
+    if (!isProduction) {
+      monitorable.defineProperty(this, 'tree', []);
+    }
+  }
 
-		_defineProperty(this, 'tree', []);
+  update(attrs, children) {
+    this.attrs = attrs;
 
-		_defineProperty(this, 'container', void 0);
+    this._update(attrs, children);
+  }
 
-		_defineProperty(this, '_render', () => []);
+  destroy() {
+    if (this.__executed_destroy) {
+      return false;
+    }
 
-		_defineProperty(this, '_needRefresh', false);
+    this.__executed_destroy = true;
+    this.callHook('beforeDestroy');
 
-		_defineProperty(this, '_delayedRefresh', 0);
+    this._destroy();
 
-		_defineProperty(this, '_refreshing', false);
+    this.callHook('destroyed');
+    this.destroyed = true;
+    return true;
+  }
 
-		_defineProperty(this, '_nodes', []);
+  mount(mountOptions) {
+    if (this.__executed_destroy) {
+      return false;
+    }
 
-		_defineProperty(this, 'childNodes', []);
+    if (!mountOptions) {
+      return false;
+    }
 
-		_defineProperty(this, '__executed_destroy', false);
+    if (this.__mountOptions) {
+      return false;
+    }
 
-		_defineProperty(this, '__executed_mount', false);
+    this.__mountOptions = mountOptions;
+    this.callHook('beforeMount');
+    const result = monitorable.exec(c => c && this.requestDraw(), () => {
+      const newMountOptions = this._mount(mountOptions);
 
-		_defineProperty(this, '__executed_mounted', false);
+      this.__mountOptions = newMountOptions || mountOptions;
+      this.mounted = true;
+    });
+    this.__cancelDrawMonitor = result.stop;
+    complete(() => this.callHook('mounted'));
+    return true;
+  }
 
-		_defineProperty(this, '_cancelDrawMonitor', void 0);
+  unmount() {
+    if (!this.mounted) {
+      return false;
+    }
 
-		this.iRender = iRender;
-		this.parentDelivered = delivered;
-		this.delivered = Object.create(delivered);
+    if (this.__executed_unmounted) {
+      return false;
+    }
 
-		if (parent) {
-			this.parent = parent;
-		}
+    this.__executed_unmounted = true;
+    this.callHook('beforeUnmount');
 
-		this.container = container || this;
-	}
+    this._unmount();
 
-	get canRefresh() {
-		if (wait(this)) {
-			return false;
-		}
+    this.callHook('unmounted');
+    this.unmounted = true;
+    return true;
+  }
 
-		return !this._delayedRefresh;
-	}
+  redraw() {
+    if (this.__executed_destroy) {
+      return;
+    }
 
-	get needRefresh() {
-		if (wait(this)) {
-			return false;
-		}
+    if (!this.mounted) {
+      return;
+    }
 
-		if (this._delayedRefresh) {
-			return false;
-		}
+    const mountOptions = this.__mountOptions;
 
-		const needRefresh = this._needRefresh;
-		this._needRefresh = false;
-		return needRefresh;
-	}
+    if (!mountOptions) {
+      return;
+    }
 
-	requestDraw() {}
+    if (this.__cancelDrawMonitor) {
+      this.__cancelDrawMonitor();
+    }
 
-	async asyncRefresh(f) {
-		try {
-			this._delayedRefresh++;
-			return await f();
-		} finally {
-			this._delayedRefresh--;
-			this.refresh();
-		}
-	}
-
-	refresh(f, async) {
-		if (typeof f === 'function') {
-			if (async) {
-				return this.asyncRefresh(f);
-			}
-
-			try {
-				this._delayedRefresh++;
-				return f();
-			} finally {
-				this._delayedRefresh--;
-
-				if (this._delayedRefresh <= 0) {
-					this.refresh();
-				}
-			}
-		}
-
-		if (this.destroyed) {
-			return;
-		}
-
-		this._needRefresh = true;
-
-		if (!this.created) {
-			return;
-		}
-
-		if (this._refreshing) {
-			return;
-		}
-
-		this._refreshing = true;
-		let nodes;
-
-		while (this.needRefresh) {
-			nodes = this._render();
-
-			if (this.destroyed) {
-				return;
-			}
-		}
-
-		this._refreshing = false;
-
-		if (!this.canRefresh) {
-			return;
-		}
-
-		if (!nodes) {
-			return;
-		}
-
-		this._nodes = convert(this, nodes, this._nodes);
-
-		if (!this.mounted) {
-			return;
-		}
-
-		if (this.destroyed) {
-			return;
-		}
-
-		if (this.unmounted) {
-			return;
-		}
-
-		this.requestDraw();
-	}
-
-	callHook(id) {
-		callHook(id, this.entity);
-	}
-
-	_update(props, children) {
-		this.childNodes = children;
-	}
-
-	update(props, children) {
-		this._update(props, children);
-	}
-
-	_destroy() {}
-
-	destroy() {
-		if (this.__executed_destroy) {
-			return;
-		}
-
-		this.__executed_destroy = true;
-		this.callHook('beforeDestroy');
-
-		this._destroy();
-
-		this.callHook('destroyed');
-		this.destroyed = true;
-	}
-
-	_mount() {}
-
-	mount() {
-		if (this.__executed_destroy) {
-			return;
-		}
-
-		if (this.__executed_mount) {
-			return;
-		}
-
-		this.__executed_mount = true;
-		this.callHook('beforeMount');
-		const result = monitorable.exec(c => c && this.requestDraw(), () => {
-			this._mount();
-
-			this.mounted = true;
-		});
-		this._cancelDrawMonitor = result.stop;
-		complete(() => this.callHook('mounted'));
-	}
-
-	_unmount() {}
-
-	unmount() {
-		if (!this.mounted) {
-			return;
-		}
-
-		if (this.__executed_mounted) {
-			return;
-		}
-
-		this.__executed_mounted = true;
-		this.callHook('beforeUnmount');
-
-		this._unmount();
-
-		this.callHook('unmounted');
-		this.unmounted = true;
-	}
-
-	_draw() {}
-
-	draw() {
-		if (this.__executed_destroy) {
-			return;
-		}
-
-		if (this._cancelDrawMonitor) {
-			this._cancelDrawMonitor();
-		}
-
-		this.callHook('beforeDraw');
-		const result = monitorable.exec(c => c && this.requestDraw(), () => this._draw());
-		this._cancelDrawMonitor = result.stop;
-		complete(() => this.callHook('drawn'));
-	}
+    this.callHook('beforeDraw');
+    const result = monitorable.exec(c => c && this.requestDraw(), () => this._redraw(mountOptions));
+    this.__cancelDrawMonitor = result.stop;
+    complete(() => this.callHook('drawn'));
+  }
 
 }
 
-const disabledKey = new Set([':', '@', '#', '*', '!', '%', '^', '~', '&', '=', '+', '.', '(', ')', '[', ']', '{', '}', '<', '>']);
+class NodeProxy extends BaseProxy {
+  constructor(originalTag, tag, attrs, children, parent, delivered) {
+    super(parent.renderer, originalTag, tag, attrs, parent, delivered);
 
-function filter(k) {
-	if (typeof k !== 'string') {
-		return true;
-	}
+    _defineProperty(this, "container", void 0);
 
-	if (disabledKey.has(k[0])) {
-		return false;
-	}
+    _defineProperty(this, "componentRoot", void 0);
 
-	if (/^n[:-]/.test(k)) {
-		return false;
-	}
+    this.container = parent.container;
+    this.componentRoot = parent.componentRoot;
+  }
 
-	if (/^on[:-]/.test(k)) {
-		return false;
-	}
+  requestDraw() {
+    if (!this.mounted) {
+      return;
+    }
 
-	return true;
+    if (this.destroyed) {
+      return;
+    }
+
+    this.container.markDraw(this);
+  }
+
+  callHook(id) {}
+
 }
 
-function update(nObject, props, children) {
-	const propsObj = nObject.props;
-	const newKeys = new Set(Reflect.ownKeys(props).filter(filter));
+function createPlaceholder(renderer) {
+  const node = renderer.createPlaceholder();
+  return createMountedNode({
+    tag: null,
+    node
+  });
+}
+function createItem(renderer, mountOptions, source) {
+  if (!source) {
+    return createPlaceholder(renderer);
+  }
 
-	for (const k of Reflect.ownKeys(propsObj)) {
-		if (filter(k) && !newKeys.has(k)) {
-			delete propsObj[k];
-		}
-	}
+  const {
+    proxy
+  } = source;
+  proxy.mount(mountOptions);
+  return createMountedNode({ ...source,
+    node: undefined,
+    proxy
+  });
+}
+function createList(renderer, mountOptions, source) {
+  if (source.length) {
+    return source.map(it => createItem(renderer, mountOptions, it));
+  }
 
-	for (const k of newKeys) {
-		propsObj[k] = props[k];
-	}
+  return [createPlaceholder(renderer)];
+}
+function createAll(renderer, mountOptions, source) {
+  if (!source.length) {
+    return [createPlaceholder(renderer)];
+  }
 
-	nObject.events.updateInProps(props);
-	const slots = Object.create(null);
-	const {
-		native,
-	} = nObject;
-	const childNodes = getSlots(nObject.iRender, children, slots, Boolean(native));
-	setSlots(slots, nObject.slots, nObject.lastSlots);
-	nObject.lastSlots = slots;
-
-	if (!native) {
-		return;
-	}
-
-	nObject.nativeNodes = convert(nObject, childNodes, nObject.nativeNodes);
-
-	if (!nObject.mounted) {
-		return;
-	}
-
-	nObject.requestDraw();
+  return source.map(item => Array.isArray(item) ? createList(renderer, mountOptions, item) : createItem(renderer, mountOptions, item));
 }
 
-function createContext(nObject) {
-	return initContext({
-		slots: nObject.slots,
+function* getNodes(tree) {
+  if (Array.isArray(tree)) {
+    for (const it of tree) {
+      yield* getNodes(it);
+    }
 
-		get created() {
-			return nObject.created;
-		},
+    return;
+  }
 
-		get parent() {
-			return nObject.parent.exposed;
-		},
+  const {
+    node,
+    proxy
+  } = tree;
 
-		get children() {
-			return nObject.children;
-		},
+  if (node) {
+    yield node;
+    return;
+  }
 
-		get childNodes() {
-			return nObject.childNodes;
-		},
+  if (proxy) {
+    yield* getNodes(proxy.tree);
+  }
+}
+function unmount(renderer, tree) {
+  if (!tree) {
+    return;
+  }
 
-		get emit() {
-			return nObject.emit;
-		},
+  if (Array.isArray(tree)) {
+    tree.forEach(e => unmount(renderer, e));
+    return;
+  }
 
-		delivered(deliver) {
-			return getDelivered(nObject.parentDelivered, deliver);
-		},
+  recoveryMountedNode(tree);
 
-		refresh(f) {
-			nObject.refresh(f);
-		},
+  if (tree.proxy) {
+    const {
+      proxy
+    } = tree;
+    proxy.unmount();
+    return;
+  }
 
-	}, nObject.entity);
+  if (tree.node) {
+    const {
+      node
+    } = tree;
+    renderer.removeNode(node);
+  }
+
+  unmount(renderer, tree.children);
 }
 
-function initRender(nObject) {
-	const {
-		component,
-		props,
-		context,
-		entity,
-	} = nObject;
+function getLastNode(tree) {
+  if (Array.isArray(tree)) {
+    return getLastNode(tree[tree.length - 1]);
+  }
 
-	function refresh(changed) {
-		if (!changed) {
-			return;
-		}
+  if (tree.node) {
+    return tree.node;
+  }
 
-		nObject.refresh();
-	}
-
-	const result = monitorable.exec(refresh, () => setCurrent(() => component(props, context), entity), {
-		resultOnly: true,
-	});
-
-	if (typeof result === 'function') {
-		const render = monitorable.monitor(refresh, () => normalize(nObject, result()));
-		return {
-			nodes: render(),
-			render,
-			stopRender: () => render.stop(),
-		};
-	}
-
-	const render = monitorable.monitor(refresh, () => normalize(nObject, setCurrent(() => component(props, context), entity)));
-	return {
-		nodes: monitorable.exec(refresh, () => normalize(nObject, result), {
-			resultOnly: true,
-		}),
-		render,
-		stopRender: () => render.stop(),
-	};
+  return getLastNode(tree.proxy.tree);
 }
 
-class ComponentEntity extends EntityObject {
-	constructor(component, props, children, parent, delivered) {
-		let _this$iRender$createC, _this$iRender;
+function getFirstNode(tree) {
+  if (Array.isArray(tree)) {
+    return getFirstNode(tree[0]);
+  }
 
-		super(parent.iRender, parent, delivered, parent.container);
+  if (tree.node) {
+    return tree.node;
+  }
 
-		_defineProperty(this, 'component', void 0);
+  return getFirstNode(tree.proxy.tree);
+}
 
-		_defineProperty(this, 'props', monitorable.encase(Object.create(null)));
+function replace(renderer, newTree, oldTree) {
+  const next = getFirstNode(oldTree);
 
-		_defineProperty(this, 'slots', monitorable.encase(Object.create(null)));
+  if (!next) {
+    return newTree;
+  }
 
-		_defineProperty(this, 'lastSlots', void 0);
+  const parentNode = renderer.getParent(next);
 
-		_defineProperty(this, '_stopRender', void 0);
+  if (!parentNode) {
+    return newTree;
+  }
 
-		_defineProperty(this, 'nativeNodes', void 0);
+  for (const it of getNodes(newTree)) {
+    renderer.insertNode(parentNode, it, next);
+  }
 
-		_defineProperty(this, 'shadowTree', []);
+  unmount(renderer, oldTree);
+  return newTree;
+}
 
-		_defineProperty(this, 'nativeTree', []);
+function updateList(renderer, mountOptions, source, tree) {
+  if (!source.length) {
+    const node = createPlaceholder(renderer);
+    return [replace(renderer, node, tree)];
+  }
 
-		_defineProperty(this, '_shadow', void 0);
+  if (!Array.isArray(tree)) {
+    tree = [tree];
+  }
 
-		_defineProperty(this, 'context', void 0);
+  const newList = [];
+  const list = [...tree];
+  const mountedMap = new Map();
 
-		_defineProperty(this, 'parent', void 0);
+  for (const src of source) {
+    const index = list.findIndex(it => it.tag === src.tag && it.key === src.key && it.proxy === src.proxy);
 
-		this.component = component;
-		Object.assign(this.config, component[configSymbol]);
-		Object.assign(this.components, component[componentsSymbol]);
-		Reflect.defineProperty(this.exposed, '$component', {
-			value: component,
-			enumerable: true,
-			configurable: true,
-		});
-		[this.native, this._shadow] = component[typeSymbol] === 'native' && ((_this$iRender$createC = (_this$iRender = this.iRender).createComponent) === null || _this$iRender$createC === void 0 ? void 0 : _this$iRender$createC.call(_this$iRender)) || [];
-		this.parent = parent;
-		parent.children.add(this.exposed);
-		const context = createContext(this);
-		this.context = context;
-		this.callHook('beforeCreate');
-		this.childNodes = children;
-		refresh(() => monitorable.postpone(() => update(this, props, children)));
-		const {
-			render,
-			nodes,
-			stopRender,
-		} = initRender(this);
-		this._render = render;
-		this._stopRender = stopRender;
-		this._nodes = convert(this, nodes);
-		this.callHook('created');
-		this.created = true;
+    if (index >= 0) {
+      const old = list[index];
+      const item = updateItem(renderer, mountOptions, src, old);
+      mountedMap.set(old, item);
+      newList.push(item);
+      list.splice(index, 1);
+    } else {
+      const item = createItem(renderer, mountOptions, src);
+      newList.push(item);
+    }
+  }
 
-		if (this._needRefresh) {
-			this.refresh();
-		}
-	}
+  if (!mountedMap.size) {
+    return replace(renderer, newList, list);
+  }
 
-	_update(props, children) {
-		if (this.destroyed) {
-			return;
-		}
+  unmount(renderer, list);
+  tree = tree.filter(t => mountedMap.has(t));
+  const last = getLastNode(tree.map(t => mountedMap.get(t)).filter(Boolean));
+  const parentNode = renderer.getParent(last);
 
-		this.childNodes = children;
-		refresh(() => monitorable.postpone(() => update(this, props, children)));
-	}
+  if (!parentNode) {
+    return newList;
+  }
 
-	_destroy() {
-		if (this._stopRender) {
-			this._stopRender();
-		}
+  let next = renderer.nextNode(last);
 
-		this.parent.children.delete(this.exposed);
-		destroy(this._nodes);
-	}
+  for (let i = newList.length - 1; i >= 0; i--) {
+    const item = newList[i];
+    const index = tree.findIndex(o => mountedMap.get(o) === item);
 
-	requestDraw() {
-		this.container.markDraw(this);
-	}
+    if (index >= 0) {
+      for (const it of tree.splice(index)) {
+        mountedMap.delete(it);
+      }
+    } else {
+      for (const it of getNodes(item)) {
+        renderer.insertNode(parentNode, it, next);
+      }
+    }
 
-	_draw() {
-		const {
-			nativeNodes,
-			iRender,
-			_shadow,
-			native,
-		} = this;
+    next = getFirstNode(item) || next;
+  }
 
-		if (!native || !nativeNodes || !_shadow) {
-			this.tree = draw(iRender, this._nodes, this.tree);
-			return;
-		}
+  return newList;
+}
 
-		this.shadowTree = draw(iRender, this._nodes, this.shadowTree);
-		this.nativeTree = draw(iRender, nativeNodes, this.nativeTree);
-	}
+function updateAll(renderer, mountOptions, source, tree) {
+  if (source.length === 0) {
+    return replace(renderer, createAll(renderer, mountOptions, []), tree);
+  }
 
-	_mount() {
-		const {
-			nativeNodes,
-			iRender,
-			_shadow,
-			native,
-			_nodes,
-		} = this;
+  let index = 0;
+  let length = Math.min(source.length, tree.length);
+  const list = [];
 
-		if (!native || !nativeNodes || !_shadow) {
-			this.tree = draw(iRender, _nodes);
-			return;
-		}
+  for (; index < length; index++) {
+    const src = source[index];
 
-		this.tree = draw(iRender, [{
-			tag: Value,
-			key: native,
-			value: native,
-			children: [],
-		}]);
-		this.shadowTree = draw(iRender, _nodes);
+    if (Array.isArray(src)) {
+      list.push(updateList(renderer, mountOptions, src, tree[index]));
+    } else {
+      list.push(updateItem(renderer, mountOptions, src, tree[index]));
+    }
+  }
 
-		for (const it of getNodes(this.shadowTree)) {
-			iRender.insertNode(_shadow, it);
-		}
+  length = Math.max(source.length, tree.length);
 
-		this.nativeTree = draw(iRender, nativeNodes);
+  if (tree.length > index) {
+    for (; index < length; index++) {
+      unmount(renderer, tree[index]);
+    }
+  }
 
-		for (const it of getNodes(this.nativeTree)) {
-			iRender.insertNode(native, it);
-		}
-	}
+  if (source.length > index) {
+    const last = getLastNode(list[list.length - 1]);
+    const parentNode = renderer.getParent(last);
+    const next = renderer.nextNode(last);
 
-	_unmount() {
-		const {
-			iRender,
-			nativeTree,
-		} = this;
-		unmount(iRender, this.tree);
+    for (; index < length; index++) {
+      const src = source[index];
+      const item = Array.isArray(src) ? createList(renderer, mountOptions, src) : createItem(renderer, mountOptions, src);
+      list.push(item);
 
-		if (!nativeTree) {
-			return;
-		}
+      if (!parentNode) {
+        continue;
+      }
 
-		unmount(iRender, nativeTree);
-	}
+      for (const it of getNodes(item)) {
+        renderer.insertNode(parentNode, it, next);
+      }
+    }
+  }
+
+  return list;
+}
+
+function updateItem(renderer, mountOptions, source, tree) {
+  if (!source) {
+    if (Array.isArray(tree)) {
+      if (tree.length === 1 && tree[0].tag === null) {
+        return tree[0];
+      }
+    } else if (tree.tag === null) {
+      return tree;
+    }
+
+    return replace(renderer, createPlaceholder(renderer), tree);
+  }
+
+  if (Array.isArray(tree)) {
+    const index = tree.findIndex(it => it.tag === source.tag && it.proxy === source.proxy);
+
+    if (index < 0) {
+      return replace(renderer, createItem(renderer, mountOptions, source), tree);
+    }
+
+    const all = tree;
+    [tree] = tree.splice(index, 1);
+    unmount(renderer, all);
+  }
+
+  if (source.proxy) {
+    const {
+      proxy
+    } = source;
+
+    if (proxy !== tree.proxy) {
+      return replace(renderer, createItem(renderer, mountOptions, source), tree);
+    }
+
+    return createMountedNode({ ...source,
+      node: undefined,
+      proxy
+    }, tree.id);
+  }
+
+  if (tree.proxy || source.tag !== tree.tag) {
+    return replace(renderer, createItem(renderer, mountOptions, source), tree);
+  }
+
+  if (source.tag === undefined) {
+    return tree;
+  }
+
+  return replace(renderer, createItem(renderer, mountOptions, source), tree);
+}
+
+function draw(renderer, mountOptions, source, tree) {
+  if (!tree) {
+    return createAll(renderer, mountOptions, source);
+  }
+
+  return updateAll(renderer, mountOptions, source, tree);
+}
+
+class DeliverProxy extends NodeProxy {
+  get content() {
+    return this.tree;
+  }
+
+  constructor(originalTag, tag, props, children, parent) {
+    super(originalTag, tag, props, children, parent, Object.create(parent.delivered));
+
+    _defineProperty(this, "__valueObject", void 0);
+
+    _defineProperty(this, "__nodes", void 0);
+
+    const {
+      value
+    } = props;
+    this.__valueObject = value;
+    Reflect.defineProperty(this.delivered, tag[deliverKeySymbol], {
+      configurable: true,
+      enumerable: true,
+      get: () => {
+        monitorable.markRead(this, 'value');
+        return this.__valueObject;
+      }
+    });
+    this.__nodes = convert(this, children);
+    this.created = true;
+  }
+
+  _update({
+    value
+  }, children) {
+    if (this.__valueObject !== value) {
+      this.__valueObject = value;
+      monitorable.markChange(this, 'value');
+    }
+
+    this.__nodes = convert(this, children, this.__nodes);
+    this.requestDraw();
+  }
+
+  _destroy() {
+    destroy(this.__nodes);
+  }
+
+  _mount(mountOptions) {
+    this.tree = draw(this.renderer, mountOptions, this.__nodes);
+  }
+
+  _redraw(mountOptions) {
+    const {
+      renderer,
+      __nodes,
+      tree
+    } = this;
+    this.tree = draw(renderer, mountOptions, __nodes, tree);
+  }
+
+  _unmount() {
+    unmount(this.renderer, this.tree);
+  }
+
+}
+
+let delayedRefresh = 0;
+const objectSet = new Set();
+function wait(obj) {
+  if (delayedRefresh <= 0) {
+    return false;
+  }
+
+  objectSet.add(obj);
+  return true;
+}
+
+function run() {
+  if (delayedRefresh > 0) {
+    return;
+  }
+
+  const list = [...objectSet];
+  objectSet.clear();
+  list.forEach(o => o.refresh());
+}
+
+async function asyncRefresh(f) {
+  try {
+    delayedRefresh++;
+    return await f();
+  } finally {
+    delayedRefresh--;
+    run();
+  }
+}
+
+function refresh(f, async) {
+  if (async) {
+    return asyncRefresh(f);
+  }
+
+  try {
+    delayedRefresh++;
+    return f();
+  } finally {
+    delayedRefresh--;
+    run();
+  }
+}
+
+function createEmit(emitter, omitNames = []) {
+  const emit = (name, p, options) => refresh(() => {
+    const cancelable = Boolean(options === null || options === void 0 ? void 0 : options.cancelable);
+    const {
+      target
+    } = emitter;
+    let defaultPrevented = true;
+    const eventInfo = {
+      get target() {
+        return target;
+      },
+
+      get cancelable() {
+        return cancelable;
+      },
+
+      get defaultPrevented() {
+        return defaultPrevented;
+      },
+
+      get prevented() {
+        return defaultPrevented;
+      },
+
+      preventDefault() {
+        defaultPrevented = false;
+      },
+
+      prevent() {
+        defaultPrevented = false;
+      }
+
+    };
+    const events = emitter.events[name];
+
+    if (!events) {
+      return defaultPrevented;
+    }
+
+    for (const event of events) {
+      event(p, eventInfo);
+    }
+
+    return defaultPrevented;
+  });
+
+  emit.omit = (...names) => createEmit(emitter, [...omitNames, ...names]);
+
+  Reflect.defineProperty(emit, 'names', {
+    get: () => {
+      monitorable.markRead(createEmit, 'names');
+      return [...emitter.names].filter(t => !omitNames.includes(t));
+    },
+    configurable: true
+  });
+  return emit;
+}
+
+class EventEmitter {
+  get names() {
+    monitorable.markRead(this, 'names');
+    return [...this._names];
+  }
+
+  constructor() {
+    _defineProperty(this, "_names", new Set());
+
+    _defineProperty(this, "events", Object.create(null));
+
+    _defineProperty(this, "emit", createEmit(this));
+
+    _defineProperty(this, "on", void 0);
+
+    _defineProperty(this, "target", void 0);
+
+    _defineProperty(this, "__propsEvents", Object.create(null));
+
+    _defineProperty(this, "__eventMap", Object.create(null));
+
+    _defineProperty(this, "__propsEmitEvents", Object.create(null));
+
+    _defineProperty(this, "__propsEmitEvent", void 0);
+
+    const names = this._names;
+    const eventSet = this.events;
+
+    const on = (name, listener) => {
+      var _event;
+
+      function fn(p, event) {
+        try {
+          listener(p, event);
+        } catch (e) {
+          monitorable.printError(e);
+        }
+      }
+
+      let event = eventSet[name];
+
+      if (!((_event = event) === null || _event === void 0 ? void 0 : _event.size)) {
+        event = new Set();
+        event.add(fn);
+        eventSet[name] = event;
+        names.add(name);
+        monitorable.markChange(this, 'names');
+      } else {
+        event.add(fn);
+      }
+
+      let removed = false;
+      return () => {
+        if (removed) {
+          return;
+        }
+
+        removed = true;
+
+        if (!event) {
+          return;
+        }
+
+        event.delete(fn);
+
+        if (event.size) {
+          return;
+        }
+
+        names.delete(name);
+        monitorable.markChange(this, 'names');
+      };
+    };
+
+    this.on = on;
+  }
+
+  updateInProps(props) {
+    const oldPropsEvents = this.__propsEvents;
+    const oldEventNames = new Set(Object.keys(oldPropsEvents));
+
+    for (const [entName, fn] of getEvents(props)) {
+      if (oldEventNames.has(entName)) {
+        oldEventNames.delete(entName);
+        const [olfFn, cl] = oldPropsEvents[entName] || [];
+
+        if (olfFn === fn) {
+          continue;
+        }
+
+        if (cl) {
+          cl();
+        }
+      }
+
+      oldPropsEvents[entName] = [fn, this.on(entName, fn)];
+    }
+
+    for (const entName of oldEventNames) {
+      const e = oldPropsEvents[entName];
+
+      if (!e) {
+        continue;
+      }
+
+      e[1]();
+      delete oldPropsEvents[entName];
+    }
+
+    const eventMap = this.__eventMap;
+    const oldEventMapNames = new Set(Object.keys(eventMap));
+
+    for (const [entName, fn] of getEventsMap(props)) {
+      if (oldEventMapNames.has(entName)) {
+        oldEventMapNames.delete(entName);
+        const [olfFn, cl] = eventMap[entName] || [];
+
+        if (olfFn === fn) {
+          continue;
+        }
+
+        if (cl) {
+          cl();
+        }
+      }
+
+      eventMap[entName] = [fn, this.on(entName, fn)];
+    }
+
+    for (const entName of oldEventMapNames) {
+      const e = eventMap[entName];
+
+      if (!e) {
+        continue;
+      }
+
+      e[1]();
+      delete eventMap[entName];
+    }
+
+    const oldEmitEvents = this.__propsEmitEvents;
+    const eventsFn = getEmitFn(props);
+
+    if (eventsFn !== this.__propsEmitEvent) {
+      this.__propsEmitEvent = eventsFn;
+
+      for (const entName of [...Object.keys(oldEmitEvents)]) {
+        const e = oldEmitEvents[entName];
+
+        if (!e) {
+          continue;
+        }
+
+        e();
+        delete oldEmitEvents[entName];
+      }
+
+      if (!eventsFn) {
+        return;
+      }
+
+      const {
+        names
+      } = eventsFn;
+
+      if (!Array.isArray(names)) {
+        return;
+      }
+
+      for (const n of names) {
+        oldEmitEvents[n] = this.on(n, p => eventsFn(n, p));
+      }
+
+      return;
+    }
+
+    if (!eventsFn) {
+      return;
+    }
+
+    const oldNames = new Set(Object.keys(oldEmitEvents));
+    const names = eventsFn.names || [];
+
+    for (const n of names) {
+      if (!n) {
+        continue;
+      }
+
+      oldNames.delete(n);
+
+      if (oldNames.has(n)) {
+        continue;
+      }
+
+      oldEmitEvents[n] = this.on(n, p => eventsFn(n, p));
+    }
+
+    for (const entName of oldNames) {
+      const e = oldEmitEvents[entName];
+
+      if (!e) {
+        continue;
+      }
+
+      e();
+      delete oldEmitEvents[entName];
+    }
+  }
+
+}
+
+function* getEvents(p) {
+  if (!p) {
+    return;
+  }
+
+  for (const k of Object.keys(p)) {
+    const fn = p[k];
+
+    if (typeof fn !== 'function') {
+      continue;
+    }
+
+    if (k.substr(0, 3) !== 'on:') {
+      continue;
+    }
+
+    const entName = k.substr(3);
+
+    if (!entName) {
+      continue;
+    }
+
+    yield [entName, fn];
+  }
+}
+
+function* getEventsMap(p) {
+  if (!p) {
+    return;
+  }
+
+  const events = p['n:on'];
+
+  if (!events) {
+    return;
+  }
+
+  if (typeof events === 'object') {
+    return;
+  }
+
+  for (const k of Object.keys(p)) {
+    const fn = p[k];
+
+    if (typeof fn !== 'function') {
+      continue;
+    }
+
+    yield [k, fn];
+  }
+}
+
+function getEmitFn(p) {
+  if (!p) {
+    return;
+  }
+
+  let eventsFn = p === null || p === void 0 ? void 0 : p['n:on'];
+
+  if (typeof eventsFn !== 'function') {
+    return;
+  }
+
+  return eventsFn;
+}
+
+function getSlots(renderer, children, slots, native = false) {
+  const nativeList = [];
+
+  for (const it of children) {
+    if (Array.isArray(it)) {
+      const list = Object.create(null);
+      nativeList.push(getSlots(renderer, it, list, native));
+
+      for (const k of Reflect.ownKeys(list)) {
+        if (k in slots) {
+          slots[k].push(list[k]);
+        } else {
+          slots[k] = [list[k]];
+        }
+      }
+
+      continue;
+    }
+
+    if (isElement(it) && it.slot === undefined) {
+      if (isSimpleComponent(it.tag) && it.execed || it.tag === Template) {
+        const list = Object.create(null);
+        nativeList.push(getSlots(renderer, it.children, list, native));
+
+        for (const k of Reflect.ownKeys(list)) {
+          const node = { ...it,
+            children: list[k]
+          };
+
+          if (k in slots) {
+            slots[k].push(node);
+          } else {
+            slots[k] = [node];
+          }
+        }
+
+        continue;
+      }
+    }
+
+    if (native) {
+      if (renderer.isNode(it)) {
+        nativeList.push(it);
+        continue;
+      }
+
+      if (!isElement(it)) {
+        nativeList.push(it);
+        continue;
+      }
+
+      if (it.tag !== Render && it.tag !== Template) {
+        nativeList.push(it);
+        continue;
+      }
+    }
+
+    const slot = isElement(it) && it.slot || 'default';
+    const el = isElement(it) ? { ...it,
+      slot: undefined,
+      props: { ...it.props,
+        'n:slot': undefined
+      }
+    } : it;
+
+    if (slot in slots) {
+      slots[slot].push(el);
+    } else {
+      slots[slot] = [el];
+    }
+  }
+
+  return nativeList;
+}
+function setSlot(slots, name, list) {
+  Reflect.defineProperty(slots, name, {
+    get() {
+      monitorable.markRead(slots, name);
+      return list;
+    },
+
+    enumerable: true,
+    configurable: true
+  });
+  monitorable.markChange(slots, name);
+  return list;
+}
+function setSlots(children, slots, oldChildren) {
+  if (!slots) {
+    const slots = Object.create(null);
+
+    for (const k of Reflect.ownKeys(children)) {
+      slots[k] = children[k];
+    }
+
+    return slots;
+  }
+
+  for (const name of Reflect.ownKeys(slots)) {
+    if (name in children) {
+      continue;
+    }
+
+    setSlot(slots, name);
+  }
+
+  if (!oldChildren) {
+    for (const name of Reflect.ownKeys(children)) {
+      const list = children[name];
+      setSlot(slots, name, list);
+    }
+
+    return slots;
+  }
+
+  for (const name of Reflect.ownKeys(children)) {
+    const list = children[name];
+
+    if (equal(list, oldChildren[name])) {
+      continue;
+    }
+
+    setSlot(slots, name, list);
+  }
+
+  return slots;
+}
+function renderSlot(list, argv) {
+  return list.map(it => {
+    if (Array.isArray(it)) {
+      return renderSlot(it, argv);
+    }
+
+    if (!isElement(it)) {
+      return it;
+    }
+
+    if (it.tag !== Render) {
+      return { ...it,
+        slot: undefined
+      };
+    }
+
+    const {
+      children
+    } = it;
+
+    if ((children === null || children === void 0 ? void 0 : children.length) !== 1) {
+      return children;
+    }
+
+    const [render] = children;
+
+    if (monitorable.isValue(render) || typeof render !== 'function') {
+      return children;
+    }
+
+    return render(argv);
+  });
+}
+
+function getSlot(slots, name, isSimple) {
+  return isSimple || name in slots ? slots[name] : setSlot(slots, name);
+}
+
+function createSlotApi(slots, isSimple = false) {
+  function slotApi(name = 'default', argv = {}) {
+    const list = getSlot(slots, name, isSimple);
+    return {
+      [objectTypeSymbol]: objectTypeSymbolElement,
+      tag: ScopeSlot,
+      children: list ? renderSlot(list, argv) : [],
+      inserted: true,
+      slot: name,
+      isDefault: !list
+    };
+  }
+
+  slotApi.has = (name = 'default') => Boolean(getSlot(slots, name, isSimple));
+
+  return slotApi;
+}
+
+const constructors = [];
+function initContext(context, entity) {
+  for (const constructor of constructors) {
+    constructor(context, entity);
+  }
+
+  return context;
+}
+function addContextConstructor(constructor) {
+  constructors.push(monitorable.safeify(constructor));
+}
+
+function getDelivered(delivered, deliver) {
+  assert(isDeliverComponent(deliver), 'The `deliver` is not a DeliverComponent.', 'deliver');
+  const value = delivered[deliver[deliverKeySymbol]];
+  return value === undefined ? deliver[deliverDefaultSymbol] : value;
+}
+
+const components = Object.create(null);
+function register(name, component) {
+  components[name] = component;
+}
+
+function findComponent(tag, components$1, native) {
+  if (!tag) {
+    return null;
+  }
+
+  if (typeof tag !== 'string') {
+    return tag;
+  }
+
+  if (/^core:/i.test(tag)) {
+    let ltag = tag.toLowerCase();
+
+    if (ltag === Container) {
+      return ltag;
+    }
+
+    if (ltag === ScopeSlot) {
+      return ltag;
+    }
+
+    if (ltag === Render) {
+      return ltag;
+    }
+
+    if (ltag === Slot) {
+      return native ? 'slot' : ScopeSlot;
+    }
+
+    return Fragment;
+  }
+
+  if (tag === Fragment) {
+    return tag;
+  }
+
+  if (tag === 'slot') {
+    return tag;
+  }
+
+  for (const list of components$1) {
+    const component = list[tag];
+
+    if (component) {
+      return component;
+    }
+  }
+
+  return components[tag] || tag;
+}
+function getComponents(...components) {
+  return components.filter(Boolean);
+}
+
+function getNodeArray(result) {
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  if (!isElement(result)) {
+    return [result];
+  }
+
+  if (result.tag !== Fragment) {
+    return [result];
+  }
+
+  return result.children;
+}
+
+function execSimple(normalizeAuxiliaryObject, node, tag, components, children) {
+  const slotMap = Object.create(null);
+  getSlots(normalizeAuxiliaryObject.renderer, children, slotMap);
+  const slots = setSlots(slotMap);
+  const event = new EventEmitter();
+  event.updateInProps(node.props);
+  const {
+    refresh,
+    delivered,
+    simpleParent
+  } = normalizeAuxiliaryObject;
+  const result = tag({ ...node.props
+  }, initContext({
+    isShell: true,
+    slot: createSlotApi(slots, true),
+    parent: simpleParent,
+    delivered: deliver => getDelivered(delivered, deliver),
+    childNodes: children,
+    refresh,
+    emit: event.emit
+  }));
+  const nodes = init(normalizeAuxiliaryObject, getNodeArray(result), slots, getComponents(...components, tag[componentsSymbol]), false, true);
+  return { ...node,
+    tag,
+    execed: true,
+    children: Array.isArray(nodes) ? nodes : [nodes]
+  };
+}
+
+function getSlotRenderFn(normalizeAuxiliaryObject, children, slots, components, native) {
+  if (children.length !== 1) {
+    return null;
+  }
+
+  const [renderFn] = children;
+
+  if (monitorable.isValue(renderFn) || typeof renderFn !== 'function') {
+    return null;
+  }
+
+  const {
+    slotRenderFnList
+  } = normalizeAuxiliaryObject;
+  const fn = slotRenderFnList.get(renderFn);
+
+  if (fn) {
+    return fn;
+  }
+
+  const newFn = function (...p) {
+    return init(normalizeAuxiliaryObject, renderFn.call(this, ...p), slots, components, native, false);
+  };
+
+  slotRenderFnList.set(renderFn, newFn);
+  return newFn;
+}
+
+function exec(node, normalizeAuxiliaryObject, slots, components, native, simpleSlot) {
+  var _node$props;
+
+  if (Array.isArray(node)) {
+    return node.map(n => exec(n, normalizeAuxiliaryObject, slots, components, native, simpleSlot));
+  }
+
+  if (!isElement(node)) {
+    return node;
+  }
+
+  if (node.tag === ScopeSlot && node.inserted) {
+    return node;
+  }
+
+  const {
+    children
+  } = node;
+  const tag = findComponent(node.tag, components, native);
+
+  if (isSimpleComponent(tag)) {
+    if (node.execed) {
+      return node;
+    }
+
+    return execSimple(normalizeAuxiliaryObject, node, tag, components, children.map(n => exec(n, normalizeAuxiliaryObject, slots, components, native, simpleSlot)));
+  }
+
+  if (tag === Render) {
+    const slotRenderFn = getSlotRenderFn(normalizeAuxiliaryObject, children, slots, components, native);
+
+    if (slotRenderFn) {
+      return { ...node,
+        children: [slotRenderFn]
+      };
+    }
+  }
+
+  if (tag !== ScopeSlot) {
+    return { ...node,
+      tag,
+      children: children.map(n => exec(n, normalizeAuxiliaryObject, slots, components, native, simpleSlot))
+    };
+  }
+
+  const {
+    props
+  } = node;
+  const args = (props === null || props === void 0 ? void 0 : props.argv) || {};
+  const slotName = ((_node$props = node.props) === null || _node$props === void 0 ? void 0 : _node$props.name) || 'default';
+  const slot = simpleSlot || slotName in slots ? slots[slotName] : setSlot(slots, slotName);
+  const el = {
+    [objectTypeSymbol]: objectTypeSymbolElement,
+    props,
+    key: node.key,
+    tag: ScopeSlot,
+    inserted: true,
+    slot: slotName,
+    isDefault: !slot,
+    children: slot ? renderSlot(slot, args) : getChildren(children, args).map(n => exec(n, normalizeAuxiliaryObject, slots, components, native, simpleSlot))
+  };
+  return el;
+}
+
+function getChildren(children, args) {
+  if (children.length !== 1) {
+    return children;
+  }
+
+  const [fn] = children;
+
+  if (typeof fn !== 'function') {
+    return children;
+  }
+
+  return getNodeArray(fn(args));
+}
+
+function init(normalizeAuxiliaryObject, node, slots, components, native, simpleSlot) {
+  return refresh(() => monitorable.postpone(() => exec(node, normalizeAuxiliaryObject, slots, components, native, simpleSlot)));
+}
+function normalize(proxy, slotRenderFnList, refresh, result, components = proxy.tag[componentsSymbol] || null) {
+  return init({
+    renderer: proxy.renderer,
+    refresh,
+    slotRenderFnList,
+    delivered: proxy.delivered,
+    simpleParent: proxy.entity
+  }, getNodeArray(result), proxy.slots, getComponents(components), Boolean(proxy.isNative), false);
+}
+
+function getText(value) {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (value instanceof RegExp) {
+    return String(value);
+  }
+
+  return String(value);
+}
+
+function getNodeArray$1(result) {
+  if (!isElement(result)) {
+    return [result];
+  }
+
+  if (result.tag !== Fragment) {
+    return [result];
+  }
+
+  return result.children;
+}
+
+class ValueProxy extends NodeProxy {
+  get content() {
+    return this.tree;
+  }
+
+  set value(v) {
+    const k = v !== this.__value;
+    this.__value = v;
+
+    if (k) {
+      monitorable.markChange(this, 'value');
+    }
+  }
+
+  get value() {
+    monitorable.markRead(this, 'value');
+    let v = this.__value;
+
+    while (monitorable.isValue(v)) {
+      v = v();
+    }
+
+    return v;
+  }
+
+  constructor(attrs, parent) {
+    super(null, null, attrs, [], parent);
+
+    _defineProperty(this, "__value", void 0);
+
+    _defineProperty(this, "text", void 0);
+
+    _defineProperty(this, "isValue", void 0);
+
+    _defineProperty(this, "__nodes", void 0);
+
+    _defineProperty(this, "src", void 0);
+
+    _defineProperty(this, "__render", void 0);
+
+    _defineProperty(this, "__refreshing", false);
+
+    _defineProperty(this, "__needRefresh", false);
+
+    const {
+      value
+    } = attrs;
+    this.__value = value;
+
+    if (!isProduction) {
+      monitorable.defineProperty(this, 'text', undefined);
+      monitorable.defineProperty(this, 'isValue', monitorable.isValue(value));
+    }
+
+    const slots = Object.create(null);
+    const normalizeAuxiliaryObject = {
+      renderer: this.renderer,
+      refresh: () => this.refresh(),
+      slotRenderFnList: new WeakMap(),
+      delivered: this.delivered,
+      simpleParent: undefined
+    };
+    this.__render = monitorable.monitor(changed => changed && this.refresh(), () => {
+      let {
+        value
+      } = this;
+
+      if (isElement(value) || Array.isArray(value)) {
+        this.__nodes = convert(this, init(normalizeAuxiliaryObject, getNodeArray$1(value), slots, [], false, false), this.__nodes);
+        return true;
+      }
+
+      if (this.__nodes) {
+        destroy(this.__nodes);
+        this.__nodes = undefined;
+      } else if (this.src === value) {
+        return false;
+      }
+
+      this.src = value;
+      return true;
+    });
+    this.created = true;
+    this.refresh();
+  }
+
+  refresh() {
+    if (this.destroyed) {
+      return;
+    }
+
+    this.__needRefresh = true;
+
+    if (!this.created) {
+      return;
+    }
+
+    if (this.__refreshing) {
+      return;
+    }
+
+    this.__refreshing = true;
+    let needDraw = false;
+
+    while (this.__needRefresh && !wait(this)) {
+      this.__needRefresh = false;
+      needDraw = this.__render() || needDraw;
+
+      if (this.destroyed) {
+        return;
+      }
+    }
+
+    this.__refreshing = false;
+
+    if (!needDraw) {
+      return;
+    }
+
+    if (wait(this)) {
+      return;
+    }
+
+    if (!this.mounted) {
+      return;
+    }
+
+    if (this.destroyed) {
+      return;
+    }
+
+    if (this.unmounted) {
+      return;
+    }
+
+    this.requestDraw();
+  }
+
+  _update({
+    value
+  }) {
+    this.value = value;
+
+    if (!isProduction) {
+      this.isValue = monitorable.isValue(value);
+    }
+  }
+
+  _destroy() {
+    this.__render.stop();
+
+    const {
+      __nodes
+    } = this;
+
+    if (!__nodes) {
+      return;
+    }
+
+    destroy(__nodes);
+  }
+
+  _mount(mountOptions) {
+    const {
+      renderer,
+      __nodes,
+      src
+    } = this;
+
+    if (__nodes) {
+      this.tree = draw(renderer, mountOptions, __nodes);
+      return;
+    }
+
+    if (renderer.isNode(src)) {
+      this.tree = [createMountedNode({
+        node: src
+      })];
+      return;
+    }
+
+    const text = getText(src);
+
+    if (!isProduction) {
+      this.text = text;
+    }
+
+    const node = typeof text === 'string' ? createMountedNode({
+      node: renderer.createText(text)
+    }) : createPlaceholder(renderer);
+    this.tree = [node];
+  }
+
+  _redraw(mountOptions) {
+    const {
+      renderer,
+      __nodes,
+      src
+    } = this;
+
+    if (__nodes) {
+      this.tree = draw(renderer, mountOptions, __nodes, this.tree);
+      return;
+    }
+
+    if (renderer.isNode(src)) {
+      this.tree = [createMountedNode({
+        node: src
+      })];
+
+      if (!isProduction) {
+        this.text = undefined;
+      }
+
+      return;
+    }
+
+    const text = getText(src);
+
+    if (!isProduction) {
+      this.text = text;
+    }
+
+    const node = typeof text === 'string' ? createMountedNode({
+      node: renderer.createText(text)
+    }) : createPlaceholder(renderer);
+    this.tree = replace(renderer, [node], this.tree);
+  }
+
+  _unmount() {
+    const {
+      renderer,
+      tree
+    } = this;
+    unmount(renderer, tree);
+  }
+
+}
+
+class GroupProxy extends NodeProxy {
+  get content() {
+    return this.tree;
+  }
+
+  constructor(tag, children, parent) {
+    super(tag, tag, {}, children, parent);
+
+    _defineProperty(this, "__nodes", void 0);
+
+    this.__nodes = convert(this, children);
+  }
+
+  _update(props, children) {
+    this.__nodes = convert(this, children, this.__nodes);
+    this.requestDraw();
+  }
+
+  _destroy() {
+    destroy(this.__nodes);
+  }
+
+  _mount(mountOptions) {
+    this.tree = draw(this.renderer, mountOptions, this.__nodes);
+  }
+
+  _redraw(mountOptions) {
+    this.tree = draw(this.renderer, mountOptions, this.__nodes, this.tree);
+  }
+
+  _unmount() {
+    unmount(this.renderer, this.tree);
+  }
+
+}
+
+function updateData(props, data) {
+  const oldKeys = new Set(Object.keys(data));
+
+  for (const k in props) {
+    if (k.substr(0, 5) !== 'data:') {
+      continue;
+    }
+
+    const key = k.substr(5);
+
+    if (!key) {
+      continue;
+    }
+
+    oldKeys.delete(key);
+    data[key] = props[key];
+  }
+
+  const dataset = props['n:data'];
+
+  if (dataset && typeof dataset === 'object') {
+    for (const key in dataset) {
+      if (!key) {
+        continue;
+      }
+
+      oldKeys.delete(key);
+      data[key] = dataset[key];
+    }
+  }
+
+  for (const key of oldKeys) {
+    delete data[key];
+  }
+}
+
+class RefProxy extends BaseProxy {
+  get exposed() {
+    return this.__exposed;
+  }
+
+  setExposed(t) {
+    if (this.destroyed) {
+      return;
+    }
+
+    const ref = this.__ref;
+
+    if (typeof ref !== 'function') {
+      this.__exposed = t;
+      return;
+    }
+
+    const old = this.__exposed;
+    this.__exposed = t;
+    ref(t, old, this.entity);
+  }
+
+  constructor(renderer, originalTag, tag, attrs, parent, delivered) {
+    super(renderer, originalTag, tag, attrs, parent, delivered);
+
+    _defineProperty(this, "__exposed", void 0);
+
+    _defineProperty(this, "__ref", void 0);
+
+    _defineProperty(this, "events", void 0);
+
+    _defineProperty(this, "entity", void 0);
+
+    _defineProperty(this, "data", Object.create(null));
+
+    updateData(attrs, this.data);
+    const events = new EventEmitter();
+    const entity = this.createEntity(events);
+    events.target = entity;
+    this.entity = entity;
+    this.events = events;
+    const ref = attrs['n:ref'];
+
+    if (typeof ref === 'function') {
+      this.__ref = ref;
+      ref(undefined, undefined, entity, true);
+    }
+  }
+
+  update(attrs, children) {
+    updateData(attrs, this.data);
+    const ref = attrs['n:ref'];
+    const oldRef = this.__ref;
+
+    if (ref !== oldRef) {
+      if (typeof ref === 'function') {
+        ref(this.__exposed);
+      } else if (oldRef) {
+        this.__ref = undefined;
+      }
+    }
+
+    super.update(attrs, children);
+  }
+
+  destroy() {
+    if (!super.destroy()) {
+      return false;
+    }
+
+    const ref = this.__ref;
+
+    if (typeof ref !== 'function') {
+      return true;
+    }
+
+    ref(undefined, this.__exposed, this.entity, false);
+    return true;
+  }
+
+}
+
+class ElementProxy extends RefProxy {
+  constructor(originalTag, tag, props, children, parent) {
+    super(parent.renderer, originalTag, tag, props, parent);
+
+    _defineProperty(this, "container", void 0);
+
+    _defineProperty(this, "componentRoot", void 0);
+
+    _defineProperty(this, "props", void 0);
+
+    _defineProperty(this, "__nodes", void 0);
+
+    _defineProperty(this, "node", void 0);
+
+    _defineProperty(this, "content", []);
+
+    _defineProperty(this, "__elementTagData", void 0);
+
+    this.container = parent.container;
+    this.componentRoot = parent.componentRoot;
+
+    if (!isProduction) {
+      monitorable.defineProperty(this, 'content', []);
+    }
+
+    this.props = props;
+    this.events.updateInProps(props);
+    this.__nodes = convert(this, children);
+
+    if (typeof tag === 'string') {
+      this.__elementTagData = tag;
+    } else {
+      this.__elementTagData = tag[componentValueSymbol];
+    }
+  }
+
+  requestDraw() {
+    if (!this.mounted) {
+      return;
+    }
+
+    if (this.destroyed) {
+      return;
+    }
+
+    this.container.markDraw(this);
+  }
+
+  callHook(id) {}
+
+  createEntity(events) {
+    const cfg = {
+      data: {
+        configurable: true,
+        value: this.data
+      },
+      exposed: {
+        configurable: true,
+        get: () => this.exposed
+      },
+      on: {
+        configurable: true,
+        value: events.on
+      },
+      emit: {
+        configurable: true,
+        value: events.emit
+      }
+    };
+    const entity = Object.create(null, cfg);
+    return entity;
+  }
+
+  _update(props, children) {
+    this.props = props;
+    this.events.updateInProps(props);
+    this.__nodes = convert(this, children, this.__nodes);
+    this.requestDraw();
+  }
+
+  _destroy() {
+    if (this.destroyed) {
+      return;
+    }
+
+    this.destroyed = true;
+    destroy(this.__nodes);
+  }
+
+  _mount(mountOptions) {
+    if (this.node) {
+      return;
+    }
+
+    const {
+      renderer,
+      __elementTagData: tag,
+      props,
+      __nodes
+    } = this;
+    const node = renderer.createElement(tag, props, mountOptions);
+
+    if (!node) {
+      return;
+    }
+
+    this.node = node;
+    this.setExposed(node);
+    const subMountOptions = renderer.getMountOptions(node, mountOptions) || mountOptions;
+
+    if (__nodes) {
+      const content = draw(renderer, subMountOptions, __nodes);
+      this.content = content;
+
+      for (const it of getNodes(content)) {
+        renderer.insertNode(node, it);
+      }
+    }
+
+    this.tree = [createMountedNode({
+      node
+    })];
+    renderer.updateProps(node, tag, props, this.events.emit, subMountOptions);
+    return subMountOptions;
+  }
+
+  _redrawChildren(mountOptions) {
+    const {
+      renderer,
+      __nodes,
+      content,
+      node
+    } = this;
+
+    if (!node) {
+      return;
+    }
+
+    if (!__nodes.length && content.length) {
+      unmount(renderer, content);
+      this.content = [];
+    } else if (__nodes.length && content.length) {
+      this.content = draw(renderer, mountOptions, __nodes, content);
+    } else if (__nodes.length && !content.length) {
+      const newTree = draw(renderer, mountOptions, __nodes);
+      this.content = newTree;
+
+      for (const it of getNodes(newTree)) {
+        renderer.insertNode(node, it);
+      }
+    }
+  }
+
+  _redraw(mountOptions) {
+    this._redrawChildren(mountOptions);
+
+    const {
+      renderer,
+      __elementTagData: tag,
+      node,
+      props
+    } = this;
+
+    if (!node) {
+      return;
+    }
+
+    renderer.updateProps(node, tag, props || {}, this.events.emit, mountOptions);
+  }
+
+  _unmount() {
+    const {
+      renderer,
+      tree,
+      node
+    } = this;
+
+    if (!node) {
+      return;
+    }
+
+    renderer.removeNode(node);
+    unmount(renderer, tree);
+  }
+
+}
+
+function getNodeArray$2(result) {
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  if (!isElement(result)) {
+    return [result];
+  }
+
+  if (result.tag !== Fragment) {
+    return [result];
+  }
+
+  return result.children;
+}
+
+class ShellProxy extends RefProxy {
+  get content() {
+    return this.tree;
+  }
+
+  requestDraw() {
+    if (!this.mounted) {
+      return;
+    }
+
+    if (this.destroyed) {
+      return;
+    }
+
+    this.container.markDraw(this);
+  }
+
+  callHook(id) {}
+
+  createEntity(events) {
+    const cfg = {
+      data: {
+        configurable: true,
+        value: this.data
+      },
+      exposed: {
+        configurable: true,
+        value: undefined
+      },
+      on: {
+        configurable: true,
+        value: events.on
+      },
+      emit: {
+        configurable: true,
+        value: events.emit
+      }
+    };
+    const entity = Object.create(null, cfg);
+    return entity;
+  }
+
+  constructor(originalTag, tag, props, children, parent) {
+    super(parent.renderer, originalTag, tag, props, parent);
+
+    _defineProperty(this, "props", void 0);
+
+    _defineProperty(this, "childNodes", void 0);
+
+    _defineProperty(this, "src", void 0);
+
+    _defineProperty(this, "slots", Object.create(null));
+
+    _defineProperty(this, "lastSlots", void 0);
+
+    _defineProperty(this, "__render", void 0);
+
+    _defineProperty(this, "container", void 0);
+
+    _defineProperty(this, "componentRoot", void 0);
+
+    _defineProperty(this, "__refreshing", false);
+
+    _defineProperty(this, "__needRefresh", false);
+
+    _defineProperty(this, "__delayedRefresh", 0);
+
+    _defineProperty(this, "_nodes", []);
+
+    this.container = parent.container;
+    this.componentRoot = parent.componentRoot;
+    this.props = props;
+    this.childNodes = children;
+    const {
+      slots
+    } = this;
+
+    const _this = this;
+
+    const {
+      delivered
+    } = this;
+
+    const refresh = f => {
+      this.refresh(f);
+    };
+
+    const event = this.events;
+    const context = initContext({
+      isShell: true,
+
+      delivered(deliver) {
+        return getDelivered(delivered, deliver);
+      },
+
+      slot: createSlotApi(slots),
+      refresh,
+
+      get childNodes() {
+        return _this.childNodes;
+      },
+
+      emit: event.emit
+    });
+    const normalizeAuxiliaryObject = {
+      renderer: this.renderer,
+      refresh,
+      slotRenderFnList: new WeakMap(),
+      delivered: this.delivered,
+      simpleParent: undefined
+    };
+    this.__render = monitorable.monitor(changed => changed && this.refresh(), () => {
+      const props = { ...this.props
+      };
+      event.updateInProps(props);
+      const result = isProduction ? tag(props, context) : runShell(l => this.labels = l, () => tag(props, context));
+      return init(normalizeAuxiliaryObject, getNodeArray$2(result), slots, [], false, false);
+    });
+    this.created = true;
+    this.refresh();
+    this._nodes = convert(this, this.__render());
+  }
+
+  refresh(f) {
+    if (typeof f === 'function') {
+      try {
+        this.__delayedRefresh++;
+        return f();
+      } finally {
+        this.__delayedRefresh--;
+
+        if (this.__delayedRefresh <= 0) {
+          this.refresh();
+        }
+      }
+    }
+
+    if (this.destroyed) {
+      return;
+    }
+
+    this.__needRefresh = true;
+
+    if (!this.created) {
+      return;
+    }
+
+    if (this.__refreshing) {
+      return;
+    }
+
+    this.__refreshing = true;
+    let nodes;
+
+    while (this.__needRefresh && !wait(this)) {
+      this.__needRefresh = false;
+      nodes = this.__render();
+
+      if (this.destroyed) {
+        return;
+      }
+    }
+
+    this.__refreshing = false;
+
+    if (!nodes) {
+      return;
+    }
+
+    this._nodes = convert(this, nodes, this._nodes);
+
+    if (wait(this)) {
+      return;
+    }
+
+    if (!this.mounted) {
+      return;
+    }
+
+    if (this.destroyed) {
+      return;
+    }
+
+    if (this.unmounted) {
+      return;
+    }
+
+    this.requestDraw();
+  }
+
+  _update(props, children) {
+    this.props = props;
+    const slots = Object.create(null);
+    getSlots(this.renderer, children, slots);
+    setSlots(slots, this.slots, this.lastSlots);
+    this.lastSlots = slots;
+    this.childNodes = children;
+    this.refresh();
+  }
+
+  _destroy() {
+    this.__render.stop();
+
+    destroy(this._nodes);
+  }
+
+  _mount(mountOptions) {
+    this.tree = draw(this.renderer, mountOptions, this._nodes);
+  }
+
+  _redraw(mountOptions) {
+    this.tree = draw(this.renderer, mountOptions, this._nodes, this.tree);
+  }
+
+  _unmount() {
+    unmount(this.renderer, this.tree);
+  }
 
 }
 
 function toElement(t) {
-	if (t === false || t === null || t === undefined) {
-		return null;
-	}
+  if (t === false || t === null || t === undefined) {
+    return null;
+  }
 
-	if (isElement(t)) {
-		return t;
-	}
+  if (isElement(t)) {
+    return t;
+  }
 
-	return {
-		[objectTypeSymbol]: objectTypeSymbolElement,
-		tag: Value,
-		key: t,
-		value: t,
-		children: [],
-	};
+  return {
+    key: t,
+    props: {
+      value: t
+    },
+    children: []
+  };
 }
 function destroy(tree) {
-	if (Array.isArray(tree)) {
-		tree.forEach(t => destroy(t));
-		return;
-	}
+  if (!tree) {
+    return;
+  }
 
-	const {
-		component,
-	} = tree;
+  if (Array.isArray(tree)) {
+    tree.forEach(t => destroy(t));
+    return;
+  }
 
-	if (component) {
-		component.destroy();
-	}
+  const {
+    proxy
+  } = tree;
+
+  if (proxy) {
+    return proxy.destroy();
+  }
 }
 
-function createItem$1(nObject, delivered, source) {
-	if (!source) {
-		return {
-			tag: null,
-			key: undefined,
-			children: [],
-		};
-	}
+class SlotProxy extends NodeProxy {
+  get content() {
+    return this.tree;
+  }
 
-	const {
-		tag,
-	} = source;
+  constructor(children, parent, isDefault) {
+    super(ScopeSlot, ScopeSlot, {}, [], parent);
 
-	if (!tag) {
-		return {
-			tag: null,
-			key: undefined,
-			children: [],
-		};
-	}
+    _defineProperty(this, "__nodes", void 0);
 
-	if (isDeliver(tag)) {
-		const newDelivered = Object.create(delivered);
-		Reflect.defineProperty(newDelivered, tag[deliverKeySymbol], {
-			configurable: true,
-			enumerable: true,
-			value: source.props ? source.props.value : undefined,
-		});
-		return { ...source,
-			delivered: newDelivered,
-			children: createAll$1(nObject, newDelivered, source.children),
-		};
-	}
+    this.__nodes = convert(this, children);
+  }
 
-	if (typeof tag !== 'string') {
-		if (tag[typeSymbol] === 'simple') {
-			return { ...source,
-				children: createAll$1(nObject, delivered, source.children),
-				component: undefined,
-			};
-		}
+  _update(props, children) {
+    if (!this.mounted) {
+      return;
+    }
 
-		return { ...source,
-			children: [],
-			component: new ComponentEntity(tag, source.props || {}, source.children, nObject, delivered),
-		};
-	}
+    if (this.destroyed) {
+      return;
+    }
 
-	const ltag = tag.toLowerCase();
+    this.__nodes = convert(this, children, this.__nodes);
+    this.requestDraw();
+  }
 
-	if (ltag === Container) {
-		let _source$props;
+  _destroy() {
+    destroy(this.__nodes);
+  }
 
-		const type = source === null || source === void 0 ? void 0 : (_source$props = source.props) === null || _source$props === void 0 ? void 0 : _source$props.type;
-		const iRender = type ? getRender(type) : nObject.iRender;
-		return { ...source,
-			children: [],
-			component: new ContainerEntity(iRender, source.props || {}, source.children, nObject, delivered),
-		};
-	}
+  _mount(mountOptions) {
+    this.tree = draw(this.renderer, mountOptions, this.__nodes);
+  }
 
-	if (ltag === Value) {
-		return { ...source,
-			children: [],
-		};
-	}
+  _redraw(mountOptions) {
+    this.tree = draw(this.renderer, mountOptions, this.__nodes, this.tree);
+  }
 
-	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
-		return { ...source,
-			children: createAll$1(nObject, delivered, source.children),
-		};
-	}
+  _unmount() {
+    unmount(this.renderer, this.tree);
+  }
 
-	return { ...source,
-		children: createAll$1(nObject, delivered, source.children),
-	};
-}
-function createAll$1(nObject, delivered, source) {
-	if (!Array.isArray(source)) {
-		source = [source];
-	}
-
-	if (!source.length) {
-		return [];
-	}
-
-	return source.map(item => {
-		if (!Array.isArray(item)) {
-			return createItem$1(nObject, delivered, toElement(item));
-		}
-
-		return [...recursive2iterable(item)].map(it => createItem$1(nObject, delivered, toElement(it)));
-	});
 }
 
-function updateList$1(nObject, delivered, source, tree) {
-	if (!Array.isArray(tree)) {
-		tree = [tree];
-	}
+const constructors$1 = [];
+function initEntity(entity) {
+  for (const constructor of constructors$1) {
+    constructor(entity);
+  }
 
-	const newList = [];
-
-	for (const src of recursive2iterable(source)) {
-		const node = toElement(src);
-
-		if (!node) {
-			continue;
-		}
-
-		const index = tree.findIndex(it => it.tag === node.tag && it.key === node.key);
-
-		if (index >= 0) {
-			newList.push(updateItem$1(nObject, delivered, node, tree[index]));
-			tree.splice(index, 1);
-		} else {
-			newList.push(createItem$1(nObject, delivered, node));
-		}
-	}
-
-	destroy(tree);
-	return newList;
+  return entity;
+}
+function addEntityConstructor(constructor) {
+  constructors$1.push(monitorable.safeify(constructor));
 }
 
-function updateItem$1(nObject, delivered, source, tree) {
-	if (!tree) {
-		return createItem$1(nObject, delivered, source);
-	}
+function createEntity(obj, events) {
+  var _obj$parentComponentP;
 
-	if (!source) {
-		destroy(tree);
-		return {
-			tag: null,
-			key: undefined,
-			children: [],
-		};
-	}
+  const cfg = {
+    [objectTypeSymbol]: {
+      configurable: true,
+      value: objectTypeSymbolHookEntity
+    },
+    data: {
+      configurable: true,
+      value: obj.data
+    },
+    exposed: {
+      configurable: true,
+      get: () => obj.exposed
+    },
+    parent: {
+      configurable: true,
+      value: (_obj$parentComponentP = obj.parentComponentProxy) === null || _obj$parentComponentP === void 0 ? void 0 : _obj$parentComponentP.entity
+    },
+    component: {
+      configurable: true,
+      value: obj.tag
+    },
+    created: {
+      configurable: true,
+      get: () => obj.created
+    },
+    destroyed: {
+      configurable: true,
+      get: () => obj.destroyed
+    },
+    mounted: {
+      configurable: true,
+      get: () => obj.mounted
+    },
+    unmounted: {
+      configurable: true,
+      get: () => obj.unmounted
+    },
+    $_hooks: {
+      configurable: true,
+      value: Object.create(null)
+    },
+    $_useHookValues: {
+      configurable: true,
+      value: []
+    },
+    callHook: {
+      configurable: true,
 
-	if (Array.isArray(tree)) {
-		if (!tree.length) {
-			return createItem$1(nObject, delivered, source);
-		}
+      value(h) {
+        callHook(h, entity);
+      }
 
-		const index = tree.findIndex(it => it.tag === source.tag);
+    },
+    setHook: {
+      configurable: true,
 
-		if (index < 0) {
-			destroy(tree);
-			return createItem$1(nObject, delivered, source);
-		}
+      value(id, hook) {
+        return setHook(id, hook, entity);
+      }
 
-		const all = tree;
-		[tree] = tree.splice(index, 1);
-		destroy(all);
-	}
-
-	const {
-		tag,
-	} = source;
-
-	if (tag !== tree.tag) {
-		destroy(tree);
-		return createItem$1(nObject, delivered, source);
-	}
-
-	if (!tag) {
-		return {
-			tag: null,
-			key: undefined,
-			children: [],
-		};
-	}
-
-	if (isDeliver(tag)) {
-		const newDelivered = tree.delivered || Object.create(delivered);
-		Reflect.defineProperty(newDelivered, tag[deliverKeySymbol], {
-			configurable: true,
-			enumerable: true,
-			value: source.props ? source.props.value : undefined,
-		});
-		return { ...source,
-			delivered: newDelivered,
-			children: [...updateAll$1(nObject, newDelivered, source.children, tree.children)],
-		};
-	}
-
-	if (typeof tag !== 'string') {
-		if (tag[typeSymbol] === 'simple') {
-			return { ...source,
-				children: [...updateAll$1(nObject, delivered, source.children, tree.children)],
-				component: undefined,
-			};
-		}
-
-		const {
-			component,
-		} = tree;
-
-		if (!component) {
-			return createItem$1(nObject, delivered, source);
-		}
-
-		component.update(source.props || {}, source.children);
-		return { ...source,
-			children: [],
-			component,
-		};
-	}
-
-	const ltag = tag.toLowerCase();
-
-	if (ltag === Container) {
-		let _source$props;
-
-		const {
-			component,
-		} = tree;
-
-		if (!component) {
-			return createItem$1(nObject, delivered, source);
-		}
-
-		const type = source === null || source === void 0 ? void 0 : (_source$props = source.props) === null || _source$props === void 0 ? void 0 : _source$props.type;
-		const iRender = type ? getRender(type) : nObject.iRender;
-
-		if (iRender !== component.iRender) {
-			return createItem$1(nObject, delivered, source);
-		}
-
-		component.update(source.props || {}, source.children);
-		return { ...source,
-			children: [],
-			component,
-		};
-	}
-
-	if (ltag === Value) {
-		return { ...source,
-			children: [],
-		};
-	}
-
-	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
-		return { ...source,
-			children: [...updateAll$1(nObject, delivered, source.children, tree.children)],
-		};
-	}
-
-	return { ...source,
-		children: [...updateAll$1(nObject, delivered, source.children, tree.children)],
-	};
+    },
+    refresh: {
+      configurable: true,
+      value: obj.refresh.bind(obj)
+    },
+    on: {
+      configurable: true,
+      value: events.on
+    },
+    emit: {
+      configurable: true,
+      value: events.emit
+    }
+  };
+  const entity = Object.create(null, cfg);
+  return initEntity(entity);
 }
 
-function *updateAll$1(nObject, delivered, source, tree) {
-	if (!Array.isArray(source)) {
-		source = [source];
-	}
+const disabledKey = new Set([':', '@', '#', '*', '!', '%', '^', '~', '&', '?', '+', '.', '(', ')', '[', ']', '{', '}', '<', '>']);
 
-	let index = 0;
-	let length = Math.min(source.length || 1, tree.length);
+function filter(k) {
+  if (typeof k !== 'string') {
+    return true;
+  }
 
-	for (; index < length; index++) {
-		const src = source[index];
+  if (disabledKey.has(k[0])) {
+    return false;
+  }
 
-		if (Array.isArray(src)) {
-			yield updateList$1(nObject, delivered, src, tree[index]);
-		} else {
-			yield updateItem$1(nObject, delivered, toElement(src), tree[index]);
-		}
-	}
+  if (k.substr(0, 2) === 'n:') {
+    return false;
+  }
 
-	length = Math.max(source.length, source.length);
+  if (k.substr(0, 3) === 'on:') {
+    return false;
+  }
 
-	if (tree.length > index) {
-		for (; index < length; index++) {
-			destroy(tree[index]);
-		}
-	}
-
-	if (source.length > index) {
-		for (; index < length; index++) {
-			const src = toElement(source[index]);
-
-			if (Array.isArray(src)) {
-				yield [...recursive2iterable(src)].map(it => createItem$1(nObject, delivered, it));
-			} else {
-				yield createItem$1(nObject, delivered, src);
-			}
-		}
-	}
+  return true;
 }
 
-function convert(nObject, source, tree) {
-	return refresh(() => monitorable.postpone(() => {
-		if (!tree) {
-			return createAll$1(nObject, nObject.delivered, source);
-		}
+function update(proxy, props, children) {
+  const {
+    props: propsObj,
+    isNative
+  } = proxy;
+  const newKeys = new Set(Object.keys(props).filter(filter));
+  proxy.propsDefined.forEach(k => newKeys.add(k));
 
-		return [...updateAll$1(nObject, nObject.delivered, source, tree)];
-	}));
+  for (const k of Object.keys(propsObj)) {
+    if (filter(k) && !newKeys.has(k)) {
+      delete propsObj[k];
+    }
+  }
+
+  for (const k of newKeys) {
+    propsObj[k] = props[k];
+  }
+
+  proxy.events.updateInProps(props);
+  const slots = Object.create(null);
+  const childNodes = getSlots(proxy.renderer, children, slots, isNative);
+  setSlots(slots, proxy.slots, proxy.lastSlots);
+  proxy.lastSlots = slots;
+
+  if (!isNative) {
+    return;
+  }
+
+  proxy.nativeNodes = convert(proxy, childNodes, proxy.nativeNodes);
+
+  if (!proxy.mounted) {
+    return;
+  }
+
+  proxy.requestDraw();
+}
+
+class ComponentProxy extends RefProxy {
+  callHook(id) {
+    callHook(id, this.entity);
+  }
+
+  constructor(originalTag, component, props, children, parent) {
+    super(parent.renderer, originalTag, component, props, parent);
+
+    _defineProperty(this, "isNative", false);
+
+    _defineProperty(this, "container", void 0);
+
+    _defineProperty(this, "componentRoot", void 0);
+
+    _defineProperty(this, "children", new Set());
+
+    _defineProperty(this, "emit", void 0);
+
+    _defineProperty(this, "on", void 0);
+
+    _defineProperty(this, "components", Object.create(null));
+
+    _defineProperty(this, "props", void 0);
+
+    _defineProperty(this, "propsDefined", void 0);
+
+    _defineProperty(this, "slots", Object.create(null));
+
+    _defineProperty(this, "lastSlots", void 0);
+
+    _defineProperty(this, "nativeNodes", void 0);
+
+    _defineProperty(this, "parentComponentProxy", void 0);
+
+    _defineProperty(this, "_render", void 0);
+
+    _defineProperty(this, "_stopRender", void 0);
+
+    _defineProperty(this, "childNodes", []);
+
+    _defineProperty(this, "__refreshing", false);
+
+    _defineProperty(this, "__needRefresh", false);
+
+    _defineProperty(this, "__delayedRefresh", 0);
+
+    _defineProperty(this, "_nodes", []);
+
+    this.container = parent.container;
+    this.componentRoot = this;
+    this.parentComponentProxy = parent.componentRoot;
+    const {
+      events
+    } = this;
+    this.emit = events.emit;
+    this.on = events.on;
+    Object.assign(this.components, component[componentsSymbol]);
+    const propsDefined = component[propsSymbol];
+
+    if (Array.isArray(propsDefined)) {
+      this.propsDefined = propsDefined;
+      this.props = monitorable.createObject(propsDefined, null);
+    } else {
+      this.propsDefined = [];
+      this.props = monitorable.encase(Object.create(null));
+    }
+
+    this._init();
+
+    this.callHook('beforeCreate');
+
+    this._update(props, children);
+
+    const {
+      render,
+      nodes,
+      stopRender
+    } = this._initRender();
+
+    this._render = render;
+    this._stopRender = stopRender;
+    this._nodes = convert(this, nodes);
+    this.callHook('created');
+    this.created = true;
+
+    if (this.needRefresh) {
+      this.refresh();
+    }
+  }
+
+  createEntity(events) {
+    return createEntity(this, events);
+  }
+
+  _update(props, children) {
+    if (this.destroyed) {
+      return;
+    }
+
+    this.childNodes = children;
+    refresh(() => monitorable.postpone(() => update(this, props, children)));
+  }
+
+  _destroy() {
+    this._stopRender();
+
+    destroy(this._nodes);
+  }
+
+  get needRefresh() {
+    return this.__needRefresh;
+  }
+
+  refresh(f) {
+    if (typeof f === 'function') {
+      try {
+        this.__delayedRefresh++;
+        return f();
+      } finally {
+        this.__delayedRefresh--;
+
+        if (this.__delayedRefresh <= 0) {
+          this.refresh();
+        }
+      }
+    }
+
+    if (this.destroyed) {
+      return;
+    }
+
+    this.__needRefresh = true;
+
+    if (!this.created) {
+      return;
+    }
+
+    if (this.__refreshing) {
+      return;
+    }
+
+    this.__refreshing = true;
+    let nodes;
+
+    for (;;) {
+      if (wait(this)) {
+        break;
+      }
+
+      if (this.__delayedRefresh) {
+        break;
+      }
+
+      if (!this.__needRefresh) {
+        break;
+      }
+
+      this.__needRefresh = false;
+      nodes = this._render();
+
+      if (this.destroyed) {
+        return;
+      }
+    }
+
+    this.__refreshing = false;
+
+    if (wait(this)) {
+      return;
+    }
+
+    if (this.__delayedRefresh) {
+      return;
+    }
+
+    if (!nodes) {
+      return;
+    }
+
+    this._nodes = convert(this, nodes, this._nodes);
+
+    if (!this.mounted) {
+      return;
+    }
+
+    if (this.destroyed) {
+      return;
+    }
+
+    if (this.unmounted) {
+      return;
+    }
+
+    this.requestDraw();
+  }
+
+  requestDraw() {
+    this.container.markDraw(this);
+  }
+
+}
+
+function getNodeArray$3(result) {
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  if (!isElement(result)) {
+    return [result];
+  }
+
+  if (result.tag !== Fragment) {
+    return [result];
+  }
+
+  return result.children;
+}
+
+function initRender(proxy) {
+  const {
+    tag,
+    props,
+    entity
+  } = proxy;
+  const context = initContext({
+    isShell: false,
+    slot: createSlotApi(proxy.slots),
+    expose: t => proxy.setExposed(t),
+
+    get created() {
+      return proxy.created;
+    },
+
+    get parent() {
+      var _proxy$parentComponen;
+
+      return (_proxy$parentComponen = proxy.parentComponentProxy) === null || _proxy$parentComponen === void 0 ? void 0 : _proxy$parentComponen.entity;
+    },
+
+    get children() {
+      return [...proxy.children].map(t => t.exposed);
+    },
+
+    get childNodes() {
+      return proxy.childNodes;
+    },
+
+    get emit() {
+      return proxy.emit;
+    },
+
+    delivered(deliver) {
+      return getDelivered(proxy.delivered, deliver);
+    },
+
+    refresh(f) {
+      proxy.refresh(f);
+    }
+
+  }, entity);
+  const renderFn = tag[componentValueSymbol];
+  const renderNode = typeof renderFn !== 'function' ? () => createTemplateElement(...proxy.childNodes) : () => runCurrent(entity, isProduction ? undefined : l => proxy.labels = l, () => renderFn(props || {}, context));
+  const normalizeAuxiliaryObject = {
+    renderer: proxy.renderer,
+    refresh: f => proxy.refresh(f),
+    slotRenderFnList: new WeakMap(),
+    delivered: proxy.delivered,
+    simpleParent: proxy.entity
+  };
+  const components = proxy.tag[componentsSymbol];
+  const componentsList = components ? [components] : [];
+  const render = monitorable.monitor(c => c && proxy.refresh(), () => init(normalizeAuxiliaryObject, getNodeArray$3(renderNode()), proxy.slots, componentsList, false, false));
+  return {
+    nodes: render(),
+    render,
+    stopRender: () => render.stop()
+  };
+}
+
+class RenderComponentProxy extends ComponentProxy {
+  constructor(...args) {
+    super(...args);
+
+    _defineProperty(this, "nativeNodes", void 0);
+
+    _defineProperty(this, "childNodes", []);
+  }
+
+  get content() {
+    return this.tree;
+  }
+
+  _init() {}
+
+  _initRender() {
+    return initRender(this);
+  }
+
+  _destroy() {
+    this._stopRender();
+
+    destroy(this._nodes);
+  }
+
+  requestDraw() {
+    this.container.markDraw(this);
+  }
+
+  _redraw(mountOptions) {
+    const {
+      renderer,
+      _nodes
+    } = this;
+    this.tree = draw(renderer, mountOptions, _nodes, this.tree);
+  }
+
+  _mount(mountOptions) {
+    const {
+      renderer,
+      _nodes
+    } = this;
+    this.tree = draw(renderer, mountOptions, _nodes);
+  }
+
+  _unmount() {
+    const {
+      renderer
+    } = this;
+    unmount(renderer, this.tree);
+  }
+
+}
+
+function createResponsiveRender(proxy, func, components) {
+  const slotRenderFns = new WeakMap();
+  const render = monitorable.monitor(c => c && proxy.refresh(), () => normalize(proxy, slotRenderFns, f => proxy.refresh(f), func(), components));
+  return {
+    nodes: render(),
+    render,
+    stopRender: () => render.stop()
+  };
+}
+
+function initRender$1(proxy) {
+  const {
+    tag,
+    props,
+    entity
+  } = proxy;
+  const context = initContext({
+    isShell: false,
+    slot: createSlotApi(proxy.slots),
+    expose: t => proxy.setExposed(t),
+
+    get created() {
+      return proxy.created;
+    },
+
+    get parent() {
+      var _proxy$parentComponen;
+
+      return (_proxy$parentComponen = proxy.parentComponentProxy) === null || _proxy$parentComponen === void 0 ? void 0 : _proxy$parentComponen.entity;
+    },
+
+    get children() {
+      return [...proxy.children].map(t => t.exposed);
+    },
+
+    get childNodes() {
+      return proxy.childNodes;
+    },
+
+    get emit() {
+      return proxy.emit;
+    },
+
+    delivered(deliver) {
+      return getDelivered(proxy.delivered, deliver);
+    },
+
+    refresh(f) {
+      proxy.refresh(f);
+    }
+
+  }, entity);
+
+  const refresh = changed => {
+    if (!changed) {
+      return;
+    }
+
+    proxy.refresh();
+  };
+
+  const setLabel = isProduction ? undefined : l => proxy.labels = l;
+  const result = monitorable.exec(refresh, {
+    resultOnly: true
+  }, () => runCurrent(entity, setLabel, () => tag(props, context)));
+
+  if (typeof result === 'function') {
+    return createResponsiveRender(proxy, result);
+  }
+
+  if (isRenderElement(result)) {
+    const {
+      children
+    } = result;
+
+    if ((children === null || children === void 0 ? void 0 : children.length) === 1 && typeof children[0] === 'function') {
+      return createResponsiveRender(proxy, children[0]);
+    }
+  }
+
+  if (isElement(result) && isRenderComponent(result.tag)) {
+    const {
+      tag
+    } = result;
+    const render = tag[componentValueSymbol];
+
+    if (typeof render === 'function') {
+      return createResponsiveRender(proxy, () => render(result.props || {}, context), result.tag[componentsSymbol] || null);
+    }
+  }
+
+  const normalizeRefresh = f => {
+    proxy.refresh(f);
+  };
+
+  const slotRenderFns = new WeakMap();
+  const render = monitorable.monitor(refresh, () => normalize(proxy, slotRenderFns, normalizeRefresh, runCurrent(entity, setLabel, () => tag(props, context))));
+  return {
+    nodes: monitorable.exec(refresh, () => normalize(proxy, slotRenderFns, normalizeRefresh, result), {
+      resultOnly: true
+    }),
+    render,
+    stopRender: () => render.stop()
+  };
+}
+
+class StandardComponentProxy extends ComponentProxy {
+  constructor(...args) {
+    super(...args);
+
+    _defineProperty(this, "content", []);
+
+    _defineProperty(this, "native", void 0);
+
+    _defineProperty(this, "shadowTree", []);
+
+    _defineProperty(this, "nativeTree", []);
+
+    _defineProperty(this, "_shadow", void 0);
+
+    _defineProperty(this, "childNodes", []);
+
+    _defineProperty(this, "__nativeTreeNountOptions", void 0);
+  }
+
+  _init() {
+    var _this$renderer$create, _this$renderer;
+
+    if (!isProduction) {
+      monitorable.defineProperty(this, 'content', []);
+    }
+
+    if (!isNativeComponent(this.tag)) {
+      return;
+    }
+
+    const value = (_this$renderer$create = (_this$renderer = this.renderer).createComponent) === null || _this$renderer$create === void 0 ? void 0 : _this$renderer$create.call(_this$renderer);
+
+    if (!value) {
+      return;
+    }
+
+    [this.native, this._shadow] = value;
+  }
+
+  _initRender() {
+    return initRender$1(this);
+  }
+
+  _destroy() {
+    this._stopRender();
+
+    destroy(this._nodes);
+  }
+
+  requestDraw() {
+    this.container.markDraw(this);
+  }
+
+  _mount(mountOptions) {
+    const {
+      nativeNodes,
+      renderer,
+      _shadow,
+      native,
+      _nodes
+    } = this;
+
+    if (!native || !nativeNodes || !_shadow) {
+      this.tree = this.content = draw(renderer, mountOptions, _nodes);
+      return;
+    }
+
+    this.tree = [createMountedNode({
+      node: native
+    })];
+    const subMountOptions = renderer.getMountOptions(_shadow, mountOptions) || mountOptions;
+    this.content = draw(renderer, subMountOptions, _nodes);
+
+    for (const it of getNodes(this.content)) {
+      renderer.insertNode(_shadow, it);
+    }
+
+    const nativeTreeNountOptions = renderer.getMountOptions(native, mountOptions) || mountOptions;
+    this.nativeTree = draw(renderer, nativeTreeNountOptions, nativeNodes);
+
+    for (const it of getNodes(this.nativeTree)) {
+      renderer.insertNode(native, it);
+    }
+
+    this.__nativeTreeNountOptions = nativeTreeNountOptions;
+    return subMountOptions;
+  }
+
+  _redraw(mountOptions) {
+    const {
+      nativeNodes,
+      renderer,
+      __nativeTreeNountOptions,
+      _nodes
+    } = this;
+    this.content = draw(renderer, mountOptions, _nodes, this.content);
+
+    if (!nativeNodes || !__nativeTreeNountOptions) {
+      this.tree = this.content;
+      return;
+    }
+
+    this.nativeTree = draw(renderer, __nativeTreeNountOptions, nativeNodes, this.nativeTree);
+  }
+
+  _unmount() {
+    const {
+      renderer,
+      nativeTree
+    } = this;
+    unmount(renderer, this.tree);
+
+    if (!nativeTree) {
+      return;
+    }
+
+    unmount(renderer, nativeTree);
+  }
+
+}
+
+const recognizers = [];
+function recognize(any) {
+  for (const recognizer of recognizers) {
+    const res = recognizer(any);
+
+    if (typeof res === 'function') {
+      return res;
+    }
+  }
+
+  return typeof any === 'function' ? any : null;
+}
+function addRecognizer(recognizer) {
+  recognizers.push(recognizer);
+}
+
+function createProxy(proxy, {
+  tag,
+  props,
+  children,
+  isDefault
+}) {
+  if (tag === Container) {
+    return new ContainerProxy(tag, null, props, children, proxy);
+  }
+
+  if (tag === ScopeSlot) {
+    return new SlotProxy(children, proxy, isDefault);
+  }
+
+  if (tag === Fragment) {
+    return new GroupProxy(tag, children, proxy);
+  }
+
+  if (typeof tag === 'string') {
+    if (tag.substr(0, 5) === 'core:') {
+      return new GroupProxy(tag, children, proxy);
+    }
+
+    return new ElementProxy(tag, tag, props || {}, children, proxy);
+  }
+
+  const componentTag = recognize(tag);
+
+  if (typeof componentTag !== 'function') {
+    return new GroupProxy(tag, children, proxy);
+  }
+
+  if (isShellComponent(componentTag)) {
+    return new ShellProxy(tag, componentTag, props || {}, children, proxy);
+  }
+
+  if (isDeliverComponent(componentTag)) {
+    return new DeliverProxy(tag, componentTag, props || {}, children, proxy);
+  }
+
+  if (isContainerComponent(componentTag)) {
+    return new ContainerProxy(tag, componentTag, props, children, proxy);
+  }
+
+  if (isElementComponent(componentTag)) {
+    return new ElementProxy(tag, componentTag, props || {}, children, proxy);
+  }
+
+  if (isSimpleComponent(componentTag)) {
+    return new GroupProxy(tag, children, proxy);
+  }
+
+  if (isRenderComponent(componentTag)) {
+    return new RenderComponentProxy(tag, componentTag, props || {}, children, proxy);
+  }
+
+  return new StandardComponentProxy(tag, componentTag, props || {}, children, proxy);
+}
+
+function createItem$1(proxy, source) {
+  if (!source) {
+    return null;
+  }
+
+  if (!source.tag) {
+    const {
+      key,
+      props
+    } = source;
+    return {
+      key,
+      props,
+      proxy: new ValueProxy(source.props || {}, proxy)
+    };
+  }
+
+  const {
+    tag,
+    key,
+    props
+  } = source;
+  return {
+    tag,
+    key,
+    props,
+    proxy: createProxy(proxy, source)
+  };
+}
+function createAll$1(proxy, source) {
+  if (!Array.isArray(source)) {
+    source = [source];
+  }
+
+  if (!source.length) {
+    return [];
+  }
+
+  return source.map(item => {
+    if (!Array.isArray(item)) {
+      return createItem$1(proxy, toElement(item));
+    }
+
+    return item.flat(Infinity).map(it => createItem$1(proxy, toElement(it))).filter(Boolean);
+  });
+}
+
+function* recursive2iterable(list) {
+  if (!Array.isArray(list)) {
+    yield list;
+    return;
+  }
+
+  for (const it of list) {
+    yield* recursive2iterable(it);
+  }
+}
+
+function updateList$1(proxy, source, tree) {
+  if (!tree) {
+    tree = [];
+  }
+
+  if (!Array.isArray(tree)) {
+    tree = [tree];
+  }
+
+  const newList = [];
+
+  for (const src of recursive2iterable(source)) {
+    const node = toElement(src);
+
+    if (!node) {
+      continue;
+    }
+
+    const index = tree.findIndex(it => it.tag === node.tag && it.key === node.key);
+
+    if (index >= 0) {
+      const newNode = updateItem$1(proxy, node, tree[index]);
+
+      if (newNode) {
+        newList.push(newNode);
+      }
+
+      tree.splice(index, 1);
+    } else {
+      const newNode = createItem$1(proxy, node);
+
+      if (newNode) {
+        newList.push(newNode);
+      }
+    }
+  }
+
+  destroy(tree);
+  return newList;
+}
+
+function updateItem$1(proxy, source, tree) {
+  if (!tree) {
+    return createItem$1(proxy, source);
+  }
+
+  if (!source) {
+    destroy(tree);
+    return null;
+  }
+
+  if (Array.isArray(tree)) {
+    if (!tree.length) {
+      return createItem$1(proxy, source);
+    }
+
+    const index = tree.findIndex(it => it.tag === source.tag);
+
+    if (index < 0) {
+      destroy(tree);
+      return createItem$1(proxy, source);
+    }
+
+    const all = tree;
+    [tree] = tree.splice(index, 1);
+    destroy(all);
+  }
+
+  if (source.tag !== tree.tag) {
+    destroy(tree);
+    return createItem$1(proxy, source);
+  }
+
+  if (tree.proxy) {
+    const {
+      proxy
+    } = tree;
+    const {
+      props = {},
+      key
+    } = source;
+    proxy.update(source.props || {}, source.children || []);
+    return {
+      tag: tree.tag,
+      props,
+      key,
+      proxy
+    };
+  }
+
+  destroy(tree);
+  return createItem$1(proxy, source);
+}
+
+function* updateAll$1(proxy, source, tree) {
+  if (!Array.isArray(source)) {
+    source = [source];
+  }
+
+  let index = 0;
+  let length = Math.min(source.length || 1, tree.length);
+
+  for (; index < length; index++) {
+    const src = source[index];
+
+    if (Array.isArray(src)) {
+      yield updateList$1(proxy, src, tree[index]);
+    } else {
+      yield updateItem$1(proxy, toElement(src), tree[index]);
+    }
+  }
+
+  length = Math.max(source.length, source.length);
+
+  if (tree.length > index) {
+    for (; index < length; index++) {
+      destroy(tree[index]);
+    }
+  }
+
+  if (source.length > index) {
+    for (; index < length; index++) {
+      const src = toElement(source[index]);
+
+      if (Array.isArray(src)) {
+        yield src.flat(Infinity).map(it => createItem$1(proxy, it)).filter(Boolean);
+      } else {
+        yield createItem$1(proxy, src);
+      }
+    }
+  }
+}
+
+function convert(proxy, source, tree) {
+  return refresh(() => monitorable.postpone(() => {
+    if (!tree) {
+      return createAll$1(proxy, source);
+    }
+
+    return [...updateAll$1(proxy, source, tree)];
+  }));
 }
 
 let awaitDraw = new Set();
-let requested = false;
+const rendererDraw = new Set();
+const baseTick = [];
+const middleTick = [];
+const endTick = [];
 
-function markDraw(c) {
-	awaitDraw.add(c);
+function execTickList(list) {
+  const execList = [...list].sort(([a], [b]) => b - a);
+  list.length = 0;
 
-	if (requested) {
-		return;
-	}
-
-	requested = true;
-	nextFrame(() => {
-		requested = false;
-		const list = [...awaitDraw];
-		awaitDraw.clear();
-		list.map(c => c.drawAll());
-	});
+  try {
+    execList.forEach(([, f]) => f());
+  } catch (e) {
+    monitorable.printError(e);
+  }
 }
 
-class ContainerEntity extends EntityObject {
-	constructor(iRender, props, children, parent, delivered) {
-		super(iRender, parent, delivered);
+function execContainerList() {
+  const list = [...awaitDraw];
+  awaitDraw.clear();
+  list.map(c => c.drawAll());
+}
 
-		_defineProperty(this, 'props', void 0);
+function execRendererDrawList() {
+  const rendererDrawList = [...rendererDraw];
+  rendererDraw.clear();
 
-		_defineProperty(this, 'content', []);
+  for (const f of rendererDrawList) {
+    try {
+      f();
+    } catch (e) {
+      monitorable.printError(e);
+    }
+  }
+}
 
-		_defineProperty(this, '_node', null);
+let requested = false;
 
-		_defineProperty(this, '_container', null);
+function request() {
+  if (requested) {
+    return;
+  }
 
-		_defineProperty(this, 'rootContainer', this);
+  requested = true;
+  nextFrame(() => {
+    requested = false;
+    execTickList(baseTick);
+    execContainerList();
+    execTickList(middleTick);
+    execRendererDrawList();
+    execTickList(endTick);
+  });
+}
 
-		_defineProperty(this, '_drawChildren', false);
+function nextTick(fn, level = 0, type) {
+  const list = type === 'middle' ? middleTick : type === 'end' ? endTick : baseTick;
+  list.push([level, fn]);
+  request();
+}
+function markDraw(c) {
+  awaitDraw.add(c);
+  request();
+}
+function addRendererDraw(fn) {
+  rendererDraw.add(fn);
+  request();
+}
 
-		_defineProperty(this, '_drawContainer', false);
+function createEntity$1(obj, events) {
+  const cfg = {
+    [objectTypeSymbol]: {
+      configurable: true,
+      value: objectTypeSymbolHookEntity
+    },
+    data: {
+      configurable: true,
+      value: obj.data
+    },
+    exposed: {
+      configurable: true,
+      get: () => obj.exposed
+    },
+    created: {
+      configurable: true,
+      get: () => obj.created
+    },
+    destroyed: {
+      configurable: true,
+      get: () => obj.destroyed
+    },
+    mounted: {
+      configurable: true,
+      get: () => obj.mounted
+    },
+    unmounted: {
+      configurable: true,
+      get: () => obj.unmounted
+    },
+    $_hooks: {
+      configurable: true,
+      value: Object.create(null)
+    },
+    callHook: {
+      configurable: true,
 
-		_defineProperty(this, '_cancelDrawContainerMonitor', void 0);
+      value(h) {
+        callHook(h, entity);
+      }
 
-		_defineProperty(this, '_cancelDrawChildrenMonitor', void 0);
+    },
+    setHook: {
+      configurable: true,
 
-		_defineProperty(this, '_awaitDraw', new Set());
+      value(id, hook) {
+        return setHook(id, hook, entity);
+      }
 
-		_defineProperty(this, '_needDraw', false);
+    },
+    on: {
+      configurable: true,
+      value: events.on
+    },
+    emit: {
+      configurable: true,
+      value: events.emit
+    }
+  };
+  const entity = Object.create(null, cfg);
+  return entity;
+}
 
-		_defineProperty(this, '_containers', new Set());
+class ContainerProxy extends RefProxy {
+  setmountedRoot(target, next) {
+    if (this.parentProxy) {
+      return;
+    }
 
-		this.props = props;
-		this.parent = parent;
+    const container = this.__container;
 
-		if (parent) {
-			this.rootContainer = parent.container.rootContainer;
-		}
+    if (!container) {
+      return;
+    }
 
-		this.callHook('beforeCreate');
-		this.childNodes = children;
+    const {
+      renderer
+    } = this;
+    const [r, n] = renderer.getContainer(container, target, next);
 
-		const refresh = changed => {
-			if (!changed) {
-				return;
-			}
+    if (!r) {
+      return;
+    }
 
-			this._drawChildren = true;
-			this.refresh();
-		};
+    for (const it of getNodes(this.tree)) {
+      renderer.insertNode(r, it, n);
+    }
+  }
 
-		const slots = Object.create(null);
-		this._render = monitorable.monitor(refresh, () => init(this, this.delivered, this.childNodes, slots, [], false));
-		this._nodes = convert(this, this._render());
-		this.callHook('created');
-		this.created = true;
-	}
+  constructor(originalTag, component = null, props = {}, children, parent) {
+    super(component ? getRender(component[rendererSymbol], parent === null || parent === void 0 ? void 0 : parent.renderer) : getRender(parent === null || parent === void 0 ? void 0 : parent.renderer), originalTag, component, props, parent);
 
-	setChildren(children) {
-		if (this.destroyed) {
-			return;
-		}
+    _defineProperty(this, "container", void 0);
 
-		this.childNodes = children;
-		this._drawChildren = true;
-		this.refresh();
-	}
+    _defineProperty(this, "componentRoot", void 0);
 
-	setProps(props) {
-		if (this.destroyed) {
-			return;
-		}
+    _defineProperty(this, "__containerData", void 0);
 
-		this.props = props;
-		this._drawContainer = true;
-		this.refresh();
-	}
+    _defineProperty(this, "content", []);
 
-	update(props, children) {
-		this.refresh(() => {
-			this.setProps(props);
-			this.setChildren(children);
-		});
-	}
+    _defineProperty(this, "rootContainer", this);
 
-	requestDraw() {
-		this.markDraw(this);
-	}
+    _defineProperty(this, "__nodes", []);
 
-	_mount() {
-		const {
-			props,
-			parent,
-			iRender,
-		} = this;
-		const content = draw(this.container.iRender, this._nodes);
-		this.content = content;
-		const [container, node] = iRender.mount(props, parent === null || parent === void 0 ? void 0 : parent.iRender);
+    _defineProperty(this, "__container", null);
 
-		for (const it of getNodes(content)) {
-			iRender.insertNode(container, it);
-		}
+    _defineProperty(this, "__placeholder", void 0);
 
-		this.tree = [createMountedNode({
-			tag: Value,
-			key: undefined,
-			component: undefined,
-			node,
-			value: node,
-			children: [],
-		})];
-		this._node = node;
-		this._container = container;
-	}
+    _defineProperty(this, "__placeholderNode", void 0);
 
-	_destroy() {
-		destroy(this.content);
-	}
+    _defineProperty(this, "__targetNode", null);
 
-	_unmount() {
-		const {
-			parent,
-			iRender,
-		} = this;
+    _defineProperty(this, "__insertNode", null);
 
-		if (parent) {
-			unmount(parent.iRender, this.tree);
-		}
+    _defineProperty(this, "__nextNode", null);
 
-		iRender.unmount(this._container, this._node, Boolean(parent));
-		unmount(this.iRender, this.content);
-	}
+    _defineProperty(this, "__awaitDraw", new Set());
 
-	_draw() {
-		const {
-			_drawChildren: drawChildren,
-			_drawContainer: drawContainer,
-		} = this;
-		this._drawContainer = false;
+    _defineProperty(this, "__containers", new Set());
 
-		if (this._cancelDrawContainerMonitor) {
-			this._cancelDrawContainerMonitor();
-		}
+    this.container = this;
+    this.componentRoot = parent === null || parent === void 0 ? void 0 : parent.componentRoot;
 
-		if (drawContainer) {
-			const result = monitorable.exec(c => c && [this._drawContainer = true, this.requestDraw()], () => {
-				let _this$parent;
+    if (component) {
+      this.__containerData = component[componentValueSymbol];
+    }
 
-				return this.iRender.drawContainer(this._container, this._node, this.props, (_this$parent = this.parent) === null || _this$parent === void 0 ? void 0 : _this$parent.iRender);
-			});
-			[this._container, this._node] = result.result;
-			this._cancelDrawContainerMonitor = result.stop;
-		}
+    if (!isProduction) {
+      monitorable.defineProperty(this, 'content', []);
+    }
 
-		if (this.parent && this.parent.iRender !== this.iRender) {
-			return;
-		}
+    this.events.updateInProps(props);
 
-		this._drawChildren = false;
+    if (parent) {
+      this.rootContainer = parent.container.rootContainer;
+    }
 
-		if (this._cancelDrawChildrenMonitor) {
-			this._cancelDrawChildrenMonitor();
-		}
+    this.__nodes = convert(this, children);
+    this.created = true;
+  }
 
-		if (drawChildren) {
-			const result = monitorable.exec(c => c && [this._drawChildren = true, this.requestDraw()], () => this.content = draw(this.iRender, this._nodes, this.content));
-			this.content = result.result;
-			this._cancelDrawChildrenMonitor = result.stop;
-		}
-	}
+  createEntity(events) {
+    return createEntity$1(this, events);
+  }
 
-	_drawSelf() {
-		const {
-			_drawChildren: drawChildren,
-			_drawContainer: drawContainer,
-		} = this;
-		this._needDraw = false;
-		this._drawChildren = false;
-		this._drawContainer = false;
+  setChildren(children) {
+    if (this.destroyed) {
+      return;
+    }
 
-		if (drawContainer) {
-			let _this$parent2;
+    this.__nodes = convert(this, children, this.__nodes);
+    this.requestDraw();
+  }
 
-			this.iRender.drawContainer(this._container, this._node, this.props, (_this$parent2 = this.parent) === null || _this$parent2 === void 0 ? void 0 : _this$parent2.iRender, true);
-		}
+  _update(props, children) {
+    if (this.destroyed) {
+      return;
+    }
 
-		if (drawChildren) {
-			this.content = draw(this.iRender, this._nodes, this.content);
-		}
-	}
+    this.__nodes = convert(this, children, this.__nodes);
+    this.events.updateInProps(props);
+    this.requestDraw();
+  }
 
-	drawSelf() {
-		if (!this.mounted) {
-			return;
-		}
+  _destroy() {
+    destroy(this.__nodes);
+  }
 
-		if (this.destroyed) {
-			return;
-		}
+  callHook(id) {
+    callHook(id, this.entity);
+  }
 
-		this.callHook('beforeDraw');
-		monitorable.exec(c => c && this.requestDraw(), () => this._drawSelf());
-		complete(() => this.callHook('drawn'));
-	}
+  requestDraw() {
+    this.markDraw(this);
+  }
 
-	markDraw(nObject, remove = false) {
-		let _this$parent3;
+  _mount(opt) {
+    const {
+      parentProxy,
+      renderer
+    } = this;
+    const parentRenderer = (parentProxy === null || parentProxy === void 0 ? void 0 : parentProxy.renderer) || renderer;
+    const {
+      container,
+      target: targetNode,
+      insert,
+      next,
+      exposed
+    } = renderer.mountContainer(this.__containerData, this.attrs, this.events.emit, parentProxy === null || parentProxy === void 0 ? void 0 : parentProxy.renderer);
+    console.log(exposed);
+    this.setExposed(exposed);
+    const subOpt = renderer.getMountOptions(container, opt) || opt;
+    const placeholder = createPlaceholder(parentRenderer);
+    this.__placeholder = placeholder;
+    const placeholderNode = placeholder.node;
+    this.__placeholderNode = placeholderNode;
+    this.__container = container;
+    const content = draw(renderer, subOpt, this.__nodes);
+    this.content = content;
+    this.__insertNode = insert;
+    this.__nextNode = next;
 
-		if (((_this$parent3 = this.parent) === null || _this$parent3 === void 0 ? void 0 : _this$parent3.iRender) === this.iRender) {
-			this.parent.container.markDraw(nObject, remove);
-			return;
-		}
+    if (!targetNode && parentRenderer === renderer) {
+      this.tree = insert ? [...content, createMountedNode({
+        node: insert
+      }), placeholder] : [...content, placeholder];
+      return subOpt;
+    }
 
-		if (nObject === this && this.parent) {
-			this.parent.container.markDraw(this, remove);
-			this._needDraw = !remove;
-		} else if (remove) {
-			this._awaitDraw.delete(nObject);
-		} else {
-			this._awaitDraw.add(nObject);
-		}
+    const target = targetNode || container;
+    this.__targetNode = target;
 
-		this.rootContainer.markDrawContainer(this, !this._needDraw && !this._awaitDraw.size || this.destroyed);
-	}
+    for (const it of getNodes(content)) {
+      renderer.insertNode(target, it, next);
+    }
 
-	drawContainer() {
-		const {
-			_node: node,
-			_container: container,
-			_awaitDraw: awaitDraw,
-		} = this;
+    this.tree = insert ? [createMountedNode({
+      node: insert
+    }), placeholder] : [placeholder];
+    return subOpt;
+  }
 
-		if (!node || !container) {
-			return;
-		}
+  _redrawSelf() {
+    const {
+      __targetNode,
+      __insertNode,
+      __nextNode
+    } = this;
+    const {
+      attrs,
+      parentProxy,
+      renderer
+    } = this;
+    const placeholder = this.__placeholder;
+    const placeholderNode = this.__placeholderNode;
+    const container = this.__container;
+    const parentRenderer = (parentProxy === null || parentProxy === void 0 ? void 0 : parentProxy.renderer) || renderer;
+    const {
+      target: targetNode,
+      insert,
+      next
+    } = renderer.updateContainer(container, __targetNode, __insertNode, __nextNode, this.__containerData, attrs, this.events.emit, parentProxy === null || parentProxy === void 0 ? void 0 : parentProxy.renderer);
+    this.__insertNode = insert;
+    this.__nextNode = next;
+    const parentNode = parentRenderer.getParent(placeholderNode);
 
-		this.callHook('beforeDraw');
-		const needDraw = this._needDraw;
-		this._needDraw = false;
-		const list = [...awaitDraw];
-		awaitDraw.clear();
+    if (insert !== __insertNode) {
+      if (__insertNode) {
+        renderer.removeNode(__insertNode);
+      }
 
-		if (needDraw) {
-			this.drawSelf();
-		}
+      if (insert && parentNode) {
+        renderer.insertNode(parentNode, insert, placeholderNode);
+      }
+    }
 
-		list.map(c => c.draw());
-		this.iRender.drawNode(container, node);
-		complete(() => this.callHook('drawn'));
-	}
+    if (!targetNode && parentRenderer === renderer) {
+      const {
+        content
+      } = this;
 
-	markDrawContainer(container, remove = false) {
-		if (remove) {
-			this._containers.delete(container);
-		} else {
-			this._containers.add(container);
-		}
+      if (__targetNode && parentNode) {
+        const nextNode = insert || placeholderNode;
 
-		markDraw(this);
-	}
+        for (const it of getNodes(content)) {
+          parentRenderer.insertNode(parentNode, it, nextNode);
+        }
 
-	drawAll() {
-		const containers = this._containers;
+        this.__targetNode = null;
+      }
 
-		if (!containers.size) {
-			return;
-		}
+      this.tree = insert ? [...content, createMountedNode({
+        node: insert
+      }), placeholder] : [...content, placeholder];
+    } else {
+      const target = targetNode || container;
+      this.__targetNode = target;
 
-		const list = [...containers];
-		containers.clear();
-		this.callHook('beforeDrawAll');
-		const refs = [];
-		const completeList = [];
-		setCompleteList(completeList);
-		setRefList(refs);
-		list.forEach(c => c.drawContainer());
-		setRefList();
-		refs.forEach(r => r());
-		completeList.forEach(r => r());
-		this.callHook('drawnAll');
-	}
+      if (target !== __targetNode || next !== __nextNode) {
+        for (const it of getNodes(this.content)) {
+          renderer.insertNode(target, it, next);
+        }
+      }
 
+      this.tree = insert ? [createMountedNode({
+        node: insert
+      }), placeholder] : [placeholder];
+    }
+
+    renderer.recoveryContainer(container, __targetNode, __insertNode, __nextNode, targetNode, insert, next, this.__containerData, attrs, parentProxy === null || parentProxy === void 0 ? void 0 : parentProxy.renderer);
+  }
+
+  _redrawChildren(opts) {
+    const content = draw(this.renderer, opts, this.__nodes, this.content);
+    this.content = content;
+
+    if (!this.__targetNode) {
+      return;
+    }
+
+    const placeholder = this.__placeholder;
+    const insertNode = this.__insertNode;
+    this.tree = insertNode ? [...content, createMountedNode({
+      node: insertNode
+    }), placeholder] : [...content, placeholder];
+  }
+
+  _redraw(opt) {
+    this._redrawChildren(opt);
+
+    this._redrawSelf();
+  }
+
+  _unmount() {
+    const {
+      parentProxy,
+      renderer,
+      __insertNode
+    } = this;
+    const parentRenderer = (parentProxy === null || parentProxy === void 0 ? void 0 : parentProxy.renderer) || renderer;
+    unmount(this.renderer, this.content);
+
+    if (__insertNode) {
+      parentRenderer.removeNode(__insertNode);
+    }
+
+    parentRenderer.removeNode(this.__placeholderNode);
+    renderer.unmountContainer(this.__container, this.__targetNode, __insertNode, this.__nextNode, this.__containerData, this.attrs, parentProxy === null || parentProxy === void 0 ? void 0 : parentProxy.renderer);
+  }
+
+  markDraw(proxy) {
+    var _this$parentProxy;
+
+    if (((_this$parentProxy = this.parentProxy) === null || _this$parentProxy === void 0 ? void 0 : _this$parentProxy.renderer) === this.renderer) {
+      this.parentProxy.container.markDraw(proxy);
+      return;
+    }
+
+    if (proxy === this && this.parentProxy) {
+      this.parentProxy.container.markDraw(this);
+    } else {
+      this.__awaitDraw.add(proxy);
+    }
+
+    this.rootContainer.markDrawContainer(this);
+  }
+
+  drawContainer() {
+    if (this.destroyed || !this.__container) {
+      return;
+    }
+
+    const {
+      __awaitDraw
+    } = this;
+    const list = [...__awaitDraw];
+
+    __awaitDraw.clear();
+
+    list.map(c => c.redraw());
+  }
+
+  markDrawContainer(container) {
+    this.__containers.add(container);
+
+    markDraw(this);
+  }
+
+  drawAll() {
+    const containers = this.__containers;
+
+    if (!containers.size) {
+      return;
+    }
+
+    const list = [...containers];
+    containers.clear();
+    const completeList = [];
+    setCompleteList(completeList);
+    list.forEach(c => c.drawContainer());
+    completeList.forEach(r => r());
+  }
+
+}
+
+function createContainerEntity(e, p) {
+  if (e === undefined) {
+    return createRender(null, p);
+  }
+
+  if (isContainerComponent(e)) {
+    return createRender(e, p);
+  }
+
+  if (!isElement(e)) {
+    return createRender(null, p, [createElement(e)]);
+  }
+
+  if (isContainerComponent(e.tag)) {
+    const params = { ...e.props,
+      ...p
+    };
+    return createRender(e.tag, params);
+  }
+
+  return createRender(null, p, [e]);
+}
+
+function createRender(tag, props, childNodes = []) {
+  const children = monitorable.value(childNodes);
+  const normalizeAuxiliaryObject = {
+    renderer: tag ? getRender(tag[rendererSymbol]) : getRender(),
+    refresh,
+    slotRenderFnList: new WeakMap(),
+    delivered: Object.create(null),
+    simpleParent: undefined
+  };
+  let __needRefresh = false;
+  let __refreshing = false;
+  let container;
+
+  function refresh() {
+    if (!container) {
+      __needRefresh = true;
+      return;
+    }
+
+    if (container.destroyed) {
+      return;
+    }
+
+    __needRefresh = true;
+
+    if (!container.created) {
+      return;
+    }
+
+    if (__refreshing) {
+      return;
+    }
+
+    __refreshing = true;
+    let nodes;
+
+    for (;;) {
+      if (wait(refreshObj)) {
+        break;
+      }
+
+      if (!__needRefresh) {
+        break;
+      }
+
+      __needRefresh = false;
+      nodes = _render();
+
+      if (container.destroyed) {
+        return;
+      }
+    }
+
+    __refreshing = false;
+
+    if (wait(refreshObj)) {
+      return;
+    }
+
+    if (!nodes) {
+      return;
+    }
+
+    if (!container.mounted) {
+      return;
+    }
+
+    if (container.destroyed) {
+      return;
+    }
+
+    if (container.unmounted) {
+      return;
+    }
+
+    container.setChildren(nodes);
+  }
+
+  const refreshObj = {
+    refresh
+  };
+  const slots = Object.create(null);
+
+  const _render = monitorable.monitor(c => c && refresh(), () => init(normalizeAuxiliaryObject, children.value, slots, [], false, false));
+
+  container = new ContainerProxy(tag, tag, props, _render());
+
+  if (__needRefresh) {
+    refresh();
+  }
+
+  return [container, children];
 }
 
 function render(e, p = {}) {
-	let params = { ...p,
-	};
-	const container = new ContainerEntity(getRender(p.type), params, e === undefined ? [] : isElement(e) ? [e] : [createElement(e)]);
+  const [container, children] = createContainerEntity(e, p);
+  const entity = Object.create(container.entity, {
+    update: {
+      configurable: true,
 
-	if (!isProduction) {
-		devtools.renderHook(container);
-	}
+      value(c) {
+        if (container.destroyed) {
+          return entity;
+        }
 
-	const {
-		exposed,
-	} = container;
-	Reflect.defineProperty(exposed, '$update', {
-		value(c) {
-			container.setChildren(c === undefined ? [] : isElement(c) ? [c] : [createElement(c)]);
-			return exposed;
-		},
+        children(c === undefined ? [] : isElement(c) ? [c] : [createElement(c)]);
+        return entity;
+      }
 
-		configurable: true,
-	});
-	Reflect.defineProperty(exposed, '$mount', {
-		value(target) {
-			if (exposed.$mounted) {
-				return exposed;
-			}
+    },
+    mount: {
+      configurable: true,
 
-			if (target) {
-				params.target = target;
-				container.setProps(params);
-			}
+      value(target, next) {
+        if (container.destroyed) {
+          return entity;
+        }
 
-			container.mount();
-			return exposed;
-		},
+        if (container.mounted) {
+          return entity;
+        }
 
-		configurable: true,
-	});
-	Reflect.defineProperty(exposed, '$unmount', {
-		value() {
-			if (!exposed.$mounted) {
-				return;
-			}
+        container.mount({});
+        container.setmountedRoot(target, next);
+        return entity;
+      }
 
-			if (exposed.$unmounted) {
-				return;
-			}
+    },
+    unmount: {
+      configurable: true,
 
-			if (exposed.$destroyed) {
-				return container.destroy();
-			}
+      value() {
+        if (!container.mounted) {
+          return;
+        }
 
-			container.unmount();
-		},
+        if (container.unmounted) {
+          return;
+        }
 
-		configurable: true,
-	});
+        if (!container.destroyed) {
+          container.destroy();
+        }
 
-	if (params.target) {
-		container.mount();
-	}
+        container.unmount();
+        return entity;
+      }
 
-	return exposed;
+    }
+  });
+
+  if (!isProduction) {
+    devtools.renderHook(entity, container);
+  }
+
+  return entity;
 }
 
-function Mark(symbol, value) {
-	return component => {
-		component[symbol] = value;
-		return component;
-	};
+function setObjectType(component, type) {
+  Reflect.defineProperty(component, objectTypeSymbol, {
+    value: type
+  });
+  return component;
 }
 
-function MarkValue(symbol, key, value) {
-	return component => {
-		let obj = component[symbol];
+function setName(component, name) {
+  if (!name || typeof name !== 'string') {
+    return component;
+  }
 
-		if (!obj) {
-			obj = Object.create(null);
-			component[symbol] = obj;
-		}
-
-		obj[key] = value;
-		return component;
-	};
+  Reflect.defineProperty(component, nameSymbol, {
+    value: name
+  });
+  return component;
 }
 
-function mName(name, component) {
-	if (!component) {
-		return Mark(nameSymbol, name);
-	}
-
-	component[nameSymbol] = name;
-	return component;
-}
-function mType(type, component) {
-	if (!component) {
-		return Mark(typeSymbol, type);
-	}
-
-	component[typeSymbol] = type;
-	return component;
-}
-function mSimple(component) {
-	if (!component) {
-		return Mark(typeSymbol, 'simple');
-	}
-
-	component[typeSymbol] = 'simple';
-	return component;
-}
-function mNative(component) {
-	if (!component) {
-		return Mark(typeSymbol, 'native');
-	}
-
-	component[typeSymbol] = 'native';
-	return component;
-}
-function mRender(fn, component) {
-	if (!component) {
-		return Mark(renderSymbol, fn);
-	}
-
-	component[renderSymbol] = fn;
-	return component;
-}
-function mConfig(name, config, component) {
-	const mark = MarkValue(configSymbol, name, config);
-
-	if (!component) {
-		return mark;
-	}
-
-	return mark(component);
-}
-function mComponent(name, item, component) {
-	const mark = MarkValue(componentsSymbol, name, item);
-
-	if (!component) {
-		return mark;
-	}
-
-	return mark(component);
-}
-function create(c, r) {
-	if (typeof r === 'function') {
-		c[renderSymbol] = r;
-	}
-
-	return c;
-}
-function mark(component, ...marks) {
-	for (const m of marks) {
-		m(component);
-	}
-
-	return component;
+function setValue(component, value) {
+  Reflect.defineProperty(component, componentValueSymbol, {
+    value
+  });
+  return component;
 }
 
+function setComponents(component, components) {
+  if (!components || typeof components !== 'object') {
+    return component;
+  }
+
+  Reflect.defineProperty(component, componentsSymbol, {
+    value: components
+  });
+  return component;
+}
+
+function createSelfComponent() {
+  const component = function component(params) {
+    return createElementBase(component, params);
+  };
+
+  return component;
+}
+
+function createDeliverComponent(def) {
+  const component = createSelfComponent();
+  setObjectType(component, objectTypeSymbolDeliverComponent);
+  Reflect.defineProperty(component, deliverKeySymbol, {
+    value: Symbol()
+  });
+  Reflect.defineProperty(component, deliverDefaultSymbol, {
+    value: def
+  });
+  return component;
+}
+function createRenderComponent(f, {
+  name,
+  components
+} = {}) {
+  const component = createSelfComponent();
+  setObjectType(component, objectTypeSymbolRenderComponent);
+  setName(component, name);
+  setValue(component, f);
+  setComponents(component, components);
+  return component;
+}
+function createContainerComponent(value, {
+  name,
+  renderer
+} = {}) {
+  const component = createSelfComponent();
+  setObjectType(component, objectTypeSymbolContainerComponent);
+  setName(component, name);
+  setValue(component, value);
+
+  if (typeof renderer === 'string' || typeof renderer === 'object') {
+    Reflect.defineProperty(component, rendererSymbol, {
+      value: renderer
+    });
+  }
+
+  return component;
+}
+function createElementComponent(value, {
+  name
+} = {}) {
+  const component = createSelfComponent();
+  setObjectType(component, objectTypeSymbolElementComponent);
+  setName(component, name);
+  setValue(component, value);
+  return component;
+}
+function createStandardComponent(f, {
+  name,
+  components,
+  render,
+  props
+} = {}) {
+  const component = createComponentFunc(f, render);
+  setName(component, name);
+  setComponents(component, components);
+
+  if (Array.isArray(props)) {
+    Reflect.defineProperty(component, propsSymbol, {
+      value: [...props]
+    });
+  }
+
+  return component;
+}
+
+function createComponentFunc(f, render) {
+  if (typeof render !== 'function') {
+    return f;
+  }
+
+  const renderComponent = isRenderComponent(render) ? render : createRenderComponent(render);
+  return function StandardComponent(props, context) {
+    return createElement(renderComponent, f(props, context));
+  };
+}
+
+function createNativeComponent(f, {
+  name,
+  components,
+  render,
+  props
+} = {}) {
+  const component = createComponentFunc(f, render);
+  setObjectType(component, objectTypeSymbolNativeComponent);
+  setName(component, name);
+  setComponents(component, components);
+
+  if (Array.isArray(props)) {
+    Reflect.defineProperty(component, propsSymbol, {
+      value: [...props]
+    });
+  }
+
+  return component;
+}
+function createSimpleComponent(f, {
+  name,
+  components
+} = {}) {
+  const component = f;
+  setObjectType(component, objectTypeSymbolSimpleComponent);
+  setName(component, name);
+  setComponents(component, components);
+  return component;
+}
+function createShellComponent(f, {
+  name
+} = {}) {
+  const component = f;
+  setObjectType(component, objectTypeSymbolShellComponent);
+  setName(component, name);
+  return component;
+}
+
+const LOADING = 0;
+const FAILING = -1;
+const COMPLETE = 1;
 function lazy(component, Placeholder) {
-	const reslut = monitorable.value(0);
-	const ComponentValue = monitorable.value(undefined);
+  const reslut = monitorable.value(LOADING);
+  let isLoad = false;
+  const ComponentValue = monitorable.value(undefined);
 
-	async function load() {
-		if (reslut()) {
-			return;
-		}
+  async function load() {
+    if (isLoad) {
+      return;
+    }
 
-		reslut(1);
+    isLoad = true;
 
-		try {
-			const c = await component();
+    if (reslut()) {
+      return;
+    }
 
-			if (typeof c === 'function') {
-				ComponentValue(c);
-				return;
-			}
+    reslut(COMPLETE);
 
-			if (!c) {
-				reslut(-1);
-				return;
-			}
+    try {
+      const c = await component();
 
-			if (typeof c.default === 'function') {
-				ComponentValue(c.default);
-				return;
-			}
+      if (typeof c === 'function') {
+        ComponentValue(c);
+        return;
+      }
 
-			reslut(-1);
-		} catch (_unused) {
-			reslut(-1);
-		}
-	}
+      if (!c) {
+        reslut(FAILING);
+        return;
+      }
 
-	function Lazy(props, {
-		childNodes,
-	}) {
-		const com = ComponentValue();
+      if (typeof c.default === 'function') {
+        ComponentValue(c.default);
+        return;
+      }
 
-		if (com) {
-			return createElement(com, props, ...childNodes);
-		}
+      reslut(FAILING);
+    } catch (e) {
+      console.error(e);
+      reslut(FAILING);
+    }
+  }
 
-		load();
+  return createSimpleComponent((props, {
+    childNodes
+  }) => {
+    const com = ComponentValue();
 
-		if (!Placeholder) {
-			return null;
-		}
+    if (com) {
+      return createElement(com, props, ...childNodes);
+    }
 
-		return createElement(Placeholder, {
-			loading: reslut() > 0,
-		});
-	}
+    load();
 
-	return mark(Lazy, mSimple, mName('Lazy'));
+    if (!Placeholder) {
+      return null;
+    }
+
+    return createElement(Placeholder, {
+      loading: reslut() === LOADING
+    });
+  }, {
+    name: 'Lazy'
+  });
+}
+
+function getNodeArray$4(result) {
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  if (!isElement(result)) {
+    return [result];
+  }
+
+  if (result.tag !== Fragment) {
+    return [result];
+  }
+
+  return result.children;
+}
+
+class RenderProxy extends NodeProxy {
+  get content() {
+    return this.tree;
+  }
+
+  constructor(props, children, parent) {
+    super(Render, Render, props, children, parent);
+
+    _defineProperty(this, "childNodes", void 0);
+
+    _defineProperty(this, "__render", void 0);
+
+    _defineProperty(this, "__refreshing", false);
+
+    _defineProperty(this, "__needRefresh", false);
+
+    _defineProperty(this, "__delayedRefresh", 0);
+
+    _defineProperty(this, "_nodes", []);
+
+    this.childNodes = children;
+
+    const refresh = f => {
+      this.refresh(f);
+    };
+
+    const normalizeAuxiliaryObject = {
+      renderer: this.renderer,
+      refresh,
+      slotRenderFnList: new WeakMap(),
+      delivered: this.delivered,
+      simpleParent: undefined
+    };
+    const slots = Object.create(null);
+
+    const initChildNodes = result => init(normalizeAuxiliaryObject, getNodeArray$4(result), slots, [], false, true);
+
+    this.__render = monitorable.monitor(changed => changed && this.refresh(), () => {
+      const {
+        childNodes
+      } = this;
+
+      if (childNodes.length !== 1) {
+        return initChildNodes(childNodes);
+      }
+
+      const [f] = childNodes;
+
+      if (typeof f !== 'function') {
+        return initChildNodes(childNodes);
+      }
+
+      return initChildNodes(f());
+    });
+    this.created = true;
+    this.refresh();
+  }
+
+  refresh(f) {
+    if (typeof f === 'function') {
+      try {
+        this.__delayedRefresh++;
+        return f();
+      } finally {
+        this.__delayedRefresh--;
+
+        if (this.__delayedRefresh <= 0) {
+          this.refresh();
+        }
+      }
+    }
+
+    if (this.destroyed) {
+      return;
+    }
+
+    this.__needRefresh = true;
+
+    if (!this.created) {
+      return;
+    }
+
+    if (this.__refreshing) {
+      return;
+    }
+
+    this.__refreshing = true;
+    let nodes;
+
+    while (this.__needRefresh && !wait(this)) {
+      this.__needRefresh = false;
+      nodes = this.__render();
+
+      if (this.destroyed) {
+        return;
+      }
+    }
+
+    this.__refreshing = false;
+
+    if (!nodes) {
+      return;
+    }
+
+    this._nodes = convert(this, nodes, this._nodes);
+
+    if (wait(this)) {
+      return;
+    }
+
+    if (!this.mounted) {
+      return;
+    }
+
+    if (this.destroyed) {
+      return;
+    }
+
+    if (this.unmounted) {
+      return;
+    }
+
+    this.requestDraw();
+  }
+
+  _update(props, children) {
+    this.childNodes = children;
+    this.refresh();
+  }
+
+  _destroy() {
+    this.__render.stop();
+
+    destroy(this._nodes);
+  }
+
+  _mount(mountOptions) {
+    this.tree = draw(this.renderer, mountOptions, this._nodes);
+  }
+
+  _redraw(mountOptions) {
+    this.tree = draw(this.renderer, mountOptions, this._nodes, this.tree);
+  }
+
+  _unmount() {
+    unmount(this.renderer, this.tree);
+  }
+
+}
+
+function isProxy(v, type) {
+  switch (type) {
+    case 'standardComponent':
+      return v instanceof StandardComponentProxy;
+
+    case 'renderComponent':
+      return v instanceof RenderComponentProxy;
+
+    case 'component':
+      return v instanceof ComponentProxy;
+
+    case 'container':
+      return v instanceof ContainerProxy;
+
+    case 'deliver':
+      return v instanceof DeliverProxy;
+
+    case 'element':
+      return v instanceof ElementProxy;
+
+    case 'group':
+      return v instanceof GroupProxy;
+
+    case 'shell':
+      return v instanceof ShellProxy;
+
+    case 'value':
+      return v instanceof ValueProxy;
+
+    case 'render':
+      return v instanceof RenderProxy;
+
+    case 'slot':
+      return v instanceof SlotProxy;
+
+    case 'node':
+      return v instanceof NodeProxy;
+
+    case 'ref':
+      return v instanceof RefProxy;
+  }
+
+  return v instanceof BaseProxy;
 }
 
 
-let Neep = /*#__PURE__*/Object.freeze({
+
+var Neep = /*#__PURE__*/Object.freeze({
 	__proto__: null,
-	install,
+	install: install,
 	Error: NeepError,
-	EventEmitter,
-	render,
-	register,
-	lazy,
-	version,
-	isProduction,
-	createDeliver,
-	isDeliver,
-	ScopeSlot,
-	SlotRender,
-	Slot,
-	Value,
-	Container,
-	Template,
-	Fragment,
-	ref,
+	render: render,
+	register: register,
+	getNode: getNode,
+	createDeliverComponent: createDeliverComponent,
+	createRenderComponent: createRenderComponent,
+	createContainerComponent: createContainerComponent,
+	createElementComponent: createElementComponent,
+	createStandardComponent: createStandardComponent,
+	createNativeComponent: createNativeComponent,
+	createSimpleComponent: createSimpleComponent,
+	createShellComponent: createShellComponent,
+	createComponent: createStandardComponent,
+	isSimpleComponent: isSimpleComponent,
+	isShellComponent: isShellComponent,
+	isNativeComponent: isNativeComponent,
+	isRenderComponent: isRenderComponent,
+	isContainerComponent: isContainerComponent,
+	isElementComponent: isElementComponent,
+	isDeliverComponent: isDeliverComponent,
+	isDeliver: isDeliverComponent,
+	lazy: lazy,
+	version: version,
+	isProduction: isProduction,
+	ScopeSlot: ScopeSlot,
+	Render: Render,
+	Slot: Slot,
+	Container: Container,
+	Template: Template,
+	Fragment: Fragment,
 	value: monitorable.value,
 	computed: monitorable.computed,
 	isValue: monitorable.isValue,
 	encase: monitorable.encase,
-	recover: monitorable.recover,
 	valueify: monitorable.valueify,
 	asValue: monitorable.asValue,
-	watch,
-	useValue,
-	useService,
-	byService,
-	hook,
-	expose,
-	isElement,
-	isSimpleTag,
-	isSimpleElement,
-	createElement,
-	elements,
-	equal,
-	label: label$1,
-	getRect,
+	mixValue: monitorable.mixValue,
+	defineProperty: monitorable.defineProperty,
+	ref: ref,
+	watch: watch,
+	useValue: useValue,
+	useService: useService,
+	byService: byService,
+	hook: hook,
+	isElement: isElement,
+	isFragmentElement: isFragmentElement,
+	isRenderElement: isRenderElement,
+	isSimpleElement: isSimpleElement,
+	createElement: createElement,
+	createElementBase: createElementBase,
+	createRenderElement: createRenderElement,
+	elements: elements,
+	equal: equal,
+	createTemplateElement: createTemplateElement,
+	label: label,
+	rendererSymbol: rendererSymbol,
+	nameSymbol: nameSymbol,
+	componentsSymbol: componentsSymbol,
+	propsSymbol: propsSymbol,
+	componentValueSymbol: componentValueSymbol,
+	objectTypeSymbol: objectTypeSymbol,
+	objectTypeSymbolElement: objectTypeSymbolElement,
+	objectTypeSymbolDeliverComponent: objectTypeSymbolDeliverComponent,
+	objectTypeSymbolNativeComponent: objectTypeSymbolNativeComponent,
+	objectTypeSymbolSimpleComponent: objectTypeSymbolSimpleComponent,
+	objectTypeSymbolShellComponent: objectTypeSymbolShellComponent,
+	objectTypeSymbolRenderComponent: objectTypeSymbolRenderComponent,
+	objectTypeSymbolContainerComponent: objectTypeSymbolContainerComponent,
+	objectTypeSymbolElementComponent: objectTypeSymbolElementComponent,
+	objectTypeSymbolHookEntity: objectTypeSymbolHookEntity,
+	objectTypeSymbolRootEntity: objectTypeSymbolRootEntity,
+	deliverKeySymbol: deliverKeySymbol,
+	deliverDefaultSymbol: deliverDefaultSymbol,
+	setHook: setHook,
+	callHook: callHook,
 	get current () { return exports.current; },
-	checkCurrent,
-	addContextConstructor,
-	addEntityConstructor,
-	refresh,
-	mName,
-	mType,
-	mSimple,
-	mNative,
-	mRender,
-	mConfig,
-	mComponent,
-	create,
-	mark,
-	typeSymbol,
-	nameSymbol,
-	renderSymbol,
-	componentsSymbol,
-	configSymbol,
-	objectTypeSymbol,
-	objectTypeSymbolElement,
-	objectTypeSymbolDeliver,
-	deliverKeySymbol,
-	deliverDefaultSymbol,
-	setHook,
-	callHook,
+	checkCurrent: checkCurrent,
+	execUseHooks: execUseHooks,
+	addContextConstructor: addContextConstructor,
+	addEntityConstructor: addEntityConstructor,
+	refresh: refresh,
+	nextTick: nextTick,
+	addRendererDraw: addRendererDraw,
+	addRecognizer: addRecognizer,
+	isProxy: isProxy
 });
 
 Object.defineProperty(exports, 'asValue', {
 	enumerable: true,
-	get () {
+	get: function () {
 		return monitorable.asValue;
-	},
+	}
 });
 Object.defineProperty(exports, 'computed', {
 	enumerable: true,
-	get () {
+	get: function () {
 		return monitorable.computed;
-	},
+	}
+});
+Object.defineProperty(exports, 'defineProperty', {
+	enumerable: true,
+	get: function () {
+		return monitorable.defineProperty;
+	}
 });
 Object.defineProperty(exports, 'encase', {
 	enumerable: true,
-	get () {
+	get: function () {
 		return monitorable.encase;
-	},
+	}
 });
 Object.defineProperty(exports, 'isValue', {
 	enumerable: true,
-	get () {
+	get: function () {
 		return monitorable.isValue;
-	},
+	}
 });
-Object.defineProperty(exports, 'recover', {
+Object.defineProperty(exports, 'mixValue', {
 	enumerable: true,
-	get () {
-		return monitorable.recover;
-	},
+	get: function () {
+		return monitorable.mixValue;
+	}
 });
 Object.defineProperty(exports, 'value', {
 	enumerable: true,
-	get () {
+	get: function () {
 		return monitorable.value;
-	},
+	}
 });
 Object.defineProperty(exports, 'valueify', {
 	enumerable: true,
-	get () {
+	get: function () {
 		return monitorable.valueify;
-	},
+	}
 });
 exports.Container = Container;
 exports.Error = NeepError;
-exports.EventEmitter = EventEmitter;
 exports.Fragment = Fragment;
+exports.Render = Render;
 exports.ScopeSlot = ScopeSlot;
 exports.Slot = Slot;
-exports.SlotRender = SlotRender;
 exports.Template = Template;
-exports.Value = Value;
 exports.addContextConstructor = addContextConstructor;
 exports.addEntityConstructor = addEntityConstructor;
+exports.addRecognizer = addRecognizer;
+exports.addRendererDraw = addRendererDraw;
 exports.byService = byService;
 exports.callHook = callHook;
 exports.checkCurrent = checkCurrent;
+exports.componentValueSymbol = componentValueSymbol;
 exports.componentsSymbol = componentsSymbol;
-exports.configSymbol = configSymbol;
-exports.create = create;
-exports.createDeliver = createDeliver;
+exports.createComponent = createStandardComponent;
+exports.createContainerComponent = createContainerComponent;
+exports.createDeliverComponent = createDeliverComponent;
 exports.createElement = createElement;
+exports.createElementBase = createElementBase;
+exports.createElementComponent = createElementComponent;
+exports.createNativeComponent = createNativeComponent;
+exports.createRenderComponent = createRenderComponent;
+exports.createRenderElement = createRenderElement;
+exports.createShellComponent = createShellComponent;
+exports.createSimpleComponent = createSimpleComponent;
+exports.createStandardComponent = createStandardComponent;
+exports.createTemplateElement = createTemplateElement;
 exports.default = Neep;
 exports.deliverDefaultSymbol = deliverDefaultSymbol;
 exports.deliverKeySymbol = deliverKeySymbol;
 exports.elements = elements;
 exports.equal = equal;
-exports.expose = expose;
-exports.getRect = getRect;
+exports.execUseHooks = execUseHooks;
+exports.getNode = getNode;
 exports.hook = hook;
 exports.install = install;
-exports.isDeliver = isDeliver;
+exports.isContainerComponent = isContainerComponent;
+exports.isDeliver = isDeliverComponent;
+exports.isDeliverComponent = isDeliverComponent;
 exports.isElement = isElement;
+exports.isElementComponent = isElementComponent;
+exports.isFragmentElement = isFragmentElement;
+exports.isNativeComponent = isNativeComponent;
 exports.isProduction = isProduction;
+exports.isProxy = isProxy;
+exports.isRenderComponent = isRenderComponent;
+exports.isRenderElement = isRenderElement;
+exports.isShellComponent = isShellComponent;
+exports.isSimpleComponent = isSimpleComponent;
 exports.isSimpleElement = isSimpleElement;
-exports.isSimpleTag = isSimpleTag;
-exports.label = label$1;
+exports.label = label;
 exports.lazy = lazy;
-exports.mComponent = mComponent;
-exports.mConfig = mConfig;
-exports.mName = mName;
-exports.mNative = mNative;
-exports.mRender = mRender;
-exports.mSimple = mSimple;
-exports.mType = mType;
-exports.mark = mark;
 exports.nameSymbol = nameSymbol;
+exports.nextTick = nextTick;
 exports.objectTypeSymbol = objectTypeSymbol;
-exports.objectTypeSymbolDeliver = objectTypeSymbolDeliver;
+exports.objectTypeSymbolContainerComponent = objectTypeSymbolContainerComponent;
+exports.objectTypeSymbolDeliverComponent = objectTypeSymbolDeliverComponent;
 exports.objectTypeSymbolElement = objectTypeSymbolElement;
+exports.objectTypeSymbolElementComponent = objectTypeSymbolElementComponent;
+exports.objectTypeSymbolHookEntity = objectTypeSymbolHookEntity;
+exports.objectTypeSymbolNativeComponent = objectTypeSymbolNativeComponent;
+exports.objectTypeSymbolRenderComponent = objectTypeSymbolRenderComponent;
+exports.objectTypeSymbolRootEntity = objectTypeSymbolRootEntity;
+exports.objectTypeSymbolShellComponent = objectTypeSymbolShellComponent;
+exports.objectTypeSymbolSimpleComponent = objectTypeSymbolSimpleComponent;
+exports.propsSymbol = propsSymbol;
 exports.ref = ref;
 exports.refresh = refresh;
 exports.register = register;
 exports.render = render;
-exports.renderSymbol = renderSymbol;
+exports.rendererSymbol = rendererSymbol;
 exports.setHook = setHook;
-exports.typeSymbol = typeSymbol;
 exports.useService = useService;
 exports.useValue = useValue;
 exports.version = version;
