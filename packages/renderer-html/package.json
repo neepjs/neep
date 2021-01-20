@@ -22,10 +22,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/neepjs/neep.git"
+    "url": "git+https://gitee.com/neepjs/neep.git"
   },
   "bugs": {
-    "url": "https://github.com/neepjs/neep/issues"
+    "url": "https://gitee.com/neepjs/neep/issues"
   },
-  "homepage": "https://github.com/neepjs/neep#readme"
+  "homepage": "https://gitee.com/neepjs/neep#readme"
 }
