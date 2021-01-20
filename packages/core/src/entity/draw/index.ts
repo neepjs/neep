@@ -1,15 +1,16 @@
-import { IRender, MountedNode, TreeNode } from '../../type';
+import { IRenderer, TreeNodeList, MountOptions, MountedNode } from '../../type';
 import { updateAll } from './update';
 import { createAll } from './create';
-export { unmount, getNodes, setRefList } from './utils';
+export { unmount, getNodes } from './utils';
 
 export default function draw(
-	iRender: IRender,
-	source: (TreeNode | TreeNode[])[],
+	renderer: IRenderer,
+	mountOptions: MountOptions,
+	source: TreeNodeList,
 	tree?: (MountedNode | MountedNode[])[],
 ): (MountedNode | MountedNode[])[] {
-	if (tree) {
-		return updateAll(iRender, source, tree);
+	if (!tree) {
+		return createAll(renderer, mountOptions, source);
 	}
-	return createAll(iRender, source);
+	return updateAll(renderer, mountOptions, source, tree);
 }

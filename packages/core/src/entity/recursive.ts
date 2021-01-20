@@ -1,5 +1,5 @@
 export interface RecursiveArray<T> extends Array<RecursiveItem<T>>{}
-export type RecursiveItem<T> = T | RecursiveArray<T>;
+export type RecursiveItem<T> = T | RecursiveItem<T>[];
 
 export function *recursive2iterable<T>(
 	list: RecursiveItem<T>,

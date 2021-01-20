@@ -1,7 +1,6 @@
-export const ScopeSlot = 'neep:ScopeSlot';
-export const SlotRender = 'neep:SlotRender';
-export const Slot = 'neep:slot';
-export const Value = 'neep:value';
-export const Container = 'neep:container';
+export const ScopeSlot = 'core:scopeslot';
+export const Render = 'core:render';
+export const Slot = 'core:slot';
+export const Container = 'core:container';
 export const Template = 'template';
 export const Fragment = Template;

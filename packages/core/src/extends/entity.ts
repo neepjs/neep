@@ -1,10 +1,17 @@
-import { Entity, EntityConstructor } from '../type';
-import { safeify } from '../install';
+import {
+	ComponentEntity,
+	EntityConstructor,
+	StandardComponent,
+} from '../type';
+import { safeify } from '../install/monitorable';
 
 const constructors: EntityConstructor[] = [];
-export function initEntity(
-	entity: Entity,
-): Entity {
+export function initEntity<
+	C extends StandardComponent<any, any, any>,
+	Parent extends ComponentEntity<any, any> | undefined | never,
+>(
+	entity: ComponentEntity<C, Parent>,
+): ComponentEntity<C, Parent> {
 	for (const constructor of constructors) {
 		constructor(entity);
 	}

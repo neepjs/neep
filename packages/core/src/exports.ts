@@ -1,13 +1,14 @@
 export { default as install } from './install';
 export { default as Error } from './Error';
-export { default as EventEmitter } from './EventEmitter';
 export { default as render } from './render';
-export { register } from './register';
+export { default as register } from './register';
+export * from './entity';
+export * from './create';
+export * from './is';
 export * from './components';
 export * from './constant';
 export * from './auxiliary';
-export * from './extends';
-export * from './create';
 export * from './type';
 export * from './symbols';
 export * from './hook';
+export * from './extends';

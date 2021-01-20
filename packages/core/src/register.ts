@@ -1,7 +1,10 @@
 import { Component } from './type';
 
-export const components: Record<string, Component> = Object.create(null);
+export const components: Record<string, Component<any>> = Object.create(null);
 
-export function register(name: string, component: Component): void {
+export default function register(
+	name: string,
+	component: Component<any>,
+): void {
 	components[name] = component;
 }

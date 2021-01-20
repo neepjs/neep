@@ -1,16 +1,13 @@
 import { isProduction } from '../constant';
-import { current } from '../extends';
-import { setLabel } from '../extends/label';
+import { Label } from '../type';
+import { setLabels } from '../extends/current';
 
-export function label(text: string, color = ''): void {
+
+export function label(...label: (string | Label)[]): void {
 	if (!isProduction) {
-		if (!current) {
-			setLabel([text, color]);
-			return;
-		}
-		Reflect.defineProperty(current.exposed, '$label', {
-			value: [text, color],
-			configurable: true,
-		});
+		const labels = label.filter(Boolean).map(t => typeof t === 'string' ? {text: t} : t);
+		if (!setLabels) { return; }
+		setLabels(labels);
+
 	}
 }

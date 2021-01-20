@@ -1,25 +1,21 @@
-import { NeepNode, TreeNode, Delivered } from '../../type';
-import { getRender } from '../../install';
-import { typeSymbol, deliverKeySymbol } from '../../symbols';
+import { Node, TreeNode, ValueElement, TreeNodeList } from '../../type';
 import { recursive2iterable } from '../recursive';
-import EntityObject from '../EntityObject';
+import BaseProxy from '../proxy/BaseProxy';
 import { toElement, destroy } from './utils';
 import { createItem } from './create';
-import { isDeliver } from '../../auxiliary/deliver';
-import { Container, Value } from '../../auxiliary';
 
 /**
  * 更新树节点
- * @param nObject Neep 对象
+ * @param proxy Neep 对象
  * @param source 用于替换的源
  * @param tree 已有树
  */
 function updateList(
-	nObject: EntityObject,
-	delivered: Delivered,
+	proxy: BaseProxy<any>,
 	source: any[],
-	tree: TreeNode | TreeNode[],
+	tree: TreeNode | null | TreeNode[],
 ): TreeNode[] {
+	if (!tree) { tree = []; }
 	if (!Array.isArray(tree)) { tree = [tree]; }
 	const newList: TreeNode[] = [];
 	for (const src of recursive2iterable(source)) {
@@ -28,15 +24,20 @@ function updateList(
 		const index = tree.findIndex(it =>
 			it.tag === node.tag && it.key === node.key);
 		if (index >= 0) {
-			newList.push(updateItem(
-				nObject,
-				delivered,
+			const newNode = updateItem(
+				proxy,
 				node,
 				tree[index],
-			));
+			);
+			if (newNode) {
+				newList.push(newNode);
+			}
 			tree.splice(index, 1);
 		} else {
-			newList.push(createItem(nObject, delivered, node));
+			const newNode = createItem(proxy, node);
+			if (newNode) {
+				newList.push(newNode);
+			}
 		}
 	}
 	destroy(tree);
@@ -47,131 +48,62 @@ function updateList(
  * 更新树节点
  * @param tree 已有树
  * @param source 用于替换的源
- * @param nObject Neep 对象
+ * @param proxy Neep 对象
  */
 function updateItem(
-	nObject: EntityObject,
-	delivered: Delivered,
-	source: NeepNode,
-	tree?: TreeNode | TreeNode[],
-): TreeNode {
+	proxy: BaseProxy<any>,
+	source: Node | ValueElement,
+	tree?: TreeNode | null | TreeNode[],
+): TreeNode | null {
 	if (!tree) {
-		return createItem(nObject, delivered, source);
+		return createItem(proxy, source);
 	}
 	if (!source) {
 		destroy(tree);
-		return { tag: null, key: undefined, children: [] };
+		return null;
 	}
 	if (Array.isArray(tree)) {
 		if (!tree.length) {
-			return createItem(nObject, delivered, source);
+			return createItem(proxy, source);
 		}
 		const index = tree.findIndex(it => it.tag === source.tag);
 		if (index < 0) {
 			destroy(tree);
-			return createItem(nObject, delivered, source);
+			return createItem(proxy, source);
 		}
 		const all = tree;
 		[tree] = tree.splice(index, 1);
 		destroy(all);
 	}
-	const { tag } = source;
-	if (tag !== tree.tag) {
+	if (source.tag !== tree.tag) {
 		destroy(tree);
-		return createItem(nObject, delivered, source);
+		return createItem(proxy, source);
 	}
-	if (!tag) { return { tag: null, key: undefined, children: [] }; }
-
-
-	if (isDeliver(tag)) {
-		const newDelivered = tree.delivered || Object.create(delivered);
-		Reflect.defineProperty(newDelivered, tag[deliverKeySymbol], {
-			configurable: true,
-			enumerable: true,
-			value: source.props ? source.props.value : undefined,
-		});
-		return {
-			...source,
-			delivered: newDelivered,
-			children: [...updateAll(
-				nObject,
-				newDelivered,
-				source.children,
-				tree.children,
-			)],
-		};
+	if (tree.proxy) {
+		const { proxy } = tree;
+		const { props = {}, key } = source;
+		proxy.update(source.props || {}, source.children || []);
+		return { tag: tree.tag, props, key, proxy };
 	}
-
-	if (typeof tag !== 'string') {
-		if (tag[typeSymbol] === 'simple') {
-			return {
-				...source,
-				children: [...updateAll(
-					nObject,
-					delivered,
-					source.children,
-					tree.children,
-				)],
-				component: undefined,
-			};
-		}
-		const { component } = tree;
-		if (!component) { return createItem(nObject, delivered, source); }
-		component.update(source.props || {}, source.children);
-		return { ...source, children: [], component };
-	}
-	const ltag = tag.toLowerCase();
-	if (ltag === Container) {
-		const { component } = tree;
-		if (!component) { return createItem(nObject, delivered, source); }
-		const type = source?.props?.type;
-		const iRender = type ? getRender(type) : nObject.iRender;
-		if (iRender !== component.iRender) {
-			return createItem(nObject, delivered, source);
-		}
-		component.update(source.props || {}, source.children);
-		return { ...source, children: [], component };
-	}
-	if (ltag === Value) {
-		return { ...source, children: [] };
-	}
-	if (ltag.substr(0, 5) === 'neep:' || ltag === 'template') {
-		return {
-			...source,
-			children: [...updateAll(
-				nObject,
-				delivered,
-				source.children,
-				tree.children,
-			)],
-		};
-	}
-	return {
-		...source,
-		children: [...updateAll(nObject,
-			delivered,
-			source.children,
-			tree.children)],
-	};
+	destroy(tree);
+	return createItem(proxy, source);
 }
 
 
 export function *updateAll(
-	nObject: EntityObject,
-	delivered: Delivered,
+	proxy: BaseProxy<any>,
 	source: any,
-	tree: (TreeNode | TreeNode[])[],
-): Iterable<TreeNode | TreeNode[]> {
+	tree: TreeNodeList,
+): Iterable<TreeNode | null | TreeNode[]> {
 	if (!Array.isArray(source)) { source = [source]; }
-
 	let index = 0;
 	let length = Math.min(source.length || 1, tree.length);
 	for (; index < length; index++) {
 		const src = source[index];
 		if (Array.isArray(src)) {
-			yield updateList(nObject, delivered, src, tree[index]);
+			yield updateList(proxy, src, tree[index]);
 		} else {
-			yield updateItem(nObject, delivered, toElement(src), tree[index]);
+			yield updateItem(proxy, toElement(src), tree[index]);
 		}
 	}
 	length = Math.max(source.length, source.length);
@@ -186,10 +118,11 @@ export function *updateAll(
 		for (; index < length; index++) {
 			const src = toElement(source[index]);
 			if (Array.isArray(src)) {
-				yield [...recursive2iterable(src)]
-					.map(it => createItem(nObject, delivered, it));
+				yield src.flat(Infinity)
+					.map(it => createItem(proxy, it))
+					.filter(Boolean) as TreeNode[];
 			} else {
-				yield createItem(nObject, delivered, src);
+				yield createItem(proxy, src);
 			}
 		}
 	}

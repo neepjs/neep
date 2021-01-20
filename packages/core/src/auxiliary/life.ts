@@ -2,12 +2,11 @@
  * 组件上下文环境专用 API
  * @description 简单组件不支持
  **********************************/
-import { Value, WatchCallback } from 'monitorable';
-import { Hooks, Service } from '../type';
-import { checkCurrent } from '../extends';
-import NeepError from '../Error';
+import { Value, WatchCallback, HookName, Service, CancelWatch } from '../type';
+import { checkCurrent } from '../extends/current';
 import { setHook } from '../hook';
 import { isValue, value, computed } from './state';
+import { getUseHookValue } from '../extends/current';
 
 
 /**********************************
@@ -24,6 +23,7 @@ import { isValue, value, computed } from './state';
 export function watch<T>(
 	value: Value<T>,
 	cb: WatchCallback<T>,
+	run?: boolean,
 ): () => void;
 /**
  * 监听指定值的变化
@@ -36,17 +36,24 @@ export function watch<T>(
 export function watch<T>(
 	value: () => T,
 	cb: (v: T, stopped: boolean) => void,
+	run?: boolean,
 ): () => void;
-
 export function watch<T>(
 	value: Value<T> | (() => T),
 	cb: (v: Value<T> | T, stopped: boolean) => void,
+	run?: boolean,
 ): () => void {
 	const entity = checkCurrent('watch');
 	if (typeof value !== 'function') { return () => {}; }
-	const stop = isValue(value)
-		? value.watch(cb)
-		: computed(value).watch((v, s) => cb(v(), s));
+	let stop: CancelWatch;
+	if (isValue(value)) {
+		stop = value.watch(cb);
+		cb(value, false);
+	} else {
+		const v = computed(value);
+		stop = v.watch((v, s) => cb(v(), s));
+		cb(v(), false);
+	}
 	setHook('beforeDestroy', () => stop(), entity);
 	return stop;
 }
@@ -55,21 +62,11 @@ export function useValue(): Value<any>;
 export function useValue<T>(fn: () => T): T;
 export function useValue<T>(fn?: () => T): T | Value<any>;
 export function useValue<T>(fn?: () => T): T | Value<any> {
-	const entity = checkCurrent('useValue');
-	const index = entity.$_valueIndex++;
-	const values = entity.$_values;
-	if (!entity.created) {
-		values[index] = undefined;
-		const v = typeof fn === 'function' ? fn() : value(undefined);
-		return values[index] = v;
-	}
-	if (index >= values.length) {
-		throw new NeepError(
-			'Inconsistent number of useValue executions',
-			'life',
-		);
-	}
-	return values[index];
+	return getUseHookValue<T | Value<any>>(
+		'useValue',
+		'core',
+		typeof fn === 'function' ? fn : () => value(undefined),
+	);
 
 }
 
@@ -80,22 +77,11 @@ export function useService<T, P extends any[]>(
 	fn: Service<T, P>,
 	...p: P
 ): T {
-	const entity = checkCurrent('useService');
-	const index = entity.$_serviceIndex++;
-	const services = entity.$_services;
-	if (!entity.created) {
-		services[index] = undefined;
-		const v = fn(entity, ...p);
-		services[index] = v;
-		return v;
-	}
-	if (index >= services.length) {
-		throw new NeepError(
-			'Inconsistent number of useService executions',
-			'life',
-		);
-	}
-	return services[index];
+	return getUseHookValue<T>(
+		'useService',
+		'core',
+		entity => fn(entity, ...p),
+	);
 }
 
 export function byService<T, P extends any[]>(
@@ -116,7 +102,7 @@ export function byService<T, P extends any[]>(
  * @param hook 钩子
  * @param initOnly 是否仅在初始化时有效
  */
-export function hook<H extends Hooks>(
+export function hook<H extends HookName>(
 	name: H,
 	hook: () => void,
 	initOnly?: boolean,
@@ -134,94 +120,4 @@ export function hook(
 	const entity = checkCurrent('setHook');
 	if (initOnly && entity.created) { return undefined; }
 	return setHook(name, () => hook(), entity);
-}
-
-/**********************************
- * 配置 API
- **********************************/
-
-function setValue<T>(
-	obj: any,
-	name: string | number | symbol,
-	value: T | Value<T> | (() => T),
-	opt?: boolean | ((value: T) => void),
-): void {
-	if (
-		typeof name === 'string'
-		&& ['$', '_'].includes(name[0])
-	) {
-		return;
-	}
-	if (isValue(value) && opt) {
-		Reflect.defineProperty(obj, name, {
-			get() { return value(); },
-			set(v) { value(v); },
-			configurable: true,
-			enumerable: true,
-		});
-		return;
-	}
-	if (typeof value === 'function' && opt) {
-		Reflect.defineProperty(obj, name, {
-			get: value as () => T,
-			set: typeof opt === 'function' ? opt : undefined,
-			configurable: true,
-			enumerable: true,
-		});
-		return;
-	}
-	Reflect.defineProperty(obj, name, {
-		get() { return value; },
-		configurable: true,
-		enumerable: true,
-	});
-}
-
-
-/**
- * 将 Value 导出
- * @param name 导出用的名称
- */
-export function expose<T>(
-	name: string | number | symbol,
-	value: Value<T>,
-	mix?: boolean,
-): void;
-/**
- * 将普通值导出
- * @param name
- * @param value
- */
-export function expose<T>(
-	name: string | number | symbol,
-	value: T,
-): void;
-/**
- * 设置基于 getter 的导出
- * @param name
- * @param getter
- * @param nonModifiable
- */
-export function expose<T>(
-	name: string | number | symbol,
-	getter: () => T,
-	nonModifiable: true,
-): void;
-/**
- * 设置基于 getter/setter 的导出
- * @param name
- * @param getter
- * @param setter
- */
-export function expose<T>(
-	name: string | number | symbol,
-	getter: () => T,
-	setter: (value: T) => void,
-): void;
-export function expose<T>(
-	name: string | number | symbol,
-	value: T | Value<T> | (() => T),
-	opt?: boolean | ((value: T) => void),
-): void {
-	setValue(checkCurrent('expose', true).exposed, name, value, opt);
 }

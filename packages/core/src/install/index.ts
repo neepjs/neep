@@ -1,26 +1,24 @@
-import * as monitorableApi from 'monitorable';
-import { IRender, Devtools } from '../type';
+import { IRenderer, Devtools } from '../type';
 import { isProduction } from '../constant';
 import installDevtools from './devtools';
-import installRender from './render';
+import installRender from './renderer';
 import installMonitorable from './monitorable';
 
 
 export * from './devtools';
-export * from './render';
-export * from './monitorable';
+export * from './renderer';
 
 
 export interface InstallOptions {
-	monitorable?: typeof monitorableApi;
-	render?: IRender;
+	monitorable?: typeof import('monitorable');
+	renderer?: IRenderer;
 	devtools?: Devtools;
 }
 
 
 export default function install(apis: InstallOptions): void {
 	installMonitorable(apis.monitorable);
-	installRender(apis.render);
+	installRender(apis.renderer);
 	if (!isProduction) {
 		installDevtools(apis.devtools);
 	}

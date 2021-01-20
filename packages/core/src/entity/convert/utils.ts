@@ -1,31 +1,27 @@
-import { NeepElement, TreeNode } from '../../type';
-import { isElement, Value } from '../../auxiliary';
-import { objectTypeSymbol, objectTypeSymbolElement } from '../../symbols';
+import { Element, TreeNode, ValueElement, TreeNodeList } from '../../type';
+import { isElement } from '../../auxiliary';
 
-/** 强制转换为 NeepElement */
-export function toElement(t: any): null | NeepElement {
+/** 强制转换为 Element */
+export function toElement(t: any): null | Element | ValueElement {
 	if (t === false || t === null || t === undefined) {
 		return null;
 	}
 	if (isElement(t)) {
 		return t;
 	}
-	return {
-		[objectTypeSymbol]: objectTypeSymbolElement,
-		tag: Value,
-		key: t,
-		value: t,
-		children: [],
-	};
+	return { key: t, props: {value: t}, children: [] };
 }
 
 export function destroy(
-	tree: TreeNode | TreeNode[] | (TreeNode | TreeNode[])[],
+	tree: TreeNode | TreeNode[] | null | TreeNodeList,
 ): void {
+	if (!tree) { return; }
 	if (Array.isArray(tree)) {
 		tree.forEach(t => destroy(t));
 		return;
 	}
-	const { component } = tree;
-	if (component) { component.destroy(); }
+	const { proxy } = tree;
+	if (proxy) {
+		return proxy.destroy();
+	}
 }

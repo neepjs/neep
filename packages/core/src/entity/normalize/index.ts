@@ -1,101 +1,113 @@
+
 import {
-	NeepElement, Exposed, Delivered,
-	Render, NeepNode, Slots, Context, IRender, Component, Deliver,
+	Element,
+	Slots,
+	SimpleComponent,
+	Component,
+	ComponentEntity,
+	IRenderer,
 } from '../../type';
-import {
-	renderSymbol,
-	typeSymbol,
-	componentsSymbol,
-	deliverKeySymbol,
-	objectTypeSymbol,
-	objectTypeSymbolElement,
-} from '../../symbols';
-import { isProduction } from '../../constant';
-import {
-	isElement, Value, SlotRender, Fragment,
-} from '../../auxiliary';
-import { getLabel } from '../../extends/label';
-import ComponentEntity from '../ComponentEntity';
-import EntityObject from '../EntityObject';
-import { getSlots, setSlots } from '../slot';
-import { initContext } from '../../extends/context';
+import { isValue, postpone } from '../../install/monitorable';
+import { componentsSymbol, objectTypeSymbol, objectTypeSymbolElement } from '../../symbols';
+import ComponentProxy from '../proxy/ComponentProxy';
 import EventEmitter from '../../EventEmitter';
-import replaceNode from './replaceNode';
-import { isValue, postpone } from '../../install';
-import { refresh } from '../../extends';
-import { RecursiveItem, RecursiveArray } from '../recursive';
-import { getDelivered, isDeliver } from '../../auxiliary/deliver';
+import { isSimpleComponent } from '../../is';
+import { getSlots, setSlots, createSlotApi, setSlot, renderSlot } from '../slot';
+import { initContext } from '../../extends/context';
 
+import {
+	isElement,
+	Fragment,
+	Render,
+	Slot,
+	ScopeSlot,
+	Container,
+} from '../../auxiliary';
+import getDelivered from '../getDelivered';
+import refresh from '../../extends/refresh';
+import { components as globalComponents } from '../../register';
 
-function getComponents(
-	...components: (Record<string, Component> | undefined)[]
-): Record<string, Component>[] {
-	return components.filter(Boolean) as Record<string, Component>[];
+export function findComponent(
+	tag: any,
+	components: Record<string, Component<any>>[],
+	native?: boolean,
+): Component<any> | string | null {
+	if (!tag) { return null; }
+	if (typeof tag !== 'string') { return tag; }
+	if (/^core:/i.test(tag)) {
+		let ltag = tag.toLowerCase();
+		if (ltag === Container) { return ltag; }
+		if (ltag === ScopeSlot) { return ltag; }
+		if (ltag === Render) { return ltag; }
+		if (ltag === Slot) { return native ? 'slot' : ScopeSlot; }
+		return Fragment;
+	}
+	if (tag === Fragment) { return tag; }
+	if (tag === 'slot') { return tag; }
+	for (const list of components) {
+		const component = list[tag];
+		if (component) { return component; }
+	}
+	return globalComponents[tag] || tag;
+}
+export function getComponents(
+	...components: (Record<string, Component<any>> | undefined | null)[]
+): Record<string, Component<any>>[] {
+	return components.filter(Boolean) as Record<string, Component<any>>[];
+}
+
+function getNodeArray(result: any): any[] {
+	if (Array.isArray(result)) { return result; }
+	if (!isElement(result)) { return [result]; }
+	if (result.tag !== Fragment) { return [result]; }
+	return result.children;
 }
 
 function execSimple(
-	nObject: EntityObject,
-	delivered: Delivered,
-	node: NeepElement,
-	tag: Component,
-	components: Record<string, Component>[],
+	normalizeAuxiliaryObject: NormalizeAuxiliaryObject,
+	node: Element,
+	tag: SimpleComponent<any, any>,
+	components: Record<string, Component<any>>[],
 	children: any[],
-): NeepElement {
-	if (node.execed) { return node; }
-	const { iRender } = nObject;
+): Element {
 	const slotMap = Object.create(null);
-	getSlots(iRender, children, slotMap);
+	getSlots(normalizeAuxiliaryObject.renderer, children, slotMap);
 	const slots = setSlots(slotMap);
 	const event = new EventEmitter();
 	event.updateInProps(node.props);
-	const props = {...node.props};
-	const context: Context = initContext({
-		slots,
-		created: false,
-		parent: nObject.exposed,
-		delivered<T>(deliver: Deliver<T>): T {
-			return getDelivered(delivered, deliver);
-		},
-		children: new Set<Exposed>(),
+	const { refresh, delivered, simpleParent } =  normalizeAuxiliaryObject;
+
+	const result = tag({...node.props}, initContext({
+		isShell: true,
+		slot: createSlotApi(slots, true),
+		parent: simpleParent,
+		delivered: deliver => getDelivered(delivered, deliver),
 		childNodes: children,
-		refresh(f) { nObject.refresh(f); },
+		refresh,
 		emit: event.emit,
-	});
-	if (!isProduction) { getLabel(); }
-	const result = tag(props, context);
-	let label: [string, string] | undefined;
-	if (!isProduction) { label = getLabel(); }
+	}));
 	const nodes = init(
-		nObject,
-		delivered,
-		renderNode(
-			nObject.iRender,
-			result,
-			context,
-			tag[renderSymbol],
-		),
+		normalizeAuxiliaryObject,
+		getNodeArray(result),
 		slots,
 		getComponents(...components, tag[componentsSymbol]),
 		false,
-	) as NeepNode[];
-
+		true,
+	);
 
 	return {
 		...node,
 		tag,
 		execed: true,
 		children: Array.isArray(nodes) ? nodes : [nodes],
-		label,
 	};
 }
 
-
 function getSlotRenderFn(
-	nObject: EntityObject,
-	delivered: Delivered,
+	normalizeAuxiliaryObject: NormalizeAuxiliaryObject,
 	children: any[],
 	slots: Slots,
-	components: Record<string, Component>[],
+	components: Record<string, Component<any>>[],
 	native: boolean,
 ): null | Function {
 	if (children.length !== 1) {
@@ -105,17 +117,17 @@ function getSlotRenderFn(
 	if (isValue(renderFn) || typeof renderFn !== 'function') {
 		return null;
 	}
-	const { slotRenderFnList } = nObject;
+	const { slotRenderFnList } = normalizeAuxiliaryObject;
 	const fn = slotRenderFnList.get(renderFn);
 	if (fn) { return fn; }
-	const newFn = function(this: any, ...p: any[]): any {
+	const newFn = function(this: any, ...p: any[]): any[] {
 		return init(
-			nObject,
-			delivered,
+			normalizeAuxiliaryObject,
 			renderFn.call(this, ...p),
 			slots,
 			components,
 			native,
+			false,
 		);
 	};
 	slotRenderFnList.set(renderFn, newFn);
@@ -124,56 +136,64 @@ function getSlotRenderFn(
 
 
 function exec<T>(
-	nObject: EntityObject,
-	delivered: Delivered,
-	node: RecursiveArray<T>,
+	node: T[],
+	normalizeAuxiliaryObject: NormalizeAuxiliaryObject,
 	slots: Slots,
-	components: Record<string, Component>[],
+	components: Record<string, Component<any>>[],
 	native: boolean,
-): RecursiveArray<T | NeepElement>;
+	simpleSlot: boolean,
+): (T | Element)[];
 function exec<T>(
-	nObject: EntityObject,
-	delivered: Delivered,
-	node: RecursiveItem<T>,
+	node: T,
+	normalizeAuxiliaryObject: NormalizeAuxiliaryObject,
 	slots: Slots,
-	components: Record<string, Component>[],
+	components: Record<string, Component<any>>[],
 	native: boolean,
-): RecursiveItem<T | NeepElement>;
+	simpleSlot: boolean,
+): T | Element;
 
 function exec<T>(
-	nObject: EntityObject,
-	delivered: Delivered,
-	node: RecursiveItem<T>,
+	node: T | T[],
+	normalizeAuxiliaryObject: NormalizeAuxiliaryObject,
 	slots: Slots,
-	components: Record<string, Component>[],
+	components: Record<string, Component<any>>[],
 	native: boolean,
-): RecursiveItem<T | NeepElement> {
+	simpleSlot: boolean,
+): (T | Element) | (T | Element)[] {
 	if (Array.isArray(node)) {
-		return node.map(n =>
-			exec(nObject, delivered, n, slots, components, native));
-	}
-	if (!isElement(node)) { return node; }
-	let { tag, children } = node;
-	if (isDeliver(tag)) {
-		const newDelivered = Object.create(delivered);
-		Reflect.defineProperty(newDelivered, tag[deliverKeySymbol], {
-			configurable: true,
-			enumerable: true,
-			value: node.props ? node.props.value : undefined,
-		});
-		return {...node, tag, children: children.map(child => exec(
-			nObject,
-			newDelivered,
-			child,
+		return node.map(n => exec(
+			n,
+			normalizeAuxiliaryObject,
 			slots,
 			components,
 			native,
-		)) };
+			simpleSlot,
+		));
 	}
-	if (tag === SlotRender) {
+	if (!isElement(node)) { return node; }
+	if (node.tag === ScopeSlot && node.inserted) { return node; }
+	const { children } = node;
+	const tag = findComponent(node.tag, components, native);
+	if (isSimpleComponent(tag)) {
+		if (node.execed) { return node; }
+		return execSimple(
+			normalizeAuxiliaryObject,
+			node,
+			tag,
+			components,
+			children.map(n => exec(
+				n,
+				normalizeAuxiliaryObject,
+				slots,
+				components,
+				native,
+				simpleSlot,
+			)),
+		);
+	}
+	if (tag === Render) {
 		const slotRenderFn = getSlotRenderFn(
-			nObject,
-			delivered,
+			normalizeAuxiliaryObject,
 			children,
 			slots,
 			components,
@@ -183,122 +203,104 @@ function exec<T>(
 			return {
 				...node,
 				children: [slotRenderFn],
-			} as NeepElement;
+			} as Element;
 		}
 	}
-
-	if (typeof tag !== 'function' || tag[typeSymbol] !== 'simple') {
-		return { ...node, tag, children: children
-			.map(n => exec(
-				nObject,
-				delivered,
+	if (tag !== ScopeSlot) {
+		return {
+			...node,
+			tag,
+			children: children.map(n => exec(
 				n,
+				normalizeAuxiliaryObject,
 				slots,
 				components,
 				native,
-			)) };
+				simpleSlot,
+			)),
+		} as Element;
 	}
 
-	return execSimple(
-		nObject,
-		delivered,
-		node,
-		tag,
-		components,
-		children,
-	);
-}
-
-
-function getItem(node: any): RecursiveItem<NeepNode> {
-	if (Array.isArray(node)) {
-		return node.map(getItem);
-	}
-	if (isElement(node)) { return node; }
-	if (node === undefined || node === null) {
-		return {
-			[objectTypeSymbol]: objectTypeSymbolElement,
-			tag: null,
-			key: undefined,
-			children: [],
-		};
-	}
-	return {
+	const { props } = node;
+	const args = props?.argv || {};
+	const slotName = node.props?.name || 'default';
+	const slot = simpleSlot || slotName in slots
+		? slots[slotName]
+		: setSlot(slots, slotName);
+	const el: Element = {
 		[objectTypeSymbol]: objectTypeSymbolElement,
-		key: undefined,
-		tag: Value,
-		value: node,
-		children: [],
+		props,
+		key: node.key,
+		tag: ScopeSlot,
+		inserted: true,
+		slot: slotName,
+		isDefault: !slot,
+		children: slot
+			? renderSlot(slot, args)
+			: getChildren(children, args).map(n => exec(
+				n,
+				normalizeAuxiliaryObject,
+				slots,
+				components,
+				native,
+				simpleSlot,
+			)),
 	};
+	return el;
 }
-function renderNode(
-	iRender: IRender,
-	node: any,
-	context: Context,
-	render?: Render,
-): any[] {
-	if (Array.isArray(node)) {
-		return node;
-	}
-	if (isElement(node)) {
-		if (node.tag === Fragment) {
-			return node.children.map(getItem);
-		}
-		return [node];
-	}
-	if (!node || !render || iRender.isNode(node)) {
-		return [node];
-	}
-	if (typeof node !== 'object') {
-		return [node];
-	}
-	const list = render(node, context);
-	if (Array.isArray(list)) {
-		return list;
-	}
-	return [list];
+function getChildren(children: any[], args: any): any[] {
+	if (children.length !== 1) { return children; }
+	const [fn] = children;
+	if (typeof fn !== 'function') { return children; }
+	return getNodeArray(fn(args));
+}
+
+
+export interface NormalizeAuxiliaryObject {
+	refresh: (f?: () => void) => void;
+	slotRenderFnList: WeakMap<Function, Function>;
+	delivered: Record<any, any>;
+	simpleParent: ComponentEntity<any, any> | undefined;
+	renderer: IRenderer;
 }
 export function init(
-	nObject: EntityObject,
-	delivered: Delivered,
+	normalizeAuxiliaryObject: NormalizeAuxiliaryObject,
 	node: any[],
 	slots: Slots,
-	components: Record<string, Component>[],
+	components: Record<string, Component<any>>[],
 	native: boolean,
-): RecursiveArray<NeepNode> {
+	simpleSlot: boolean,
+): any[] {
 	return refresh(() => postpone(() => exec(
-		nObject,
-		delivered,
-		replaceNode(
-			node,
-			slots,
-			components,
-			native,
-			true,
-		).map(getItem),
+		node,
+		normalizeAuxiliaryObject,
 		slots,
 		components,
 		native,
+		simpleSlot,
 	)));
 }
 
 
 export default function normalize(
-	nObject: ComponentEntity,
+	proxy: ComponentProxy<any, any, any, any>,
+	slotRenderFnList: WeakMap<Function, Function>,
+	refresh: (f?: () => void) => void,
 	result: any,
-): RecursiveArray<NeepNode> {
-	const { component } = nObject;
+	components = proxy.tag[componentsSymbol] || null,
+): any[] {
 	return init(
-		nObject,
-		nObject.delivered,
-		renderNode(
-			nObject.iRender,
-			result,
-			nObject.context,
-			component[renderSymbol],
-		),
-		nObject.slots,
-		getComponents(component[componentsSymbol]),
-		Boolean(nObject.native),
+		{
+			renderer: proxy.renderer,
+			refresh,
+			slotRenderFnList,
+			delivered: proxy.delivered,
+			simpleParent: proxy.entity,
+		},
+		getNodeArray(result),
+		proxy.slots,
+		getComponents(components),
+		Boolean(proxy.isNative),
+		false,
 	);
 }

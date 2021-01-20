@@ -1,20 +1,37 @@
-import { Component, Context, NeepNode } from '../type';
-import { value } from '../install';
-import { mSimple, mark, mName } from '../create';
-import { createElement } from '../auxiliary';
+import {
+	Component,
+	SimpleComponent,
+} from '../type';
+import { value } from '../install/monitorable';
+import {
+	createElement,
+} from '../auxiliary';
+import {
+	createSimpleComponent,
+} from '../create';
+
+const LOADING = 0;
+type LOADING = typeof LOADING;
+const FAILING = -1;
+type FAILING = typeof FAILING;
+const COMPLETE = 1;
+type COMPLETE = typeof COMPLETE;
 
 export default function lazy<
-	P extends object = object,
-	C extends Component<P, any> = Component<P, any>
+	P extends object,
+	C extends Component<P>
 >(
 	component: () => Promise<C | { default: C }>,
-	Placeholder?: Component<{ loading: boolean }, any>,
-): Component<P> {
-	const reslut = value<0 | 1 | -1>(0);
+	Placeholder?: Component<{ loading: boolean }>,
+): SimpleComponent<P, any> {
+	const reslut = value<LOADING | FAILING | COMPLETE>(LOADING);
+	let isLoad = false;
 	const ComponentValue = value<undefined | C>(undefined);
 	async function load(): Promise<void> {
+		if (isLoad) { return; }
+		isLoad = true;
 		if (reslut()) { return; }
-		reslut(1);
+		reslut(COMPLETE);
 		try {
 			const c = await component();
 			if (typeof c === 'function') {
@@ -22,27 +39,24 @@ export default function lazy<
 				return;
 			}
 			if (!c) {
-				reslut(-1);
+				reslut(FAILING);
 				return;
 			}
 			if (typeof c.default === 'function') {
 				ComponentValue(c.default);
 				return;
 			}
-			reslut(-1);
-		} catch {
-			reslut(-1);
+			reslut(FAILING);
+		} catch (e) {
+			console.error(e);
+			reslut(FAILING);
 		}
 	}
-	function Lazy(
-		props: P,
-		{ childNodes }: Context,
-	): NeepNode {
+	return createSimpleComponent((props, { childNodes }) => {
 		const com = ComponentValue();
 		if (com) { return createElement(com, props, ...childNodes); }
 		load();
 		if (!Placeholder) { return null; }
-		return createElement(Placeholder, { loading: reslut() > 0});
-	}
-	return mark(Lazy, mSimple, mName('Lazy'));
+		return createElement(Placeholder, { loading: reslut() === LOADING});
+	}, {name: 'Lazy'});
 }

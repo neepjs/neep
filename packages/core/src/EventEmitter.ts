@@ -1,178 +1,202 @@
-import { markRead, markChange, printError } from './install';
-import { Emit, On } from './type';
-import { refresh } from './extends';
+import { markRead, markChange, printError } from './install/monitorable';
+import { Emit, On, Listener, EventInfo } from './type';
+import refresh from './extends/refresh';
 
-function getEventName(k: string): string {
-	if (k[0] === '@') { return k.substr(1); }
-	if (/^on[:-]/.test(k)) { return k.substr(3); }
-	if (/^n([:-])on(\1|:)/.test(k)) { return k.substr(5); }
-	return '';
+function createEmit<T, E extends Record<string, any>>(
+	emitter: EventEmitter<T, E>,
+	omitNames: (string | number | symbol)[] = [],
+): Emit<E> {
+	const emit = <N extends keyof E & string>(
+		name: N,
+		p: E[N],
+		options?: any,
+	): boolean => refresh(() => {
+		const cancelable = Boolean(options?.cancelable);
+		const {target} = emitter;
+		let defaultPrevented = true;
+		const eventInfo: EventInfo<any> = {
+			get target() { return target; },
+			get cancelable() { return cancelable; },
+			get defaultPrevented() { return defaultPrevented; },
+			get prevented() { return defaultPrevented; },
+			preventDefault() { defaultPrevented = false; },
+			prevent() { defaultPrevented = false; },
+		};
+		const events = emitter.events[name];
+		if (!events) { return defaultPrevented; }
+		for (const event of events) {
+			event(p, eventInfo);
+		}
+		return defaultPrevented;
+	});
+	emit.omit = (...names: string[]) => createEmit(emitter, [...omitNames, ...names]);
+	Reflect.defineProperty(emit, 'names', {
+		get:() => {
+			markRead(createEmit, 'names');
+			return [...emitter.names]
+				.filter(t => !omitNames.includes(t));
+		},
+		configurable: true,
+	});
+	return emit as any as Emit<E>;
 }
-interface AddEvent<T extends Record<string, any[]>> {
-	<N extends keyof T>(
-		entName: N,
-		listener: (...p: T[N]) => void,
-	): void
-}
 
-function addEventFromCollection(
-	addEvent: (entName: string, listener: (...p: any) => void) => void,
-	events: any,
-): void {
-	if (!events) { return; }
-	if (typeof events === 'function') {
-		const { names } = events as Emit;
-		if (!Array.isArray(names)) { return; }
-		for (const n of names) {
-			if (!n) { continue; }
-			addEvent(n, (...p) => events(n, ...p));
-		}
-		return;
-	}
-	if (typeof events !== 'object') { return; }
-	for (const k of Object.keys(events)) {
-		const f = events[k];
-		if (typeof f !== 'function') { continue; }
-		addEvent(k, f);
-	}
+export default class EventEmitter<T, E extends Record<string, any> = Record<string, any>> {
 
-}
-
-export default class EventEmitter<
-	T extends Record<string, any[]> = Record<string, any[]>
-> {
-	static update<T extends Record<string, any[]>>(
-		emitter: EventEmitter<T>,
-		events: any,
-	): (() => void)[] {
-		if (!events) { return []; }
-		const newHandles: (() => void)[] = [];
-		if (events && typeof events === 'object') {
-			for (const n of Object.keys(events)) {
-				if (!n) { continue; }
-				const fn = events[n];
-				if (typeof fn !== 'function') { continue; }
-				newHandles.push(emitter.on(n, fn));
-			}
-		}
-		return newHandles;
-	}
-	static updateInProps<T extends Record<string, any[]>>(
-		emitter: EventEmitter<T>,
-		props: any,
-		custom?: (addEvent: AddEvent<T>) => void,
-	): (() => void)[] {
-		if (!props) { return []; }
-
-		const newHandles: (() => void)[] = [];
-
-		function addEvent<N extends keyof T>(
-			entName: N,
-			listener: (...p: T[N]) => void,
-		): void {
-			newHandles.push(emitter.on(entName, listener));
-		}
-		for (const k of Object.keys(props)) {
-			const fn = props[k];
-			if (typeof fn !== 'function') { continue; }
-			const entName = getEventName(k);
-			if (!entName) { continue; }
-			addEvent(entName, fn);
-		}
-		addEventFromCollection(addEvent, props['@']);
-		addEventFromCollection(addEvent, props['n:on']);
-		addEventFromCollection(addEvent, props['n-on']);
-		if (typeof custom === 'function') {
-			custom(addEvent);
-		}
-		newHandles.push(...EventEmitter.update(emitter, props['@']));
-		return newHandles;
-	}
-
-	private readonly _names = new Set<keyof T>();
-	private readonly _cancelHandles = new Set<() => void>();
-	get names(): (keyof T)[] {
-		return [...this._names];
-	}
-	readonly emit: Emit<T>;
-	readonly on: On<T>;
+	private readonly _names = new Set<keyof E>();
+	get names(): (keyof E)[] { markRead(this, 'names'); return [...this._names]; }
+	readonly events: Record<string, Set<Listener<T, any>> | undefined> = Object.create(null);
+	readonly emit: Emit<E> = createEmit(this);
+	readonly on: On<T, E>;
+	target?: T;
 	constructor() {
-		const events: Record<keyof T, Set<(...p: any) => boolean>> = Object.create(null);
 		const names = this._names;
+		const eventSet = this.events;
 
-		function createEmit(
-			...omitNames: (string | number | symbol)[]
-		): Emit<T> {
-			function emit<N extends keyof T>(name: N, ...p: T[N]): boolean {
-				const event = events[name];
-				if (!event) { return true; }
-				return refresh(() => {
-					let res = true;
-					for (const fn of [...event]) {
-						res = fn(...p) && res;
-					}
-					return res;
-				});
-			}
-			emit.omit = (...names: string[]) =>
-				createEmit(...omitNames, ...names);
-			Reflect.defineProperty(emit, 'names', {
-				get:() => {
-					markRead(createEmit, 'names');
-					return [...names]
-						.filter(t => !omitNames.includes(t));
-				},
-				configurable: true,
-			});
-			return emit as any as Emit<T>;
-		}
-		const on: On<T> = (name, listener): () => void => {
-			function fn(...p: Parameters<typeof listener>): boolean {
+		const on = (name: string, listener: Listener<T, any>): (() => void) => {
+			function fn(p: any, event: EventInfo<T>): void {
 				try {
-					return listener(...p) !== false;
+					listener(p, event);
 				} catch (e) {
 					printError(e);
-					return true;
 				}
 			}
-			let event = events[name];
+			let event = eventSet[name];
 			if (!event?.size) {
 				event = new Set();
-				events[name] = event;
-				markChange(createEmit, 'names');
+				event.add(fn);
+				eventSet[name] = event;
 				names.add(name);
+				markChange(this, 'names');
+			} else {
+				event.add(fn);
 			}
-			event.add(fn);
 			let removed = false;
 			return () => {
 				if (removed) { return; }
 				removed = true;
+				if (!event) { return; }
 				event.delete(fn);
 				if (event.size) { return; }
-				markChange(createEmit, 'names');
 				names.delete(name);
+				markChange(this, 'names');
 			};
 		};
-		this.emit = createEmit();
 		this.on = on;
 	}
-	updateHandles(newHandles: (() => void)[]): (() => void)[] {
-		const eventCancelHandles = this._cancelHandles;
-		const oldHandles = [...eventCancelHandles];
-		eventCancelHandles.clear();
-		for (const fn of oldHandles) { fn(); }
-		newHandles.forEach(f => eventCancelHandles.add(f));
-		return newHandles;
+	private readonly __propsEvents:
+	Record<string, [Listener<T, any>, () => void]>
+	= Object.create(null);
+	private readonly __eventMap:
+	Record<string, [Listener<T, any>, () => void]>
+	= Object.create(null);
+	private readonly __propsEmitEvents:
+	Record<string, () => void>
+	= Object.create(null);
+	private __propsEmitEvent?: Emit;
+
+	updateInProps(props: any): void {
+
+		const oldPropsEvents = this.__propsEvents;
+		const oldEventNames = new Set(Object.keys(oldPropsEvents));
+		for (const [entName, fn] of getEvents(props)) {
+			if (oldEventNames.has(entName)) {
+				oldEventNames.delete(entName);
+				const [olfFn, cl] = oldPropsEvents[entName] || [];
+				if (olfFn === fn) { continue; }
+				if (cl) { cl(); }
+			}
+			oldPropsEvents[entName] = [fn, this.on(entName, fn)];
+		}
+		for (const entName of oldEventNames) {
+			const e = oldPropsEvents[entName];
+			if (!e) { continue; }
+			e[1]();
+			delete oldPropsEvents[entName];
+		}
+
+		const eventMap = this.__eventMap;
+		const oldEventMapNames = new Set(Object.keys(eventMap));
+		for (const [entName, fn] of getEventsMap(props)) {
+			if (oldEventMapNames.has(entName)) {
+				oldEventMapNames.delete(entName);
+				const [olfFn, cl] = eventMap[entName] || [];
+				if (olfFn === fn) { continue; }
+				if (cl) { cl(); }
+			}
+			eventMap[entName] = [fn, this.on(entName, fn)];
+		}
+		for (const entName of oldEventMapNames) {
+			const e = eventMap[entName];
+			if (!e) { continue; }
+			e[1]();
+			delete eventMap[entName];
+		}
+
+
+		const oldEmitEvents = this.__propsEmitEvents;
+		const eventsFn = getEmitFn(props);
+		if (eventsFn !== this.__propsEmitEvent) {
+			this.__propsEmitEvent = eventsFn;
+			for (const entName of [...Object.keys(oldEmitEvents)]) {
+				const e = oldEmitEvents[entName];
+				if (!e) { continue; }
+				e();
+				delete oldEmitEvents[entName];
+			}
+			if (!eventsFn) { return; }
+			const {names} = eventsFn;
+			if (!Array.isArray(names)) { return; }
+			for (const n of names) {
+				oldEmitEvents[n] = this.on(n, p => eventsFn(n, p));
+			}
+			return;
+		}
+		if (!eventsFn) { return; }
+		const oldNames = new Set(Object.keys(oldEmitEvents));
+		const names = eventsFn.names || [];
+		for (const n of names) {
+			if (!n) { continue; }
+			oldNames.delete(n);
+			if (oldNames.has(n)) { continue; }
+			oldEmitEvents[n] = this.on(n, p => eventsFn(n, p));
+		}
+		for (const entName of oldNames) {
+			const e = oldEmitEvents[entName];
+			if (!e) { continue; }
+			e();
+			delete oldEmitEvents[entName];
+		}
 	}
-	update(list: any): (() => void)[] {
-		const handles = EventEmitter.update(this, list);
-		return this.updateHandles(handles);
+}
+function *getEvents(p: any): IterableIterator<[string, Listener<any, any>]> {
+	if (!p) { return; }
+
+	for (const k of Object.keys(p)) {
+		const fn = p[k];
+		if (typeof fn !== 'function') { continue; }
+		if (k.substr(0, 3) !== 'on:') { continue; }
+		const entName =  k.substr(3);
+		if (!entName) { continue; }
+		yield [entName, fn];
 	}
-	updateInProps(
-		list: any,
-		custom?: (addEvent: AddEvent<T>) => void,
-	): (() => void)[] {
-		const handles = EventEmitter.updateInProps(this, list, custom);
-		return this.updateHandles(handles);
+}
+
+function *getEventsMap(p: any): IterableIterator<[string, Listener<any, any>]> {
+	if (!p) { return; }
+	const events = p['n:on'];
+	if (!events) { return; }
+	if (typeof events === 'object') { return; }
+	for (const k of Object.keys(p)) {
+		const fn = p[k];
+		if (typeof fn !== 'function') { continue; }
+		yield [k, fn];
 	}
+}
+
+function getEmitFn(p: any): Emit | undefined {
+	if (!p) { return; }
+	let eventsFn = p?.['n:on'] as Emit | undefined;
+	if (typeof eventsFn !== 'function') { return; }
+	return eventsFn;
 }

@@ -1,8 +1,6 @@
-import EntityObject from '../entity/EntityObject';
-
 let delayedRefresh = 0;
-const objectSet = new Set<EntityObject>();
-export function wait(obj: EntityObject): boolean {
+const objectSet = new Set<{refresh(): void}>();
+export function wait(obj: {refresh(): void}): boolean {
 	if (delayedRefresh <= 0) { return false; }
 	objectSet.add(obj);
 	return true;

@@ -1,62 +1,47 @@
-import { IRender, NativeNode, Exposed, Ref, MountedNode } from '../../type';
+import { IRenderer, NativeNode, MountedNode, MountNode } from '../../type';
 import { recoveryMountedNode } from '../id';
 
-let refList: (() => void)[] | undefined;
-export function setRefList(list?: (() => void)[]): void {
-	refList = list;
-}
-export function setRef(
-	ref?: Ref,
-	node?: Exposed | NativeNode,
-	isRemove?: boolean,
-): void {
-	if (typeof ref !== 'function') { return; }
-	if (!node) { return; }
-	if (!refList) {
-		ref(node, isRemove);
-	} else {
-		refList.push(() => ref(node, isRemove));
-	}
-}
 
 type MountedNodes = MountedNode | MountedNode[]
 | (MountedNode | MountedNode[])[];
 
 
-export function *getNodes(tree: MountedNodes): Iterable<NativeNode> {
+type MountNodes = MountNode | MountNode[]
+| (MountNode | MountNode[])[];
+
+
+export function *getNodes(tree: MountNodes): Iterable<NativeNode> {
 	if (Array.isArray(tree)) {
 		for (const it of tree) {
 			yield *getNodes(it);
 		}
 		return;
 	}
-	const { children, node, component } = tree;
+	const { node, proxy } = tree;
 	if (node) {
 		yield node;
 		return;
 	}
-	if (component) {
-		yield *getNodes(component.tree);
-		return;
+	if (proxy) {
+		yield *getNodes(proxy.tree);
 	}
-	yield *getNodes(children);
 }
 
-export function unmount(iRender: IRender, tree: MountedNodes): void {
+export function unmount(renderer: IRenderer, tree?: MountedNodes): void {
+	if (!tree) { return; }
 	if (Array.isArray(tree)) {
-		tree.forEach(e => unmount(iRender, e));
+		tree.forEach(e => unmount(renderer, e));
 		return;
 	}
-	const { component, children, node, ref } = tree;
 	recoveryMountedNode(tree);
-	if (component) {
-		setRef(ref, component.exposed, true);
-		component.unmount();
+	if (tree.proxy) {
+		const { proxy } = tree;
+		proxy.unmount();
 		return;
 	}
-	if (node) {
-		setRef(ref, node, true);
-		iRender.removeNode(node);
+	if (tree.node) {
+		const { node } = tree;
+		renderer.removeNode(node);
 	}
-	unmount(iRender, children);
+	unmount(renderer, tree.children);
 }
