@@ -4,7 +4,7 @@ export let createElement: typeof import('@neep/core').createElement;
 
 export default function installNeep(
 	renderer: import('@neep/core').IRenderer,
-	Neep: typeof import('@neep/core'),
+	Neep: typeof import('@neep/core').default,
 ): void {
 	({
 		isValue,
