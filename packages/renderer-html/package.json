@@ -1,11 +1,11 @@
 {
   "name": "@neep/renderer-html",
   "version": "0.1.0-alpha.16",
-  "main": "dist/neep.html.renderer.js",
-  "module": "dist/neep.html.renderer.mjs",
-  "browser": "dist/neep.html.renderer.browser.min.js",
-  "unpkg": "dist/neep.html.renderer.browser.js",
-  "jsdelivr": "dist/neep.html.renderer.browser.js",
+  "main": "dist/neep.renderer.html.js",
+  "module": "dist/neep.renderer.html.mjs",
+  "browser": "dist/neep.renderer.html.browser.min.js",
+  "unpkg": "dist/neep.renderer.html.browser.js",
+  "jsdelivr": "dist/neep.renderer.html.browser.js",
   "typings": "./types",
   "keywords": [
     "neep",
