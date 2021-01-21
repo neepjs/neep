@@ -1,2 +1,2 @@
-Neep
+Neep Core
 ========
