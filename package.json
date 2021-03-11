@@ -1,7 +1,7 @@
 {
   "name": "neep",
   "private": true,
-  "version": "0.1.0-alpha.18",
+  "version": "0.1.0-alpha.19",
   "scripts": {
     "build": "npm run build:core && npm run build:renderer-html",
     "build:core": "rollup -c script/rollup.js",

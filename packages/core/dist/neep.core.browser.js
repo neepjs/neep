@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.18
+ * Neep v0.1.0-alpha.19
  * (c) 2019-2021 Fierflame
  * @license MIT
  */
@@ -9,7 +9,7 @@
 	(global = global || self, factory(global.Neep = {}, global.Monitorable));
 }(this, (function (exports, monitorable) { 'use strict';
 
-	const version = '0.1.0-alpha.18';
+	const version = '0.1.0-alpha.19';
 	const isProduction = "development" === 'production';
 
 	const devtools = {
@@ -188,26 +188,24 @@
 
 	    if (isInit) {
 	      const list = [];
-	      const item = {
+	      const value = create(...p);
+	      hookList.push({
 	        id,
-	        value: create(...p)
-	      };
+	        value,
+	        list
+	      });
 	      const parent = hookList;
 	      hookList = list;
 
 	      try {
-	        return exec(item.value, ...p);
+	        return exec(value, ...p);
 	      } finally {
-	        if (list.length) {
-	          item.list = list;
-	        }
-
 	        hookList = parent;
 	      }
 	    }
 
 	    const item = hookList.shift();
-	    assert(item && item.id === id && item.list, () => printError(), 'life');
+	    assert(item && item.id === id, () => printError(), 'life');
 	    const {
 	      value
 	    } = item;
@@ -261,12 +259,11 @@
 	  }
 	}
 
-	let setLabels;
 	let current;
 	function runCurrent(newContextData, entity, fn, ...p) {
 	  const oldCurrent = current;
 	  current = newContextData;
-	  const hookState = entity ? initHook(!newContextData.created, newContextData.useData) : initHook(false);
+	  const hookState = initHook(!newContextData.created, entity && newContextData.useData);
 
 	  try {
 	    const ret = fn(...p);
@@ -279,27 +276,6 @@
 	  } finally {
 	    current = oldCurrent;
 	    restoreHookState(hookState);
-	  }
-	}
-	function runCurrentWithLabel(newContextData, entity, setLabel, fn, ...p) {
-	  const oldCurrent = current;
-	  current = newContextData;
-	  const hookState = entity ? initHook(!newContextData.created, newContextData.useData) : initHook(false);
-	  const oldSetLabel = setLabels;
-	  setLabels = setLabel;
-
-	  try {
-	    const ret = fn(...p);
-
-	    if (entity) {
-	      hookSafe();
-	    }
-
-	    return ret;
-	  } finally {
-	    current = oldCurrent;
-	    restoreHookState(hookState);
-	    setLabels = oldSetLabel;
 	  }
 	}
 	function checkCurrent(name) {
@@ -655,15 +631,17 @@
 
 	function withLabel(...label) {
 	  {
-	    const labels = label.filter(Boolean).map(t => typeof t === 'string' ? {
-	      text: t
-	    } : t);
+	    const {
+	      setLabels
+	    } = checkCurrent('withLabel');
 
 	    if (!setLabels) {
 	      return;
 	    }
 
-	    setLabels(labels);
+	    setLabels(label.filter(Boolean).map(t => typeof t === 'string' ? {
+	      text: t
+	    } : t));
 	  }
 	}
 
@@ -2814,7 +2792,7 @@
 
 	    this.parentComponentProxy = parent.componentRoot;
 	    const parentEntity = (_parent$componentRoot = parent.componentRoot) === null || _parent$componentRoot === void 0 ? void 0 : _parent$componentRoot.entity;
-	    this.contextData = {
+	    this.contextData =  {
 	      isShell,
 	      isSimple: false,
 
@@ -2831,6 +2809,7 @@
 	      info: isShell ? undefined : createInfo(this),
 	      hooks: isShell ? undefined : {},
 	      useData: isShell ? undefined : [],
+	      setLabels: l => this.labels = l,
 	      refresh: this.refresh.bind(this),
 	      parent: parentEntity,
 	      getChildren: () => [...this.children].map(t => t.exposed)
@@ -3052,7 +3031,7 @@
 	      const props = { ...this.props
 	      };
 	      event.updateInProps(props);
-	      const result =   runCurrentWithLabel(contextData, undefined, l => this.labels = l, tag, props, context);
+	      const result = runCurrent(contextData, undefined, tag, props, context);
 	      return init(normalizeAuxiliaryObject, getNodeArray$2(result), slots, [], false, false);
 	    });
 	    this._stopRender = render.stop;
@@ -3406,7 +3385,7 @@
 	    contextData
 	  } = proxy;
 	  const renderFn = tag[componentValueSymbol];
-	  const renderNode = typeof renderFn !== 'function' ? () => createTemplateElement(...proxy.childNodes) :  () => runCurrentWithLabel(contextData, entity, l => proxy.labels = l, renderFn, props || {}, context);
+	  const renderNode = typeof renderFn !== 'function' ? () => createTemplateElement(...proxy.childNodes) : () => runCurrent(contextData, entity, renderFn, props || {}, context);
 	  const normalizeAuxiliaryObject = {
 	    renderer: proxy.renderer,
 	    refresh: f => proxy.refresh(f),
@@ -3489,7 +3468,8 @@
 	    entity,
 	    contextData
 	  } = proxy;
-	  const run =  () => runCurrentWithLabel(contextData, entity, l => proxy.labels = l, tag, props, context);
+
+	  const run = () => runCurrent(contextData, entity, tag, props, context);
 
 	  const refresh = changed => {
 	    if (!changed) {

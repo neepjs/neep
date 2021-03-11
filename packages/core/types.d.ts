@@ -1,5 +1,5 @@
 /*!
- * Neep v0.1.0-alpha.18
+ * Neep v0.1.0-alpha.19
  * (c) 2019-2021 Fierflame
  * @license MIT
  */
@@ -650,7 +650,7 @@ interface HookData {
 interface UseData {
     id: number;
     value: any;
-    list?: UseData[];
+    list: UseData[];
 }
 interface WithData {
     [k: string]: any;
@@ -680,6 +680,7 @@ interface ContextData extends HookData {
     refresh<T>(f: () => T): T;
     refresh<T>(f?: () => T): T | void;
     refresh<T>(f?: () => T): T | void;
+    setLabels?: ((l: Label[] | undefined) => void) | undefined;
 }
 interface ComponentContextData extends ContextData {
     useData: UseData[];

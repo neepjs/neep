@@ -1,12 +1,12 @@
 /*!
- * Neep v0.1.0-alpha.18
+ * Neep v0.1.0-alpha.19
  * (c) 2019-2021 Fierflame
  * @license MIT
  */
 import { safeify, isValue, computed, markRead, markChange, defineProperty, exec as exec$1, printError as printError$1, postpone, monitor, createObject, value, encase, valueify, asValue, mixValue } from 'monitorable';
 export { asValue, computed, defineProperty, encase, isValue, mixValue, value, valueify } from 'monitorable';
 
-const version = '0.1.0-alpha.18';
+const version = '0.1.0-alpha.19';
 const isProduction = process.env.NODE_ENV === 'production';
 
 const devtools = {
@@ -193,26 +193,24 @@ function createUse({
 
     if (isInit) {
       const list = [];
-      const item = {
+      const value = create(...p);
+      hookList.push({
         id,
-        value: create(...p)
-      };
+        value,
+        list
+      });
       const parent = hookList;
       hookList = list;
 
       try {
-        return exec(item.value, ...p);
+        return exec(value, ...p);
       } finally {
-        if (list.length) {
-          item.list = list;
-        }
-
         hookList = parent;
       }
     }
 
     const item = hookList.shift();
-    assert(item && item.id === id && item.list, () => printError(), 'life');
+    assert(item && item.id === id, () => printError(), 'life');
     const {
       value
     } = item;
@@ -274,12 +272,11 @@ function destroyUseData(data) {
   }
 }
 
-let setLabels;
 let current;
 function runCurrent(newContextData, entity, fn, ...p) {
   const oldCurrent = current;
   current = newContextData;
-  const hookState = entity ? initHook(!newContextData.created, newContextData.useData) : initHook(false);
+  const hookState = initHook(!newContextData.created, entity && newContextData.useData);
 
   try {
     const ret = fn(...p);
@@ -292,27 +289,6 @@ function runCurrent(newContextData, entity, fn, ...p) {
   } finally {
     current = oldCurrent;
     restoreHookState(hookState);
-  }
-}
-function runCurrentWithLabel(newContextData, entity, setLabel, fn, ...p) {
-  const oldCurrent = current;
-  current = newContextData;
-  const hookState = entity ? initHook(!newContextData.created, newContextData.useData) : initHook(false);
-  const oldSetLabel = setLabels;
-  setLabels = setLabel;
-
-  try {
-    const ret = fn(...p);
-
-    if (entity) {
-      hookSafe();
-    }
-
-    return ret;
-  } finally {
-    current = oldCurrent;
-    restoreHookState(hookState);
-    setLabels = oldSetLabel;
   }
 }
 function checkCurrent(name) {
@@ -668,15 +644,17 @@ function isRenderElement(v) {
 
 function withLabel(...label) {
   if (!isProduction) {
-    const labels = label.filter(Boolean).map(t => typeof t === 'string' ? {
-      text: t
-    } : t);
+    const {
+      setLabels
+    } = checkCurrent('withLabel');
 
     if (!setLabels) {
       return;
     }
 
-    setLabels(labels);
+    setLabels(label.filter(Boolean).map(t => typeof t === 'string' ? {
+      text: t
+    } : t));
   }
 }
 
@@ -2833,7 +2811,7 @@ class CustomComponentProxy extends RefProxy {
 
     this.parentComponentProxy = parent.componentRoot;
     const parentEntity = (_parent$componentRoot = parent.componentRoot) === null || _parent$componentRoot === void 0 ? void 0 : _parent$componentRoot.entity;
-    this.contextData = {
+    this.contextData = isProduction ? {
       isShell,
       isSimple: false,
 
@@ -2850,6 +2828,27 @@ class CustomComponentProxy extends RefProxy {
       info: isShell ? undefined : createInfo(this),
       hooks: isShell ? undefined : {},
       useData: isShell ? undefined : [],
+      refresh: this.refresh.bind(this),
+      parent: parentEntity,
+      getChildren: () => [...this.children].map(t => t.exposed)
+    } : {
+      isShell,
+      isSimple: false,
+
+      get created() {
+        return _this.created;
+      },
+
+      get destroyed() {
+        return _this.destroyed;
+      },
+
+      delivered: this.delivered,
+      withData: {},
+      info: isShell ? undefined : createInfo(this),
+      hooks: isShell ? undefined : {},
+      useData: isShell ? undefined : [],
+      setLabels: l => this.labels = l,
       refresh: this.refresh.bind(this),
       parent: parentEntity,
       getChildren: () => [...this.children].map(t => t.exposed)
@@ -3071,7 +3070,7 @@ class ShellProxy extends CustomComponentProxy {
       const props = { ...this.props
       };
       event.updateInProps(props);
-      const result = isProduction ? tag(props, context) : isProduction ? runCurrent(contextData, undefined, tag, props, context) : runCurrentWithLabel(contextData, undefined, l => this.labels = l, tag, props, context);
+      const result = runCurrent(contextData, undefined, tag, props, context);
       return init(normalizeAuxiliaryObject, getNodeArray$2(result), slots, [], false, false);
     });
     this._stopRender = render.stop;
@@ -3425,7 +3424,7 @@ function initRender(proxy, context) {
     contextData
   } = proxy;
   const renderFn = tag[componentValueSymbol];
-  const renderNode = typeof renderFn !== 'function' ? () => createTemplateElement(...proxy.childNodes) : isProduction ? () => runCurrent(contextData, entity, renderFn, props || {}, context) : () => runCurrentWithLabel(contextData, entity, l => proxy.labels = l, renderFn, props || {}, context);
+  const renderNode = typeof renderFn !== 'function' ? () => createTemplateElement(...proxy.childNodes) : () => runCurrent(contextData, entity, renderFn, props || {}, context);
   const normalizeAuxiliaryObject = {
     renderer: proxy.renderer,
     refresh: f => proxy.refresh(f),
@@ -3508,7 +3507,8 @@ function initRender$1(proxy, context) {
     entity,
     contextData
   } = proxy;
-  const run = isProduction ? () => runCurrent(contextData, entity, tag, props, context) : () => runCurrentWithLabel(contextData, entity, l => proxy.labels = l, tag, props, context);
+
+  const run = () => runCurrent(contextData, entity, tag, props, context);
 
   const refresh = changed => {
     if (!changed) {
