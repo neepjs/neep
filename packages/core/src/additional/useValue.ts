@@ -10,5 +10,5 @@ const useValue: {
 } = createUse<any, [(() => any) | void]>({
 	name: 'useValue',
 	create: fn => typeof fn === 'function' ? fn() : value(undefined),
-});
+}) as any;
 export default useValue;

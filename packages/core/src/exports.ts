@@ -8,6 +8,5 @@ export * from './is';
 export * from './constant';
 export * from './auxiliary';
 export * from './types';
-export * from './constant/symbols';
 export * from './extends';
 export * from './additional';
