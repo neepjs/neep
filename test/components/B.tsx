@@ -7,17 +7,17 @@ import { DeliverValue, DeliverNumber } from './delivers';
 
 export default Neep.createComponent((
 	props: {  a?: any, onset?: () => void },
-	{ slot, delivered, emit },
+	{ slot, emit },
 ) => {
-	Neep.hook('beforeCreate', () => console.log('Hook', 'B', 'beforeCreate'), true);
-	Neep.hook('created', () => console.log('Hook', 'B', 'created'), true);
-	Neep.hook('beforeMount', () => console.log('Hook', 'B', 'beforeMount'), true);
-	Neep.hook('mounted', () => console.log('Hook', 'B', 'mounted'), true);
-	Neep.hook('beforeUpdate', () => console.log('Hook', 'B', 'beforeUpdate'), true);
-	Neep.hook('updated', () => console.log('Hook', 'B', 'updated'), true);
-	const a = delivered(DeliverValue);
+	Neep.withHook('beforeCreate', () => console.log('Hook', 'B', 'beforeCreate'), true);
+	Neep.withHook('created', () => console.log('Hook', 'B', 'created'), true);
+	Neep.withHook('beforeMount', () => console.log('Hook', 'B', 'beforeMount'), true);
+	Neep.withHook('mounted', () => console.log('Hook', 'B', 'mounted'), true);
+	Neep.withHook('beforeUpdate', () => console.log('Hook', 'B', 'beforeUpdate'), true);
+	Neep.withHook('updated', () => console.log('Hook', 'B', 'updated'), true);
+	const a = Neep.withDelivered(DeliverValue);
 	return <Neep.Template>
-		<div>B: {a}|{delivered(DeliverNumber)}</div>
+		<div>B: {a}|{Neep.withDelivered(DeliverNumber)}</div>
 		{slot('name')}
 		<br />
 		{slot()}

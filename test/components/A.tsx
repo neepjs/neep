@@ -29,13 +29,13 @@ export default Neep.createComponent((
 		divIndex.value = (divIndex.value + 1) % (divs.length + 1);
 	}
 
-	Neep.label('{自定义标签文本}', '#F00');
-	Neep.hook('beforeCreate', () => console.log('Hook', 'A', 'beforeCreate'));
-	Neep.hook('created', () => console.log('Hook', 'A', 'created'));
-	Neep.hook('beforeMount', () => console.log('Hook', 'A', 'beforeMount'));
-	Neep.hook('mounted', () => console.log('Hook', 'A', 'mounted'));
-	Neep.hook('beforeUpdate', () => console.log('Hook', 'A', 'beforeUpdate'));
-	Neep.hook('updated', () => console.log('Hook', 'A', 'updated'));
+	Neep.withLabel('{自定义标签文本}', '#F00');
+	Neep.withHook('beforeCreate', () => console.log('Hook', 'A', 'beforeCreate'));
+	Neep.withHook('created', () => console.log('Hook', 'A', 'created'));
+	Neep.withHook('beforeMount', () => console.log('Hook', 'A', 'beforeMount'));
+	Neep.withHook('mounted', () => console.log('Hook', 'A', 'mounted'));
+	Neep.withHook('beforeUpdate', () => console.log('Hook', 'A', 'beforeUpdate'));
+	Neep.withHook('updated', () => console.log('Hook', 'A', 'updated'));
 	const v = Neep.value(1);
 	const ref = (x: any): void => console.log('Ref', 'B', x);
 	return Neep.createRenderElement(() => <DeliverValue value={v}>

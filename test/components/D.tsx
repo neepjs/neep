@@ -6,8 +6,8 @@ export default Neep.createShellComponent((
 	props: {  a?: any, onset?: () => void },
 	{ childNodes },
 ) => {
-	Neep.label('{D}', '#F00');
+	Neep.withLabel('{D}', '#F00');
 	return <E {...props}>
-		{ childNodes }
+		{ childNodes() }
 	</E>;
 }, {name: 'D'});
