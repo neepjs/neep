@@ -1,5 +1,5 @@
 /*!
- * NeepRendererHtml v0.1.0-alpha.17
+ * NeepRendererHtml v0.1.0-alpha.18
  * (c) 2019-2021 Fierflame
  * @license MIT
  */
@@ -114,7 +114,11 @@ function getClass(list) {
       }
     } else if (typeof v === 'object') {
       for (const k in v) {
-        const add = v[k];
+        let add = v[k];
+
+        if (core.isValue(add)) {
+          add = add.value;
+        }
 
         for (let it of k.split(' ').filter(Boolean)) {
           set[add ? 'add' : 'delete'](it);

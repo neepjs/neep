@@ -1,6 +1,6 @@
 {
   "name": "@neep/renderer-html",
-  "version": "0.1.0-alpha.17",
+  "version": "0.1.0-alpha.18",
   "main": "dist/neep.renderer.html.js",
   "module": "dist/neep.renderer.html.mjs",
   "browser": "dist/neep.renderer.html.browser.min.js",
