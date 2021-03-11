@@ -15,7 +15,7 @@ import {
 import { isProduction } from '../../constant/info';
 import { exec, monitor, defineProperty } from '../../install/monitorable';
 import { isElement, isRenderElement } from '../../auxiliary';
-import { runCurrent, runCurrentWithLabel } from '../../extends/current';
+import { runCurrent } from '../../extends/current';
 import { isNativeComponent, isRenderComponent } from '../../is';
 
 import draw, { unmount, getNodes } from '../draw';
@@ -54,22 +54,13 @@ function initRender(
 	context: ComponentContext<any, any>,
 ): IRender {
 	const { tag, props, entity, contextData } = proxy;
-	const run = isProduction
-		? () => runCurrent(
-			contextData,
-			entity,
-			tag,
-			props,
-			context,
-		)
-		: () => runCurrentWithLabel(
-			contextData,
-			entity,
-			l => proxy.labels = l,
-			tag,
-			props,
-			context,
-		);
+	const run = (): any => runCurrent(
+		contextData,
+		entity,
+		tag,
+		props,
+		context,
+	);
 	const refresh = (changed: boolean): void => {
 		if (!changed) { return; }
 		proxy.refresh();

@@ -16,8 +16,7 @@ import convert from '../convert';
 import { monitor } from '../../install/monitorable';
 import { init } from '../normalize';
 import { NormalizeAuxiliaryObject } from '../normalize';
-import { isProduction } from '../../constant/info';
-import { runCurrent, runCurrentWithLabel } from '../../extends/current';
+import { runCurrent } from '../../extends/current';
 import EventEmitter from '../../EventEmitter';
 import { createSlotApi, getSlots, setSlots } from '../slot';
 import ContainerProxy from './ContainerProxy';
@@ -116,24 +115,13 @@ export default class ShellProxy<
 			() => {
 				const props = {...this.props};
 				event.updateInProps(props);
-				const result = isProduction
-					? tag(props, context)
-					: isProduction
-						? runCurrent(
-							contextData,
-							undefined,
-							tag,
-							props,
-							context,
-						)
-						:  runCurrentWithLabel(
-							contextData,
-							undefined,
-							l => this.labels = l,
-							tag,
-							props,
-							context,
-						);
+				const result = runCurrent(
+					contextData,
+					undefined,
+					tag,
+					props,
+					context,
+				);
 				return init(
 					normalizeAuxiliaryObject,
 					getNodeArray(result),

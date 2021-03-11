@@ -98,20 +98,18 @@ export function createUse<T, P extends any[], R>({
 		);
 		if (isInit) {
 			const list: UseData[] = [];
-			const item: UseData = { id, value: create(...p) };
+			const value = create(...p);
+			hookList.push({ id, value, list });
 			const parent = hookList;
 			hookList = list;
 			try {
-				return exec(item.value, ...p);
+				return exec(value, ...p);
 			} finally {
-				if (list.length) {
-					item.list = list;
-				}
 				hookList = parent;
 			}
 		}
 		const item = hookList.shift();
-		assert(item && item.id === id && item.list, () => printError(item), 'life');
+		assert(item && item.id === id, () => printError(item), 'life');
 		const { value } = item;
 
 		const list = [...item.list];

@@ -2,6 +2,7 @@ import { ComponentEntity } from './entity';
 import { SlotApi } from './slot';
 import { Emit } from './event';
 import { Hook } from './hook';
+import { Label } from './devtools';
 
 /** 上下文环境 */
 export interface Context<
@@ -37,7 +38,7 @@ export interface HookData {
 export interface UseData {
 	id: number;
 	value: any;
-	list?: UseData[];
+	list: UseData[];
 }
 export interface WithData {
 	[k: string]: any;
@@ -66,6 +67,7 @@ export interface ContextData extends HookData {
 	refresh<T>(f: () => T): T;
 	refresh<T>(f?: () =>  T): T | void;
 	refresh<T>(f?: () =>  T): T | void;
+	setLabels?: ((l: Label[] | undefined) => void) | undefined;
 }
 export interface ComponentContextData extends ContextData {
 	useData: UseData[];

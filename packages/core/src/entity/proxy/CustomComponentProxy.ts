@@ -6,6 +6,7 @@ import convert, { destroy } from '../convert';
 import BaseProxy from './BaseProxy';
 import RefProxy from './RefProxy';
 import ComponentProxy from './ComponentProxy';
+import { isProduction } from '../../constant';
 
 
 function createInfo(
@@ -46,7 +47,7 @@ export default abstract class CustomComponentProxy<
 		const _this = this;
 		this.parentComponentProxy = parent.componentRoot;
 		const parentEntity = parent.componentRoot?.entity;
-		this.contextData = {
+		this.contextData = isProduction ? {
 			isShell,
 			isSimple: false,
 			get created() { return _this.created; },
@@ -56,6 +57,20 @@ export default abstract class CustomComponentProxy<
 			info: isShell ? undefined : createInfo(this),
 			hooks: isShell ? undefined : {},
 			useData: isShell ? undefined : [],
+			refresh: this.refresh.bind(this),
+			parent: parentEntity,
+			getChildren: () => [...this.children].map(t => t.exposed),
+		} : {
+			isShell,
+			isSimple: false,
+			get created() { return _this.created; },
+			get destroyed() { return _this.destroyed; },
+			delivered: this.delivered,
+			withData: {},
+			info: isShell ? undefined : createInfo(this),
+			hooks: isShell ? undefined : {},
+			useData: isShell ? undefined : [],
+			setLabels: l => this.labels = l,
 			refresh: this.refresh.bind(this),
 			parent: parentEntity,
 			getChildren: () => [...this.children].map(t => t.exposed),

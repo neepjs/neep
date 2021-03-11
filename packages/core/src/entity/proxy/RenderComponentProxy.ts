@@ -9,11 +9,10 @@ import {
 	componentsSymbol,
 	componentValueSymbol,
 } from '../../constant/symbols';
-import { isProduction } from '../../constant/info';
 import { monitor } from '../../install/monitorable';
 import { isElement, createTemplateElement } from '../../auxiliary';
 import { Fragment } from '../../constant/tags';
-import { runCurrent, runCurrentWithLabel } from '../../extends/current';
+import { runCurrent } from '../../extends/current';
 
 import draw, { unmount } from '../draw';
 
@@ -36,22 +35,13 @@ function initRender(
 
 	const renderNode = typeof renderFn !== 'function'
 		? () => createTemplateElement(...proxy.childNodes)
-		: isProduction
-			? () => runCurrent(
-				contextData,
-				entity,
-				renderFn,
-				props || {},
-				context,
-			)
-			: () => runCurrentWithLabel(
-				contextData,
-				entity,
-				l => proxy.labels = l,
-				renderFn,
-				props || {},
-				context,
-			);
+		: () => runCurrent(
+			contextData,
+			entity,
+			renderFn,
+			props || {},
+			context,
+		);
 
 	const normalizeAuxiliaryObject: NormalizeAuxiliaryObject = {
 		renderer: proxy.renderer,
