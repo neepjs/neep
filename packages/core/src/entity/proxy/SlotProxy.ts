@@ -2,12 +2,12 @@ import {
 	MountOptions,
 	TreeNodeList,
 	MountedNode,
-} from '../../type';
+} from '../../types';
 import BaseProxy from './BaseProxy';
 import convert, { destroy } from '../convert';
 import draw, { unmount } from '../draw';
 import NodeProxy from './NodeProxy';
-import { ScopeSlot } from '../../auxiliary';
+import { ScopeSlot } from '../../constant/tags';
 
 export default class SlotProxy extends NodeProxy<typeof ScopeSlot> {
 	__nodes: TreeNodeList;

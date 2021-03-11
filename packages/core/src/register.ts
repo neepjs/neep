@@ -1,4 +1,4 @@
-import { Component } from './type';
+import { Component } from './types';
 
 export const components: Record<string, Component<any>> = Object.create(null);
 

@@ -3,28 +3,23 @@ import {
 	Node,
 	NativeShadowNode,
 	MountedNode,
-	DeliverComponent,
 	MountOptions,
 	Component,
 	NativeComponentNode,
-	Label,
-} from '../../type';
+	ComponentContext,
+} from '../../types';
 import {
 	componentsSymbol,
 	componentValueSymbol,
-} from '../../symbols';
-import { isProduction } from '../../constant';
+} from '../../constant/symbols';
+import { isProduction } from '../../constant/info';
 import { exec, monitor, defineProperty } from '../../install/monitorable';
 import { isElement, isRenderElement } from '../../auxiliary';
-import { runCurrent } from '../../extends/current';
-import { initContext } from '../../extends/context';
+import { runCurrent, runCurrentWithLabel } from '../../extends/current';
 import { isNativeComponent, isRenderComponent } from '../../is';
 
-import { destroy } from '../convert';
 import draw, { unmount, getNodes } from '../draw';
 import normalize from '../normalize';
-import { createSlotApi } from '../slot';
-import getDelivered from '../getDelivered';
 import { createMountedNode } from '../id';
 
 import ComponentProxy, { IRender } from './ComponentProxy';
@@ -54,36 +49,33 @@ function createResponsiveRender(
 	};
 }
 
-function initRender(proxy: StandardComponentProxy< any, any, any, any>): IRender {
-
-	const { tag, props, entity } = proxy;
-	const context = initContext({
-		isShell: false,
-		slot: createSlotApi(proxy.slots),
-		expose: t => proxy.setExposed(t),
-		get created() { return proxy.created; },
-		get parent() { return proxy.parentComponentProxy?.entity; },
-		get children() { return [...proxy.children].map(t => t.exposed); },
-		get childNodes() { return proxy.childNodes; },
-		get emit() { return proxy.emit; },
-		delivered<T>(deliver: DeliverComponent<T>): T{
-			return getDelivered(proxy.delivered, deliver);
-		},
-		refresh(f) { proxy.refresh(f); },
-	}, entity);
+function initRender(
+	proxy: StandardComponentProxy< any, any, any, any>,
+	context: ComponentContext<any, any>,
+): IRender {
+	const { tag, props, entity, contextData } = proxy;
+	const run = isProduction
+		? () => runCurrent(
+			contextData,
+			entity,
+			tag,
+			props,
+			context,
+		)
+		: () => runCurrentWithLabel(
+			contextData,
+			entity,
+			l => proxy.labels = l,
+			tag,
+			props,
+			context,
+		);
 	const refresh = (changed: boolean): void => {
 		if (!changed) { return; }
 		proxy.refresh();
 	};
-	const setLabel = isProduction
-		? undefined
-		: (l?: Label[]) => proxy.labels = l;
 	// 初始化执行
-	const result = exec(
-		refresh,
-		{ resultOnly: true },
-		() => runCurrent(entity, setLabel, () => tag(props, context)),
-	);
+	const result = exec(refresh, { resultOnly: true }, run);
 	if (typeof result === 'function') {
 		return createResponsiveRender(proxy, result);
 	}
@@ -112,11 +104,7 @@ function initRender(proxy: StandardComponentProxy< any, any, any, any>): IRender
 
 	const render = monitor(
 		refresh,
-		() => normalize(proxy, slotRenderFns, normalizeRefresh, runCurrent(
-			entity,
-			setLabel,
-			() => tag(props, context),
-		)),
+		() => normalize(proxy, slotRenderFns, normalizeRefresh, run()),
 	);
 	return {
 		nodes: exec(
@@ -150,13 +138,8 @@ export default class StandardComponentProxy<
 		if (!value) { return; }
 		[this.native, this._shadow] = value;
 	}
-	protected _initRender(): IRender {
-		return initRender(this);
-	}
-
-	_destroy(): void {
-		this._stopRender();
-		destroy(this._nodes);
+	protected _initRender(context: ComponentContext<any, any>): IRender {
+		return initRender(this, context);
 	}
 
 	childNodes: any[] = [];

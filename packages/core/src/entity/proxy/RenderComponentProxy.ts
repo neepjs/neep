@@ -1,28 +1,25 @@
 import {
 	RenderComponent,
 	TreeNodeList,
-	DeliverComponent,
-	Label,
 	MountOptions,
 	MountedNode,
-} from '../../type';
+	ComponentContext,
+} from '../../types';
 import {
 	componentsSymbol,
 	componentValueSymbol,
-} from '../../symbols';
-import { isProduction } from '../../constant';
+} from '../../constant/symbols';
+import { isProduction } from '../../constant/info';
 import { monitor } from '../../install/monitorable';
-import { isElement, Fragment, createTemplateElement } from '../../auxiliary';
-import { runCurrent } from '../../extends/current';
-import { initContext } from '../../extends/context';
+import { isElement, createTemplateElement } from '../../auxiliary';
+import { Fragment } from '../../constant/tags';
+import { runCurrent, runCurrentWithLabel } from '../../extends/current';
 
-import { destroy } from '../convert';
 import draw, { unmount } from '../draw';
-import {createSlotApi } from '../slot';
-import getDelivered from '../getDelivered';
 
 import ComponentProxy, { IRender } from './ComponentProxy';
-import { init, NormalizeAuxiliaryObject } from '../normalize';
+import { init } from '../normalize';
+import { NormalizeAuxiliaryObject } from '../normalize';
 
 function getNodeArray(result: any): any[] {
 	if (Array.isArray(result)) { return result; }
@@ -30,31 +27,31 @@ function getNodeArray(result: any): any[] {
 	if (result.tag !== Fragment) { return [result]; }
 	return result.children;
 }
-function initRender(proxy: RenderComponentProxy< any, any, any, any>): IRender {
-	const { tag, props, entity } = proxy;
-	const context = initContext({
-		isShell: false,
-		slot: createSlotApi(proxy.slots),
-		expose: t => proxy.setExposed(t),
-		get created() { return proxy.created; },
-		get parent() { return proxy.parentComponentProxy?.entity; },
-		get children() { return [...proxy.children].map(t => t.exposed); },
-		get childNodes() { return proxy.childNodes; },
-		get emit() { return proxy.emit; },
-		delivered<T>(deliver: DeliverComponent<T>): T{
-			return getDelivered(proxy.delivered, deliver);
-		},
-		refresh(f) { proxy.refresh(f); },
-	}, entity);
+function initRender(
+	proxy: RenderComponentProxy<any, any, any, any>,
+	context: ComponentContext<any, any>,
+): IRender {
+	const { tag, props, entity, contextData } = proxy;
 	const renderFn = tag[componentValueSymbol];
 
 	const renderNode = typeof renderFn !== 'function'
 		? () => createTemplateElement(...proxy.childNodes)
-		: () => runCurrent(
-			entity,
-			isProduction ? undefined : (l?: Label[]) => proxy.labels = l,
-			() => renderFn(props || {}, context),
-		);
+		: isProduction
+			? () => runCurrent(
+				contextData,
+				entity,
+				renderFn,
+				props || {},
+				context,
+			)
+			: () => runCurrentWithLabel(
+				contextData,
+				entity,
+				l => proxy.labels = l,
+				renderFn,
+				props || {},
+				context,
+			);
 
 	const normalizeAuxiliaryObject: NormalizeAuxiliaryObject = {
 		renderer: proxy.renderer,
@@ -95,13 +92,8 @@ export default class RenderComponentProxy<
 	nativeNodes: TreeNodeList | undefined;
 
 	protected _init(): void {}
-	protected _initRender(): IRender {
-		return initRender(this);
-	}
-
-	_destroy(): void {
-		this._stopRender();
-		destroy(this._nodes);
+	protected _initRender(context: ComponentContext<any, any>): IRender {
+		return initRender(this, context);
 	}
 
 	childNodes: any[] = [];

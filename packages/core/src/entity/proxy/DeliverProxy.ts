@@ -3,11 +3,11 @@ import {
 	DeliverComponent,
 	MountOptions,
 	MountedNode,
-} from '../../type';
+} from '../../types';
 import BaseProxy from './BaseProxy';
 import convert, { destroy } from '../convert';
 import NodeProxy from './NodeProxy';
-import { deliverKeySymbol } from '../../symbols';
+import { deliverKeySymbol } from '../../constant/symbols';
 import { markRead, markChange } from '../../install/monitorable';
 import draw, { unmount } from '../draw';
 

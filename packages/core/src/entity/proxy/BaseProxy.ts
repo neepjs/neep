@@ -4,8 +4,8 @@ import {
 	HookName,
 	Label,
 	MountOptions,
-} from '../../type';
-import { isProduction } from '../../constant';
+} from '../../types';
+import { isProduction } from '../../constant/info';
 import ContainerProxy from './ContainerProxy';
 import { exec, defineProperty } from '../../install/monitorable';
 import ComponentProxy from './ComponentProxy';

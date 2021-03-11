@@ -5,16 +5,17 @@ import {
 	ContainerComponent,
 	Component,
 	Value,
-} from './type';
-import { isElement, createElement } from './auxiliary';
-import { isProduction } from './constant';
+} from './types';
+import { isElement, createElementBase } from './auxiliary';
+import { isProduction } from './constant/info';
 import { devtools, getRender } from './install';
 import ContainerProxy from './entity/proxy/ContainerProxy';
 import { isContainerComponent } from './is';
 import { monitor, value } from './install/monitorable';
-import { init, NormalizeAuxiliaryObject } from './entity/normalize';
-import { wait } from './extends/refresh';
-import { rendererSymbol } from './symbols';
+import { init } from './entity/normalize';
+import { NormalizeAuxiliaryObject } from './entity/normalize';
+import { wait } from './extends/delayRefresh';
+import { rendererSymbol } from './constant/symbols';
 
 function createContainerEntity(
 	e: Element | Component<any> | undefined,
@@ -27,7 +28,7 @@ function createContainerEntity(
 		return createRender(e, p);
 	}
 	if (!isElement(e)) {
-		return createRender(null, p, [createElement(e)]);
+		return createRender(null, p, [createElementBase(e)]);
 	}
 	if (isContainerComponent(e.tag)) {
 		const params = {...e.props, ...p};
@@ -114,7 +115,7 @@ function render(
 			value(c?: Element | StandardComponent<any, any, any>) {
 				if (container.destroyed) { return entity; }
 				children(c === undefined ? []
-					: isElement(c) ? [c] : [createElement(c)]);
+					: isElement(c) ? [c] : [createElementBase(c)]);
 				return entity;
 			},
 		},

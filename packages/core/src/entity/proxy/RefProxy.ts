@@ -2,7 +2,7 @@ import {
 	IRenderer,
 	Ref,
 	Entity,
-} from '../../type';
+} from '../../types';
 import EventEmitter from '../../EventEmitter';
 import BaseProxy from './BaseProxy';
 

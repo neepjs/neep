@@ -1,11 +1,11 @@
-import { TreeNodeList } from '../../type';
-import BaseProxy from '../proxy/BaseProxy';
-import { createAll } from './create';
-import { updateAll } from './update';
-import refresh from '../../extends/refresh';
+import { TreeNodeList } from '../../types';
 import { postpone } from '../../install/monitorable';
+import BaseProxy from '../proxy/BaseProxy';
+import createAll from './create/createAll';
+import updateAll from './update/updateAll';
+import delayRefresh from '../../extends/delayRefresh';
 
-export { destroy } from './utils';
+export { default as destroy } from './destroy';
 
 /**
  * 更新树
@@ -13,18 +13,13 @@ export { destroy } from './utils';
  * @param proxy Neep 对象
  * @param tree 已有树
  */
-function convert(
+export default function convert(
 	proxy: BaseProxy<any>,
 	source: any[],
 	tree?: TreeNodeList,
 ): TreeNodeList {
-	return refresh(() => postpone(() => {
-		if (!tree) {
-			return createAll(proxy, source);
-		}
-		return [...updateAll(proxy, source, tree)];
-	}));
+	if (!tree) {
+		return delayRefresh(() => postpone(() => createAll(proxy, source)));
+	}
+	return delayRefresh(() => postpone(() => [...updateAll(proxy, source, tree)]));
 }
-
-
-export default convert;

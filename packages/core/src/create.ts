@@ -16,7 +16,7 @@ import {
 	Element,
 	ElementComponent,
 	SelfComponent,
-} from './type';
+} from './types';
 import {
 	nameSymbol,
 	componentsSymbol,
@@ -33,8 +33,8 @@ import {
 	propsSymbol,
 	componentValueSymbol,
 	objectTypeSymbolElementComponent,
-} from './symbols';
-import { createElement, createElementBase } from './auxiliary';
+} from './constant/symbols';
+import { createElementBase } from './auxiliary';
 import { isRenderComponent } from './is';
 
 
@@ -202,7 +202,7 @@ function createComponentFunc<
 		? render
 		: createRenderComponent(render);
 	return function StandardComponent(props, context): Node {
-		return createElement(renderComponent, f(props, context) as TObject);
+		return createElementBase(renderComponent, f(props, context) as TObject);
 	};
 }
 

@@ -3,21 +3,21 @@ import {
 	MountOptions,
 	MountedNode,
 	Monitored,
-} from '../../type';
+} from '../../types';
 import BaseProxy from './BaseProxy';
-import draw, { unmount } from '../draw';
+import draw, { unmount, drawPlaceholder, drawReplace } from '../draw';
 import { createMountedNode } from '../id';
 import { isValue } from '../../install/monitorable';
-import { replace } from '../draw/update';
 import NodeProxy from './NodeProxy';
 import { markRead, markChange } from '../../install/monitorable';
-import { isElement, Fragment } from '../../auxiliary';
+import { isElement } from '../../auxiliary';
+import { Fragment } from '../../constant/tags';
 import convert, { destroy } from '../convert';
 import { monitor } from '../../install/monitorable';
-import { wait } from '../../extends/refresh';
-import { init, NormalizeAuxiliaryObject } from '../normalize';
-import { createPlaceholder } from '../draw/create';
-import { isProduction } from '../../constant';
+import { wait } from '../../extends/delayRefresh';
+import { init } from '../normalize';
+import { NormalizeAuxiliaryObject } from '../normalize';
+import { isProduction } from '../../constant/info';
 import { defineProperty } from '../../install/monitorable';
 
 
@@ -169,7 +169,7 @@ export default class ValueProxy extends NodeProxy<null> {
 		if (!isProduction) { this.text = text; }
 		const node = typeof text === 'string'
 			? createMountedNode({ node: renderer.createText(text) })
-			: createPlaceholder(renderer);
+			: drawPlaceholder(renderer);
 		this.tree = [node];
 	}
 	_redraw(mountOptions: MountOptions): void {
@@ -189,8 +189,8 @@ export default class ValueProxy extends NodeProxy<null> {
 		if (!isProduction) { this.text = text; }
 		const node = typeof text === 'string'
 			? createMountedNode({ node: renderer.createText(text) })
-			: createPlaceholder(renderer);
-		this.tree =	replace(renderer, [node], this.tree);
+			: drawPlaceholder(renderer);
+		this.tree =	drawReplace(renderer, [node], this.tree);
 	}
 	_unmount(): void {
 		const { renderer, tree } = this;

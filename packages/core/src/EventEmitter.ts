@@ -1,6 +1,6 @@
 import { markRead, markChange, printError } from './install/monitorable';
-import { Emit, On, Listener, EventInfo } from './type';
-import refresh from './extends/refresh';
+import { Emit, On, Listener, EventInfo } from './types';
+import delayRefresh from './extends/delayRefresh';
 
 function createEmit<T, E extends Record<string, any>>(
 	emitter: EventEmitter<T, E>,
@@ -10,7 +10,7 @@ function createEmit<T, E extends Record<string, any>>(
 		name: N,
 		p: E[N],
 		options?: any,
-	): boolean => refresh(() => {
+	): boolean => delayRefresh(() => {
 		const cancelable = Boolean(options?.cancelable);
 		const {target} = emitter;
 		let defaultPrevented = true;

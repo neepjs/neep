@@ -7,24 +7,23 @@ import {
 	Emit,
 	On,
 	RenderComponent,
-} from '../../type';
+	ComponentContext,
+} from '../../types';
 import {
 	componentsSymbol,
-	objectTypeSymbol,
-	objectTypeSymbolHookEntity,
 	propsSymbol,
-} from '../../symbols';
-import { encase, postpone, createObject } from '../../install/monitorable';
-import refresh, { wait } from '../../extends/refresh';
-import convert, { destroy } from '../convert';
-import { getSlots, setSlots } from '../slot';
+} from '../../constant/symbols';
+import { postpone, createObject } from '../../install/monitorable';
+import delayRefresh from '../../extends/delayRefresh';
+import convert from '../convert';
+import { createSlotApi, getSlots, setSlots } from '../slot';
 
 import BaseProxy from './BaseProxy';
-import { initEntity } from '../../extends/entity';
-import { callHook, setHook } from '../../hook';
+import { callHook, setHook } from '../../extends/hook';
 import EventEmitter from '../../EventEmitter';
 import ContainerProxy from './ContainerProxy';
-import RefProxy from './RefProxy';
+import CustomComponentProxy from './CustomComponentProxy';
+import { createBy } from '../../extends/with';
 
 export interface IRender {
 	render(): any[];
@@ -40,7 +39,6 @@ function createEntity(
 		{ configurable: true, value: ComponentEntity<any>[K], writable?: boolean }
 		| { configurable: true, get(): ComponentEntity<any>[K] }
 	} = {
-		[objectTypeSymbol]: { configurable: true, value: objectTypeSymbolHookEntity },
 		data: { configurable: true, value: obj.data },
 		exposed: { configurable: true, get: () => obj.exposed },
 		parent: { configurable: true, value: obj.parentComponentProxy?.entity },
@@ -49,22 +47,19 @@ function createEntity(
 		destroyed: { configurable: true, get: () => obj.destroyed },
 		mounted: { configurable: true, get: () => obj.mounted },
 		unmounted: { configurable: true, get: () => obj.unmounted },
-		$_hooks: { configurable: true, value: Object.create(null) },
-		$_useHookValues: { configurable: true, value: [] },
 		callHook: {
 			configurable: true,
-			value(h: string) { callHook(h, entity); },
+			value(h: string) { callHook(h, obj.contextData); },
 		},
 		setHook: {
 			configurable: true,
-			value(id: string, hook: Hook<any>) { return setHook(id, hook, entity); },
+			value(id: string, hook: Hook) { return setHook(id, hook, obj.contextData); },
 		},
-		refresh: { configurable: true, value: obj.refresh.bind(obj) },
 		on: { configurable: true, value: events.on },
 		emit: { configurable: true, value: events.emit },
 	};
 	const entity: ComponentEntity<any> = Object.create(null, cfg);
-	return initEntity(entity);
+	return entity;
 }
 
 const disabledKey = new Set([
@@ -88,13 +83,31 @@ function update<TProps extends object>(
 ): void {
 	const {props: propsObj, isNative} = proxy;
 	const newKeys = new Set(Object.keys(props).filter(filter));
-	proxy.propsDefined.forEach(k => newKeys.add(k));
-	for (const k of Object.keys(propsObj)) {
-		if (filter(k) && !newKeys.has(k)) {
-			delete propsObj[k as keyof TProps];
+	if (proxy.propsDefined) {
+		proxy.propsDefined.forEach(k => newKeys.add(k));
+		for (const k of Object.keys(propsObj)) {
+			if (filter(k) && !newKeys.has(k)) {
+				delete propsObj[k as keyof TProps];
+			}
+		}
+		for (const k of newKeys) { propsObj[k as keyof TProps] = props[k]; }
+	} else {
+		let needRefresh = false;
+		for (const k of Object.keys(propsObj)) {
+			if (filter(k) && !newKeys.has(k)) {
+				needRefresh = true;
+				delete propsObj[k as keyof TProps];
+			}
+		}
+		for (const k of newKeys) {
+			if (k in propsObj && [k as keyof TProps] === props[k]) { continue; }
+			propsObj[k as keyof TProps] = props[k];
+			needRefresh = true;
+		}
+		if (needRefresh) {
+			proxy.refresh();
 		}
 	}
-	for (const k of newKeys) { propsObj[k as keyof TProps] = props[k]; }
 
 	proxy.events.updateInProps(props);
 	const slots = Object.create(null);
@@ -114,16 +127,14 @@ export default abstract class ComponentProxy<
 	TEmit extends Record<string, any>,
 	C extends StandardComponent<TProps, TExpose, TEmit>
 	| RenderComponent<TProps, TExpose, TEmit>,
-> extends RefProxy<TExpose, C, ComponentEntity<C>> {
+> extends CustomComponentProxy<TExpose, C, ComponentEntity<C>> {
+
 
 	isNative: boolean = false;
 	/** 所属容器 */
 	readonly container: ContainerProxy<any>;
 	/** 渲染组件根部，如果自身是 ComponentProxy 则为自身 */
 	readonly componentRoot?: ComponentProxy<any, any, any, any>;
-
-	/** 子组件 */
-	readonly children: Set<ComponentProxy<any, any, any, any>> = new Set();
 
 	readonly emit: Emit<Record<string, any>>;
 	readonly on: On<TExpose | undefined, Record<string, any>>;
@@ -134,7 +145,7 @@ export default abstract class ComponentProxy<
 	/** 组件属性 */
 	readonly props: TProps;
 	/** 组件属性定义 */
-	readonly propsDefined: (keyof TProps & string)[];
+	readonly propsDefined?: (keyof TProps & string)[];
 	/** 组件槽 */
 	readonly slots: Slots = Object.create(null);
 	lastSlots: Record<string | symbol, any[]> | undefined;
@@ -142,10 +153,8 @@ export default abstract class ComponentProxy<
 	/** 原生子代 */
 	nativeNodes: TreeNodeList | undefined;
 
-	/** 父组件代理 */
-	readonly parentComponentProxy?: ComponentProxy<any, any, any, any>;
 
-	callHook(id: string): void { callHook(id, this.entity); }
+	callHook(id: string): void { callHook(id, this.contextData); }
 
 
 	/** 结果渲染函数 */
@@ -154,7 +163,7 @@ export default abstract class ComponentProxy<
 	protected readonly _stopRender: () => void;
 
 	protected abstract _init(): void;
-	protected abstract _initRender(): IRender;
+	protected abstract _initRender(context: ComponentContext<any, any>): IRender;
 
 	/** 结果渲染函数 */
 	constructor(
@@ -164,10 +173,9 @@ export default abstract class ComponentProxy<
 		children: any[],
 		parent: BaseProxy<any>,
 	) {
-		super(parent.renderer, originalTag, component, props, parent);
+		super(originalTag, component, props, parent, false);
 		this.container = parent.container;
 		this.componentRoot = this;
-		this.parentComponentProxy = parent.componentRoot;
 		const {events} = this;
 		this.emit = events.emit;
 		this.on = events.on;
@@ -179,16 +187,23 @@ export default abstract class ComponentProxy<
 			this.propsDefined = propsDefined as (keyof TProps & string)[];
 			this.props = createObject(propsDefined, null);
 		} else {
-			this.propsDefined = [];
-			this.props = encase(Object.create(null));
+			this.props = Object.create(null);
 		}
 		this._init();
 		// 初始化钩子
 		this.callHook('beforeCreate');
 		// 更新属性
 		this._update(props, children);
+
+		const context: ComponentContext<any, any> = {
+			by: createBy(this.contextData),
+			slot: createSlotApi(this.slots),
+			expose: t => this.setExposed(t),
+			childNodes: () => this.childNodes,
+			emit: this.emit,
+		};
 		// 获取渲染函数及初始渲染
-		const { render, nodes, stopRender } = this._initRender();
+		const { render, nodes, stopRender } = this._initRender(context);
 		this._render = render;
 		this._stopRender = stopRender;
 		this._nodes = convert(this, nodes);
@@ -204,65 +219,10 @@ export default abstract class ComponentProxy<
 	_update(props: object, children: any[]): void {
 		if (this.destroyed) { return; }
 		this.childNodes = children;
-		refresh(() => postpone(() => update(this, props, children)));
-	}
-	_destroy(): void {
-		this._stopRender();
-		destroy(this._nodes);
+		delayRefresh(() => postpone(() => update(this, props, children)));
 	}
 
 	childNodes: any[] = [];
-	/** 是否为刷新中 */
-	private __refreshing = false;
-	/** 是否需要继续刷新 */
-	private __needRefresh = false;
-	get needRefresh(): boolean { return this.__needRefresh; }
-	/** 延时刷新计数 */
-	private __delayedRefresh = 0;
-
-	/** 渲染结果 */
-	protected _nodes: TreeNodeList = [];
-
-	refresh(): void;
-	refresh<T>(f: () => T): T;
-	refresh<T>(f?: () =>  T): T | void;
-	refresh<T>(f?: () =>  T): T | void {
-		if (typeof f === 'function') {
-			try {
-				this.__delayedRefresh++;
-				return f();
-			} finally {
-				this.__delayedRefresh--;
-				if (this.__delayedRefresh <= 0) { this.refresh(); }
-			}
-		}
-		if (this.destroyed) { return; }
-		this.__needRefresh = true;
-		if (!this.created) { return; }
-
-		if (this.__refreshing) { return; }
-		this.__refreshing = true;
-
-		let nodes: any[] | undefined;
-		for (;;) {
-			if (wait(this)) { break; }
-			if (this.__delayedRefresh) { break; }
-			if (!this.__needRefresh) { break; }
-			this.__needRefresh = false;
-			nodes = this._render();
-			if (this.destroyed) { return; }
-		}
-		this.__refreshing = false;
-		if (wait(this)) { return; }
-		if (this.__delayedRefresh) { return; }
-		if (!nodes) { return; }
-
-		this._nodes = convert(this, nodes, this._nodes);
-		if (!this.mounted) { return; }
-		if (this.destroyed) { return; }
-		if (this.unmounted) { return; }
-		this.requestDraw();
-	}
 	/** 刷新 */
 	requestDraw(): void {
 		this.container.markDraw(this);

@@ -1,4 +1,4 @@
-import { IRenderer } from '../type';
+import { IRenderer } from '../types';
 import { assert } from '../Error';
 
 let nextFrameApi: undefined | ((fn: () => void) => void);

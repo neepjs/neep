@@ -1,4 +1,4 @@
-import { ContainerProxy } from '../type';
+import { ContainerProxy } from '../types';
 import {printError } from '../install/monitorable';
 import { nextFrame } from '../install/renderer';
 

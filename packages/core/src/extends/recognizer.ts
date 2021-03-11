@@ -1,4 +1,4 @@
-import { Recognizer, Component } from '../type';
+import { Recognizer, Component } from '../types';
 
 const recognizers: Recognizer[] = [];
 export function recognize(any: any): Component<any> | null {

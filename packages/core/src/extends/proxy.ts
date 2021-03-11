@@ -4,7 +4,6 @@ import GroupProxy from '../entity/proxy/GroupProxy';
 import ShellProxy from '../entity/proxy/ShellProxy';
 import SlotProxy from '../entity/proxy/SlotProxy';
 import ValueProxy from '../entity/proxy/ValueProxy';
-import RenderProxy from '../entity/proxy/RenderProxy';
 
 import NodeProxy from '../entity/proxy/NodeProxy';
 
@@ -31,7 +30,6 @@ export function isProxy(v: any, type: 'element'): v is ElementProxy<any>;
 export function isProxy(v: any, type: 'group'): v is GroupProxy<any>;
 export function isProxy(v: any, type: 'shell'): v is ShellProxy<any>;
 export function isProxy(v: any, type: 'value'): v is ValueProxy;
-export function isProxy(v: any, type: 'render'): v is RenderProxy;
 export function isProxy(v: any, type: 'slot'): v is SlotProxy;
 
 export function isProxy(v: any, type?: string): boolean {
@@ -47,7 +45,6 @@ export function isProxy(v: any, type?: string): boolean {
 		case 'group': return v instanceof GroupProxy;
 		case 'shell': return v instanceof ShellProxy;
 		case 'value': return v instanceof ValueProxy;
-		case 'render': return v instanceof RenderProxy;
 		case 'slot': return v instanceof SlotProxy;
 		case 'node': return v instanceof NodeProxy;
 		case 'ref': return v instanceof RefProxy;

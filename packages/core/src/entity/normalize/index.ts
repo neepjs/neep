@@ -4,63 +4,61 @@ import {
 	Slots,
 	SimpleComponent,
 	Component,
+	ContextData,
 	ComponentEntity,
 	IRenderer,
-} from '../../type';
-import { isValue, postpone } from '../../install/monitorable';
-import { componentsSymbol, objectTypeSymbol, objectTypeSymbolElement } from '../../symbols';
-import ComponentProxy from '../proxy/ComponentProxy';
-import EventEmitter from '../../EventEmitter';
-import { isSimpleComponent } from '../../is';
-import { getSlots, setSlots, createSlotApi, setSlot, renderSlot } from '../slot';
-import { initContext } from '../../extends/context';
-
+} from '../../types';
 import {
-	isElement,
-	Fragment,
-	Render,
-	Slot,
-	ScopeSlot,
-	Container,
-} from '../../auxiliary';
-import getDelivered from '../getDelivered';
-import refresh from '../../extends/refresh';
-import { components as globalComponents } from '../../register';
+	componentsSymbol,
+	objectTypeSymbol,
+	objectTypeSymbolElement,
+} from '../../constant/symbols';
+import { Render, ScopeSlot } from '../../constant/tags';
+import { isValue, postpone } from '../../install/monitorable';
 
-export function findComponent(
-	tag: any,
-	components: Record<string, Component<any>>[],
-	native?: boolean,
-): Component<any> | string | null {
-	if (!tag) { return null; }
-	if (typeof tag !== 'string') { return tag; }
-	if (/^core:/i.test(tag)) {
-		let ltag = tag.toLowerCase();
-		if (ltag === Container) { return ltag; }
-		if (ltag === ScopeSlot) { return ltag; }
-		if (ltag === Render) { return ltag; }
-		if (ltag === Slot) { return native ? 'slot' : ScopeSlot; }
-		return Fragment;
-	}
-	if (tag === Fragment) { return tag; }
-	if (tag === 'slot') { return tag; }
-	for (const list of components) {
-		const component = list[tag];
-		if (component) { return component; }
-	}
-	return globalComponents[tag] || tag;
-}
-export function getComponents(
-	...components: (Record<string, Component<any>> | undefined | null)[]
-): Record<string, Component<any>>[] {
-	return components.filter(Boolean) as Record<string, Component<any>>[];
+import { isSimpleComponent } from '../../is';
+
+import { isElement } from '../../auxiliary';
+import delayRefresh from '../../extends/delayRefresh';
+import { createBy } from '../../extends/with';
+import { runCurrent } from '../../extends/current';
+
+import ComponentProxy from '../proxy/ComponentProxy';
+import {
+	createSlotApi,
+	setSlot,
+	renderSlot,
+} from '../slot';
+
+import createSimpleEmit from './createSimpleEmit';
+import getComponents from './getComponents';
+import { getNodeArray } from './getNodeArray';
+import { findComponent } from './findComponent';
+import { getChildren } from './getChildren';
+import { createSimpleSlots } from './createSimpleSlots';
+
+export interface NormalizeAuxiliaryObject {
+	refresh: (f?: () => void) => void;
+	slotRenderFnList: WeakMap<Function, Function>;
+	delivered: Record<any, any>;
+	simpleParent: ComponentEntity<any, any> | undefined;
+	renderer: IRenderer;
 }
 
-function getNodeArray(result: any): any[] {
-	if (Array.isArray(result)) { return result; }
-	if (!isElement(result)) { return [result]; }
-	if (result.tag !== Fragment) { return [result]; }
-	return result.children;
+function createSimpleContextData(
+	normalizeAuxiliaryObject: NormalizeAuxiliaryObject,
+): ContextData {
+	return {
+		isShell: false,
+		isSimple: true,
+		created: false,
+		destroyed: true,
+		delivered: normalizeAuxiliaryObject.delivered,
+		withData: {},
+		refresh: normalizeAuxiliaryObject.refresh,
+		parent: normalizeAuxiliaryObject.simpleParent,
+		getChildren: () => [],
+	};
 }
 
 function execSimple(
@@ -70,22 +68,15 @@ function execSimple(
 	components: Record<string, Component<any>>[],
 	children: any[],
 ): Element {
-	const slotMap = Object.create(null);
-	getSlots(normalizeAuxiliaryObject.renderer, children, slotMap);
-	const slots = setSlots(slotMap);
-	const event = new EventEmitter();
-	event.updateInProps(node.props);
-	const { refresh, delivered, simpleParent } =  normalizeAuxiliaryObject;
+	const slots = createSimpleSlots(normalizeAuxiliaryObject, children);
+	const contextData = createSimpleContextData(normalizeAuxiliaryObject);
 
-	const result = tag({...node.props}, initContext({
-		isShell: true,
+	const result = runCurrent(contextData, undefined, tag, {...node.props}, {
+		by: createBy(contextData),
 		slot: createSlotApi(slots, true),
-		parent: simpleParent,
-		delivered: deliver => getDelivered(delivered, deliver),
-		childNodes: children,
-		refresh,
-		emit: event.emit,
-	}));
+		childNodes: () => children,
+		emit: createSimpleEmit(node.props),
+	});
 	const nodes = init(
 		normalizeAuxiliaryObject,
 		getNodeArray(result),
@@ -110,13 +101,9 @@ function getSlotRenderFn(
 	components: Record<string, Component<any>>[],
 	native: boolean,
 ): null | Function {
-	if (children.length !== 1) {
-		return null;
-	}
+	if (children.length !== 1) { return null; }
 	const [renderFn] = children;
-	if (isValue(renderFn) || typeof renderFn !== 'function') {
-		return null;
-	}
+	if (isValue(renderFn) || typeof renderFn !== 'function') { return null; }
 	const { slotRenderFnList } = normalizeAuxiliaryObject;
 	const fn = slotRenderFnList.get(renderFn);
 	if (fn) { return fn; }
@@ -200,10 +187,7 @@ function exec<T>(
 			native,
 		);
 		if (slotRenderFn) {
-			return {
-				...node,
-				children: [slotRenderFn],
-			} as Element;
+			return { ...node, children: [slotRenderFn] } as Element;
 		}
 	}
 	if (tag !== ScopeSlot) {
@@ -248,21 +232,6 @@ function exec<T>(
 	};
 	return el;
 }
-function getChildren(children: any[], args: any): any[] {
-	if (children.length !== 1) { return children; }
-	const [fn] = children;
-	if (typeof fn !== 'function') { return children; }
-	return getNodeArray(fn(args));
-}
-
-
-export interface NormalizeAuxiliaryObject {
-	refresh: (f?: () => void) => void;
-	slotRenderFnList: WeakMap<Function, Function>;
-	delivered: Record<any, any>;
-	simpleParent: ComponentEntity<any, any> | undefined;
-	renderer: IRenderer;
-}
 export function init(
 	normalizeAuxiliaryObject: NormalizeAuxiliaryObject,
 	node: any[],
@@ -271,7 +240,7 @@ export function init(
 	native: boolean,
 	simpleSlot: boolean,
 ): any[] {
-	return refresh(() => postpone(() => exec(
+	return delayRefresh(() => postpone(() => exec(
 		node,
 		normalizeAuxiliaryObject,
 		slots,

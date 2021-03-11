@@ -6,7 +6,7 @@ import {
 	NativeComponent,
 	ShellComponent,
 	ElementComponent,
-} from './type';
+} from './types';
 import {
 	objectTypeSymbol,
 	objectTypeSymbolSimpleComponent,
@@ -16,7 +16,7 @@ import {
 	objectTypeSymbolContainerComponent,
 	objectTypeSymbolShellComponent,
 	objectTypeSymbolElementComponent,
-} from './symbols';
+} from './constant/symbols';
 
 export function isSimpleComponent(v: any): v is SimpleComponent<any, any> {
 	if (typeof v !== 'function') { return false; }

@@ -1,7 +1,10 @@
-import { IRenderer, TreeNodeList, MountOptions, MountedNode } from '../../type';
-import { updateAll } from './update';
-import { createAll } from './create';
-export { unmount, getNodes } from './utils';
+import { IRenderer, TreeNodeList, MountOptions, MountedNode } from '../../types';
+import updateAll from './update/updateAll';
+import createAll from './create/createAll';
+export { default as  unmount } from './unmount';
+export { default as getNodes } from './update/getNodes';
+export { default as drawReplace } from './update/drawReplace';
+export { default as drawPlaceholder } from './create/drawPlaceholder';
 
 export default function draw(
 	renderer: IRenderer,

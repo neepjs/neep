@@ -1,4 +1,4 @@
-import { Devtools } from '../type';
+import { Devtools } from '../types';
 
 export const devtools: Devtools = {
 	renderHook(){},

@@ -5,15 +5,15 @@ import {
 	ElementComponent,
 	MountOptions,
 	ElementEntity,
-} from '../../type';
+} from '../../types';
 import BaseProxy from './BaseProxy';
 import convert, { destroy } from '../convert';
 import draw, { getNodes, unmount } from '../draw';
 import RefProxy from './RefProxy';
 import { createMountedNode } from '../id';
-import { componentValueSymbol } from '../../symbols';
+import { componentValueSymbol } from '../../constant/symbols';
 import { defineProperty } from '../../install/monitorable';
-import { isProduction } from '../../constant';
+import { isProduction } from '../../constant/info';
 import EventEmitter from '../../EventEmitter';
 import ContainerProxy from './ContainerProxy';
 import ComponentProxy from './ComponentProxy';

@@ -7,25 +7,23 @@ import {
 	MountOptions,
 	ContainerEntity,
 	Hook,
-} from '../../type';
+	HookData,
+} from '../../types';
 import {
 	rendererSymbol,
 	componentValueSymbol,
-	objectTypeSymbolHookEntity,
-	objectTypeSymbol,
-} from '../../symbols';
+} from '../../constant/symbols';
 import { getRender } from '../../install';
 import { defineProperty } from '../../install/monitorable';
 import { createMountedNode } from '../id';
 import convert, { destroy } from '../convert';
-import draw, { unmount, getNodes } from '../draw';
+import draw, { drawPlaceholder, unmount, getNodes } from '../draw';
 import BaseProxy, { setCompleteList } from './BaseProxy';
 import ComponentProxy from './ComponentProxy';
-import { isProduction } from '../../constant';
-import { createPlaceholder } from '../draw/create';
+import { isProduction } from '../../constant/info';
 import EventEmitter from '../../EventEmitter';
 import { markDraw } from '../../extends/nextTick';
-import { callHook, setHook } from '../../hook';
+import { callHook, setHook } from '../../extends/hook';
 import RefProxy from './RefProxy';
 
 function createEntity<P extends object>(
@@ -36,19 +34,16 @@ function createEntity<P extends object>(
 		{ configurable: true, value: ContainerEntity<any>[K], writable?: boolean }
 		| { configurable: true, get(): ContainerEntity<any>[K] }
 	} = {
-		[objectTypeSymbol]: { configurable: true, value: objectTypeSymbolHookEntity },
 		data: { configurable: true, value: obj.data },
 		exposed: { configurable: true, get: () => obj.exposed },
-		// component: { configurable: true, value: obj.tag },
 		created: { configurable: true, get: () => obj.created },
 		destroyed: { configurable: true, get: () => obj.destroyed },
 		mounted: { configurable: true, get: () => obj.mounted },
 		unmounted: { configurable: true, get: () => obj.unmounted },
-		$_hooks: { configurable: true, value: Object.create(null) },
-		callHook: { configurable: true, value(h: string) { callHook(h, entity); } },
+		callHook: { configurable: true, value(h: string) { callHook(h, obj.contextData); } },
 		setHook: {
 			configurable: true,
-			value(id: string, hook: Hook<any>) { return setHook(id, hook, entity); },
+			value(id: string, hook: Hook) { return setHook(id, hook, obj.contextData); },
 		},
 		on: { configurable: true, value: events.on },
 		emit: { configurable: true, value: events.emit },
@@ -82,6 +77,7 @@ export default class ContainerProxy<
 	content: (MountedNode | MountedNode[])[] = [];
 
 	readonly rootContainer: ContainerProxy<any> = this;
+	readonly contextData: HookData;
 	constructor(
 		originalTag: any,
 		component: ContainerComponent<P> | null = null,
@@ -100,6 +96,7 @@ export default class ContainerProxy<
 		);
 		this.container = this;
 		this.componentRoot = parent?.componentRoot;
+		this.contextData = { hooks: {} };
 
 		if (component) {
 			this.__containerData = component[componentValueSymbol];
@@ -107,9 +104,7 @@ export default class ContainerProxy<
 		if (!isProduction) { defineProperty(this, 'content', []); }
 		// 事件处理
 		this.events.updateInProps(props);
-		if (parent) {
-			this.rootContainer = parent.container.rootContainer;
-		}
+		if (parent) { this.rootContainer = parent.container.rootContainer; }
 		this.__nodes = convert(this, children);
 		this.created = true;
 	}
@@ -132,7 +127,7 @@ export default class ContainerProxy<
 		this.requestDraw();
 	}
 	_destroy(): void { destroy(this.__nodes); }
-	callHook(id: string): void { callHook(id, this.entity); }
+	callHook(id: string): void { callHook(id, this.contextData); }
 
 	requestDraw(): void { this.markDraw(this); }
 	private __container: NativeContainerNode | null = null;
@@ -157,11 +152,10 @@ export default class ContainerProxy<
 			this.events.emit,
 			parentProxy?.renderer,
 		);
-		console.log(exposed);
 		this.setExposed(exposed);
 		const subOpt = renderer.getMountOptions(container, opt) || opt;
 
-		const placeholder = createPlaceholder(parentRenderer);
+		const placeholder = drawPlaceholder(parentRenderer);
 		this.__placeholder = placeholder;
 		const placeholderNode = placeholder.node!;
 		this.__placeholderNode = placeholderNode;

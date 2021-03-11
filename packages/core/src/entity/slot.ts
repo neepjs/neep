@@ -3,18 +3,20 @@ import {
 	IRenderer,
 	SlotApi,
 	Element,
-} from '../type';
+} from '../types';
 import {
 	isElement,
-	Render,
 	equal,
-	Template,
 	isValue,
-	ScopeSlot,
 } from '../auxiliary';
+import {
+	Render,
+	Template,
+	ScopeSlot,
+} from '../constant/tags';
 import { isSimpleComponent } from '../is';
 import { markRead, markChange } from '../install/monitorable';
-import { objectTypeSymbol, objectTypeSymbolElement } from '../symbols';
+import { objectTypeSymbol, objectTypeSymbolElement } from '../constant/symbols';
 
 /**
  * 获取槽元素

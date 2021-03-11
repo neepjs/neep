@@ -7,9 +7,10 @@ export default class NeepError extends Error {
 }
 export function assert(
 	v: any,
-	message: string,
+	message: string | (() => string),
 	tag?: string,
 ): asserts v {
 	if (v) { return; }
+	if (typeof message === 'function') { message = message(); }
 	throw new NeepError(message, tag);
 }
