@@ -33,7 +33,10 @@ function getClass(
 			}
 		} else if (typeof v === 'object') {
 			for (const k in v) {
-				const add = v[k];
+				let add = v[k];
+				if (isValue(add)) {
+					add = add.value;
+				}
 				for (let it of k.split(' ').filter(Boolean)) {
 					set[add ? 'add' : 'delete'](it);
 				}
